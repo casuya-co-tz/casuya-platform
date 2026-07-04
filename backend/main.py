@@ -34,6 +34,7 @@ from backend.config.settings import get_settings
 from backend.middleware.cors import add_cors
 from backend.middleware.errors import register_error_handlers
 from backend.middleware.rate_limit import RateLimitMiddleware
+from backend.middleware.security_headers import SecurityHeadersMiddleware
 
 settings = get_settings()
 configure_logging()
@@ -50,6 +51,7 @@ app = FastAPI(title=settings.app_name, debug=settings.debug, lifespan=lifespan)
 add_cors(app)
 register_error_handlers(app)
 app.add_middleware(RateLimitMiddleware)
+app.add_middleware(SecurityHeadersMiddleware)
 
 for router_module in (
     auth, users, students, teachers, lessons, subjects, topics, subtopics,
@@ -61,3 +63,32 @@ for router_module in (
 @app.get("/health")
 def health_check():
     return {"status": "ok", "environment": settings.environment}
+
+
+@app.get("/readyz")
+def readiness_check():
+    from backend.config.database import redis_client
+    from sqlalchemy import text
+    from backend.config.database import SessionLocal
+
+    db_ok = False
+    try:
+        db = SessionLocal()
+        db.execute(text("SELECT 1"))
+        db.close()
+        db_ok = True
+    except Exception:
+        pass
+
+    redis_ok = False
+    try:
+        redis_client.ping()
+        redis_ok = True
+    except Exception:
+        pass
+
+    return {
+        "status": "ok" if db_ok and redis_ok else "degraded",
+        "database": db_ok,
+        "redis": redis_ok,
+    }

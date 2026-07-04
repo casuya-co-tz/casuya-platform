@@ -19,7 +19,8 @@ class Settings(BaseSettings):
 
     jwt_secret: str = "insecure-development-secret-change-me"
     jwt_algorithm: str = "HS256"
-    access_token_expire_minutes: int = 60 * 24  # 24h
+    access_token_expire_minutes: int = 15
+    refresh_token_expire_days: int = 7
 
     allowed_origins: list[str] = ["http://localhost:5173", "http://localhost:8000"]
 

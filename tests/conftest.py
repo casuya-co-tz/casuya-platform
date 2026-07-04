@@ -6,7 +6,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 os.environ["DATABASE_URL"] = f"sqlite:///{tempfile.mktemp(suffix='.db')}"
-os.environ["JWT_SECRET"] = "test-secret-that-is-at-least-thirty-two-characters-long"
+os.environ.setdefault("JWT_SECRET", "test-secret-that-is-at-least-thirty-two-characters-long")
+os.environ["REDIS_URL"] = "redis://localhost:6379/1"
 
 import pytest
 from sqlalchemy import create_engine

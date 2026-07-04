@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 
-from backend.schemas.auth import AuthResponse, LoginRequest, RefreshRequest, RegisterRequest
-from backend.services.auth_service import authenticate_user, register_user
+from backend.schemas.auth import AuthResponse, LoginRequest, RefreshTokenRequest, RegisterRequest
+from backend.services.auth_service import authenticate_user, refresh_access_token, register_user
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -29,11 +29,10 @@ def login(body: LoginRequest):
 
 
 @router.post("/refresh")
-def refresh(body: RefreshRequest):
-    from backend.config.security import decode_access_token
-
+def refresh(body: RefreshTokenRequest):
     try:
-        payload = decode_access_token(body.token)
-        return {"access_token": body.token, "token_type": "bearer"}
+        return refresh_access_token(body.refresh_token)
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=str(e))
     except Exception:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
+        raise HTTPException(status_code=401, detail="Invalid or expired refresh token")

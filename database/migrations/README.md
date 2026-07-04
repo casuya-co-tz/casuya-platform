@@ -1,7 +1,35 @@
-# Migrations
+# Database Migrations
 
-Currently using `Base.metadata.create_all()` (see `backend/config/database.py:init_db`)
-since the target is SQLite for local dev. Once moving to Postgres, initialize
-Alembic here:
+Managed with Alembic.
 
-    alembic init database/migrations
+## Setup
+
+```bash
+pip install alembic
+alembic init alembic
+alembic revision --autogenerate -m "description"
+alembic upgrade head
+```
+
+## Commands
+
+```bash
+# Create new migration
+alembic revision --autogenerate -m "add_column_x"
+
+# Apply all pending migrations
+alembic upgrade head
+
+# Rollback one step
+alembic downgrade -1
+
+# Show current revision
+alembic current
+
+# Show history
+alembic history
+```
+
+## CI
+
+Migrations are run automatically in CI and at container startup.
