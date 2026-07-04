@@ -1,4 +1,5 @@
 import html
+import json
 import re
 
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -23,7 +24,12 @@ def sanitize_dict(data: dict) -> dict:
         elif isinstance(value, dict):
             result[key] = sanitize_dict(value)
         elif isinstance(value, list):
-            result[key] = [sanitize_dict(v) if isinstance(v, dict) else sanitize_input(v) if isinstance(v, str) else v for v in value]
+            result[key] = [
+                sanitize_dict(v) if isinstance(v, dict)
+                else sanitize_input(v) if isinstance(v, str)
+                else v
+                for v in value
+            ]
         else:
             result[key] = value
     return result

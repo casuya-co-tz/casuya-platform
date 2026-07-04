@@ -1,13 +1,13 @@
+from contextlib import suppress
+
 from sqlalchemy.orm import Session
 
 from backend.config.database import get_db
-from backend.config.settings import get_settings
 from backend.integrations.azampay import mobile_checkout
 from backend.models.payment import Payment
 
 
 def process_checkout(payment_id: str, mobile_number: str):
-    settings = get_settings()
     db: Session = next(get_db())
     payment = db.query(Payment).filter(Payment.id == payment_id).first()
     if not payment:
@@ -22,7 +22,7 @@ def process_checkout(payment_id: str, mobile_number: str):
         )
         payment.provider_reference = result.get("reference")
         payment.status = "success"
-    except Exception as e:
+    except Exception:
         payment.status = "failed"
     db.commit()
 
@@ -37,10 +37,8 @@ def handle_payment_completion(payment_id: str):
 
     user = db.query(User).filter(User.id == payment.user_id).first()
     if user and user.phone:
-        try:
+        with suppress(Exception):
             send_sms(
                 to=user.phone,
                 message=f"Payment of {payment.amount_tzs:.0f} TZS received. Thank you!",
             )
-        except Exception:
-            pass
