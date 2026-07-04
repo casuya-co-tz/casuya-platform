@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 
 from backend.config.database import get_db
-from backend.models.lesson import Lesson, Subject, Topic, Subtopic
+from backend.models.lesson import Lesson, Subject, Subtopic, Topic
 
 
 def search_content(query: str) -> list[dict]:

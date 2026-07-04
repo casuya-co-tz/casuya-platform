@@ -1,10 +1,11 @@
 import json
 from pathlib import Path
 
+from sqlalchemy.orm import Session
+
+from backend.config.database import get_db
 from backend.config.settings import get_settings
 from backend.models.lesson import Lesson
-from backend.config.database import get_db
-from sqlalchemy.orm import Session
 
 
 def get_runtime_manifest(lesson_id: str) -> dict:

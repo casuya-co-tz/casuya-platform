@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 
-from sqlalchemy.orm import Session
 from sqlalchemy import func
+from sqlalchemy.orm import Session
 
 from backend.config.database import get_db
 from backend.models.analytics import LessonAnalyticsSnapshot
@@ -51,8 +51,8 @@ def get_lesson_analytics(lesson_id: str) -> dict | None:
 
 
 def get_platform_overview() -> dict:
-    from backend.models.student import Student
     from backend.models.lesson import Lesson
+    from backend.models.student import Student
 
     db: Session = next(get_db())
     total_students = db.query(Student).count()

@@ -50,7 +50,7 @@ def grade_attempt(quiz_id: str, answers: dict) -> dict:
     total = len(questions)
     correct = 0
     for q in questions:
-        correct_option = db.query(QuizOption).filter(QuizOption.question_id == q.id, QuizOption.is_correct == True).first()
+        correct_option = db.query(QuizOption).filter(QuizOption.question_id == q.id, QuizOption.is_correct).first()
         if correct_option and answers.get(q.id) == correct_option.id:
             correct += 1
     percentage = (correct / total * 100) if total > 0 else 0

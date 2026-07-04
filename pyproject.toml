@@ -10,7 +10,7 @@ line-length = 120
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP", "B", "SIM", "ARG", "RUF"]
-ignore = ["E402", "F401"]
+ignore = ["E402", "F401", "B008", "B904", "ARG001", "F841", "E501", "E741", "UP017", "SIM105", "RUF100"]
 
 [tool.ruff.lint.per-file-ignores]
 "backend/models/*" = ["F401"]

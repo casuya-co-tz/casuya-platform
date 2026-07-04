@@ -78,9 +78,9 @@ def health_check():
 
 @app.get("/readyz")
 def readiness_check():
-    from backend.config.database import redis_client
     from sqlalchemy import text
-    from backend.config.database import SessionLocal
+
+    from backend.config.database import SessionLocal, redis_client
 
     db_ok = False
     try:
