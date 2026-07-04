@@ -35,9 +35,11 @@ from backend.middleware.cors import add_cors
 from backend.middleware.errors import register_error_handlers
 from backend.middleware.rate_limit import RateLimitMiddleware
 from backend.middleware.security_headers import SecurityHeadersMiddleware
+from backend.middleware.sentry import init_sentry
 
 settings = get_settings()
 configure_logging()
+init_sentry()
 
 
 @asynccontextmanager
@@ -46,7 +48,16 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title=settings.app_name, debug=settings.debug, lifespan=lifespan)
+app = FastAPI(
+    title=settings.app_name,
+    description="Offline-first lesson delivery, quizzes, games, and progress tracking for Tanzanian secondary education.",
+    version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
+    debug=settings.debug,
+    lifespan=lifespan,
+)
 
 add_cors(app)
 register_error_handlers(app)

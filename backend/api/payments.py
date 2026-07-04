@@ -15,6 +15,7 @@ def create_checkout(body: CheckoutRequest, current_user=Depends(get_current_user
             amount_tzs=body.amount_tzs,
             mobile_number=body.mobile_number,
             provider=body.provider,
+            idempotency_key=body.idempotency_key,
         )
         return PaymentResponse(**result)
     except ValueError as e:

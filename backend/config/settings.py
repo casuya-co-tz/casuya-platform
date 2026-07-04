@@ -35,6 +35,8 @@ class Settings(BaseSettings):
     africastalking_username: str | None = None
     africastalking_api_key: str | None = None
 
+    sentry_dsn: str | None = None
+
     storage_root: str = "./storage"
     rate_limit_per_minute: int = 120
 

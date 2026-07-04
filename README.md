@@ -595,3 +595,51 @@ JavaScript synchronization engine responsible for:
 * Batch synchronization
 * Network recovery
 * Analytics collection
+
+---
+
+## Security & Operations
+
+### Middleware pipeline (applied in order)
+
+1. **CORS** — explicit allowed origins, methods (GET/POST/PUT/PATCH/DELETE), headers (Authorization, Content-Type, X-CSRF-Token)
+2. **Rate Limiting** — Redis-backed, per-endpoint limits (auth: 5-10/min, payments: 10-30/min), graceful degradation if Redis unavailable
+3. **Security Headers** — CSP, HSTS, X-Frame-Options, X-Content-Type-Options, X-XSS-Protection
+4. **Error Handling** — structured JSON error responses
+
+### Authentication
+
+- bcrypt password hashing (cost factor 12)
+- Short-lived JWT access tokens (15 min default) + refresh tokens (7 day expiry)
+- Token type claim (`access` vs `refresh`) enforced in `decode_access_token`
+- Optional `role` claim in access token for permission checks
+
+### Background Jobs
+
+- Redis Queue (RQ) for async processing (default/high/low priority queues)
+- Payment checkout and SMS notification handled asynchronously
+- Job idempotency via `idempotency_key` on Payment model
+
+### Payments
+
+- Sandbox toggle via `AZAMPAY_SANDBOX=true` — skips real checkout, returns mock response
+- Idempotency keys prevent duplicate charges
+- Webhook handler is idempotent (skips processing if already `success`)
+
+### Error Tracking
+
+- Sentry integration via `SENTRY_DSN` environment variable
+- Traces sampled at 0.2 in production, 1.0 in development
+- Integrations: FastAPI, SQLAlchemy, Redis
+
+---
+
+## CI/CD Pipeline
+
+The `.github/workflows/tests.yml` workflow runs on every push and PR:
+
+1. **secret-scan** — `detect-secrets` scans all files for credentials
+2. **lint** — `ruff check` + `ruff format --check`
+3. **backend-tests** — pytest with Postgres + Redis service containers, includes migration test via Alembic
+
+Dependabot is configured for pip, Docker, GitHub Actions, and npm weekly updates.
