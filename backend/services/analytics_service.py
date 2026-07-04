@@ -10,11 +10,15 @@ from backend.models.progress import ProgressRecord
 
 def recompute_lesson_snapshot(lesson_id: str) -> dict:
     db: Session = next(get_db())
-    stats = db.query(
-        func.count(ProgressRecord.id),
-        func.avg(ProgressRecord.completion_percentage),
-        func.avg(ProgressRecord.score_percentage),
-    ).filter(ProgressRecord.lesson_id == lesson_id).first()
+    stats = (
+        db.query(
+            func.count(ProgressRecord.id),
+            func.avg(ProgressRecord.completion_percentage),
+            func.avg(ProgressRecord.score_percentage),
+        )
+        .filter(ProgressRecord.lesson_id == lesson_id)
+        .first()
+    )
     session_count = stats[0] or 0
     avg_completion = float(stats[1] or 0.0)
     avg_score = float(stats[2] or 0.0)
@@ -37,9 +41,12 @@ def recompute_lesson_snapshot(lesson_id: str) -> dict:
 
 def get_lesson_analytics(lesson_id: str) -> dict | None:
     db: Session = next(get_db())
-    snapshot = db.query(LessonAnalyticsSnapshot).filter(
-        LessonAnalyticsSnapshot.lesson_id == lesson_id
-    ).order_by(LessonAnalyticsSnapshot.generated_at.desc()).first()
+    snapshot = (
+        db.query(LessonAnalyticsSnapshot)
+        .filter(LessonAnalyticsSnapshot.lesson_id == lesson_id)
+        .order_by(LessonAnalyticsSnapshot.generated_at.desc())
+        .first()
+    )
     if not snapshot:
         return None
     return {

@@ -21,6 +21,4 @@ class LessonVersion(Base):
     package_version: Mapped[str] = mapped_column(String, nullable=False)
     content_hash: Mapped[str] = mapped_column(String, nullable=False)
     package_path: Mapped[str] = mapped_column(String, nullable=False)  # storage/lesson-packages/...
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(timezone.utc)
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))

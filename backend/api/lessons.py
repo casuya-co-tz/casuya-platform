@@ -11,7 +11,9 @@ router = APIRouter(prefix="/lessons", tags=["lessons"])
 
 
 @router.get("/", response_model=list[dict])
-def list_lessons_route(subtopic_id: str | None = None, status: str | None = None, current_user=Depends(get_current_user)):
+def list_lessons_route(
+    subtopic_id: str | None = None, status: str | None = None, current_user=Depends(get_current_user)
+):
     return list_lessons(subtopic_id=subtopic_id, status=status)
 
 

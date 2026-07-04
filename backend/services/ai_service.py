@@ -13,13 +13,15 @@ def generate_quiz_questions(lesson_html: str, count: int = 5) -> list[dict]:
         answer = words[blank_idx]
         words[blank_idx] = "______"
         prompt = " ".join(words)
-        questions.append({
-            "prompt": prompt,
-            "options": [
-                {"text": answer, "is_correct": True},
-                {"text": answer.upper(), "is_correct": False},
-                {"text": answer.lower(), "is_correct": False},
-                {"text": answer[::-1], "is_correct": False},
-            ],
-        })
+        questions.append(
+            {
+                "prompt": prompt,
+                "options": [
+                    {"text": answer, "is_correct": True},
+                    {"text": answer.upper(), "is_correct": False},
+                    {"text": answer.lower(), "is_correct": False},
+                    {"text": answer[::-1], "is_correct": False},
+                ],
+            }
+        )
     return questions

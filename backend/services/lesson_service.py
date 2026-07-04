@@ -37,7 +37,14 @@ def create_lesson_from_html(subtopic_id: str, title: str, html: str) -> dict:
     )
     db.add(version)
     db.commit()
-    return {"id": lesson.id, "slug": slug, "title": title, "content_hash": content_hash, "package_version": "1.0.0", "status": "draft"}
+    return {
+        "id": lesson.id,
+        "slug": slug,
+        "title": title,
+        "content_hash": content_hash,
+        "package_version": "1.0.0",
+        "status": "draft",
+    }
 
 
 def publish_lesson(lesson_id: str) -> dict:

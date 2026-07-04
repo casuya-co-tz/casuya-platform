@@ -21,6 +21,4 @@ class ProgressRecord(Base):
     elapsed_ms: Mapped[int] = mapped_column(Integer, default=0)
     completion_percentage: Mapped[float] = mapped_column(Float, default=0.0)
     score_percentage: Mapped[float | None] = mapped_column(Float, nullable=True)
-    synced_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(timezone.utc)
-    )
+    synced_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))

@@ -18,5 +18,6 @@ async def http_exception_handler(request: Request, exc):
 
 def register_error_handlers(app):
     from fastapi.exceptions import HTTPException
+
     app.add_exception_handler(Exception, unhandled_exception_handler)
     app.add_exception_handler(HTTPException, http_exception_handler)

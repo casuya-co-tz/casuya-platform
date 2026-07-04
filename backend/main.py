@@ -65,8 +65,22 @@ app.add_middleware(RateLimitMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
 
 for router_module in (
-    auth, users, students, teachers, lessons, subjects, topics, subtopics,
-    quizzes, games, progress, analytics, payments, notifications, search, uploads,
+    auth,
+    users,
+    students,
+    teachers,
+    lessons,
+    subjects,
+    topics,
+    subtopics,
+    quizzes,
+    games,
+    progress,
+    analytics,
+    payments,
+    notifications,
+    search,
+    uploads,
 ):
     app.include_router(router_module.router)
 

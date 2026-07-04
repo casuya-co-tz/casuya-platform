@@ -20,6 +20,4 @@ class LessonAnalyticsSnapshot(Base):
     session_count: Mapped[int] = mapped_column(Integer, default=0)
     avg_completion_percentage: Mapped[float] = mapped_column(Float, default=0.0)
     avg_score_percentage: Mapped[float] = mapped_column(Float, default=0.0)
-    generated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(timezone.utc)
-    )
+    generated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))

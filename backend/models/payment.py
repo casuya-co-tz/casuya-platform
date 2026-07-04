@@ -21,6 +21,4 @@ class Payment(Base):
     provider_reference: Mapped[str | None] = mapped_column(String, nullable=True)
     idempotency_key: Mapped[str | None] = mapped_column(String, unique=True, nullable=True, index=True)
     status: Mapped[str] = mapped_column(String, default="pending")  # pending|success|failed
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(timezone.utc)
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))

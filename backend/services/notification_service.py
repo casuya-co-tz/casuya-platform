@@ -22,7 +22,9 @@ def send_notification(user_id: str, message: str, channel: str = "in_app") -> di
 
 def list_notifications(user_id: str) -> list[dict]:
     db: Session = next(get_db())
-    notifications = db.query(Notification).filter(Notification.user_id == user_id).order_by(Notification.created_at.desc()).all()
+    notifications = (
+        db.query(Notification).filter(Notification.user_id == user_id).order_by(Notification.created_at.desc()).all()
+    )
     return [
         {"id": n.id, "user_id": n.user_id, "channel": n.channel, "message": n.message, "is_read": n.is_read}
         for n in notifications

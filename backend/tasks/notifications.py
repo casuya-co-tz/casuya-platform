@@ -17,10 +17,14 @@ def send_weekly_digests():
     for teacher in teachers:
         students = db.query(Student).filter(Student.school_code == teacher.school_code).all()
         for student in students:
-            recent = db.query(ProgressRecord).filter(
-                ProgressRecord.student_id == student.id,
-                ProgressRecord.synced_at >= week_ago,
-            ).count()
+            recent = (
+                db.query(ProgressRecord)
+                .filter(
+                    ProgressRecord.student_id == student.id,
+                    ProgressRecord.synced_at >= week_ago,
+                )
+                .count()
+            )
             if recent > 0:
                 send_notification(
                     user_id=teacher.user_id,

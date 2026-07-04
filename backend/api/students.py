@@ -14,7 +14,13 @@ def list_students(current_user=Depends(get_current_user)):
     db: Session = next(get_db())
     students = db.query(Student).all()
     return [
-        {"id": s.id, "user_id": s.user_id, "full_name": s.full_name, "form_level": s.form_level, "school_code": s.school_code}
+        {
+            "id": s.id,
+            "user_id": s.user_id,
+            "full_name": s.full_name,
+            "form_level": s.form_level,
+            "school_code": s.school_code,
+        }
         for s in students
     ]
 
@@ -25,4 +31,10 @@ def get_student(student_id: str, current_user=Depends(get_current_user)):
     student = db.query(Student).filter(Student.id == student_id).first()
     if not student:
         return {"error": "not_found"}
-    return {"id": student.id, "user_id": student.user_id, "full_name": student.full_name, "form_level": student.form_level, "school_code": student.school_code}
+    return {
+        "id": student.id,
+        "user_id": student.user_id,
+        "full_name": student.full_name,
+        "form_level": student.form_level,
+        "school_code": student.school_code,
+    }

@@ -11,6 +11,7 @@ def require_role(*allowed_roles: str):
                 detail=f"Requires one of: {', '.join(allowed_roles)}",
             )
         return user
+
     return dependency
 
 

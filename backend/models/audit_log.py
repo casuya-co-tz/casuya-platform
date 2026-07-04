@@ -17,10 +17,8 @@ class AuditLog(Base):
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
     actor_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True)
-    action: Mapped[str] = mapped_column(String, nullable=False)       # e.g. "lesson.publish"
+    action: Mapped[str] = mapped_column(String, nullable=False)  # e.g. "lesson.publish"
     target_type: Mapped[str] = mapped_column(String, nullable=False)  # e.g. "lesson"
     target_id: Mapped[str] = mapped_column(String, nullable=False)
     metadata_json: Mapped[str | None] = mapped_column(String, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(timezone.utc)
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
