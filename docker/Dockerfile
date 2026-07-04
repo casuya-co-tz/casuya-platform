@@ -1,5 +1,5 @@
 # Casuya Platform — multi-stage build
-FROM node:20-alpine AS frontend
+FROM node:26-alpine AS frontend
 WORKDIR /app
 COPY frontend/ frontend/
 RUN cp -r frontend/* /app/build/
