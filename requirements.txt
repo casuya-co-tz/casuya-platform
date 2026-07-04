@@ -13,4 +13,4 @@ pytest-cov==6.0.0
 redis==5.2.0
 rq>=2.10.0
 sentry-sdk>=2.20.0
-alembic==1.14.0
+alembic==1.18.5
