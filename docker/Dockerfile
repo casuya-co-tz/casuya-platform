@@ -4,7 +4,7 @@ WORKDIR /app
 COPY frontend/ frontend/
 RUN cp -r frontend/* /app/build/
 
-FROM python:3.12-slim
+FROM python:3.14-slim
 RUN groupadd -r casuya && useradd -r -g casuya -d /app -s /sbin/nologin casuya
 
 WORKDIR /app
