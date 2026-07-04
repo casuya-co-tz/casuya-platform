@@ -5,6 +5,8 @@ casuya_platform.db
 .pytest_cache/
 storage/backups/*
 !storage/backups/.gitkeep
+storage/lesson-packages/
+!storage/lesson-packages/.gitkeep
 node_modules/
 .DS_Store
 *.log
