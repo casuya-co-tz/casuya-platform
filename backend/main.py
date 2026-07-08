@@ -8,13 +8,18 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 
+from pathlib import Path
+
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
 from backend.api import (
     analytics,
     auth,
+    bookmarks,
     games,
     lessons,
+    note,
     notifications,
     payments,
     progress,
@@ -44,7 +49,12 @@ init_sentry()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    init_db()
+    try:
+        init_db()
+    except Exception as exc:  # noqa: BLE001
+        # Tolerate an unreachable/unconfigured database in local dev so the
+        # API still serves health/readiness and static routes.
+        print(f"WARNING: init_db failed, continuing without DB: {exc}")
     yield
 
 
@@ -81,8 +91,15 @@ for router_module in (
     notifications,
     search,
     uploads,
+    bookmarks,
+    note,
 ):
     app.include_router(router_module.router)
+
+# Mount lesson packages as static files for direct CDN/reverse-proxy serving
+pkg_dir = Path(settings.storage_root) / "lesson-packages"
+pkg_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/static/lessons", StaticFiles(directory=str(pkg_dir)), name="lesson-packages")
 
 
 @app.get("/health")
@@ -94,21 +111,20 @@ def health_check():
 def readiness_check():
     from sqlalchemy import text
 
-    from backend.config.database import SessionLocal, redis_client
+    from backend.config.database import get_engine, redis_client
 
     db_ok = False
     try:
-        db = SessionLocal()
-        db.execute(text("SELECT 1"))
-        db.close()
+        engine = get_engine()
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
         db_ok = True
     except Exception:
         pass
 
     redis_ok = False
     try:
-        redis_client.ping()
-        redis_ok = True
+        redis_ok = redis_client.ping()
     except Exception:
         pass
 

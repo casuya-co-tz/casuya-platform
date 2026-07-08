@@ -26,3 +26,19 @@ def create_topic(body: TopicCreate):
     db.add(topic)
     db.commit()
     return TopicResponse(id=topic.id, subject_id=topic.subject_id, title=topic.title, form_level=topic.form_level)
+
+
+@router.delete("/{topic_id}", dependencies=[Depends(require_role("admin"))])
+def delete_topic(topic_id: str):
+    from fastapi import HTTPException
+    db: Session = next(get_db())
+    topic = db.query(Topic).filter(Topic.id == topic_id).first()
+    if not topic:
+        raise HTTPException(status_code=404, detail="Topic not found")
+    try:
+        db.delete(topic)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Cannot delete: topic has related subtopics. Delete subtopics first.")
+    return {"detail": "Topic deleted"}

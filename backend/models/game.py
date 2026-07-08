@@ -3,7 +3,7 @@ from quizzes — see backend/api/games.py and services/game_service.py)."""
 
 from __future__ import annotations
 
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import Boolean, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.config.database import Base
@@ -14,6 +14,8 @@ class Game(Base):
     __tablename__ = "games"
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
-    lesson_id: Mapped[str] = mapped_column(ForeignKey("lessons.id"), nullable=False)
+    lesson_id: Mapped[str] = mapped_column(ForeignKey("lessons.id"), nullable=True)
     title: Mapped[str] = mapped_column(String, nullable=False)
-    package_path: Mapped[str] = mapped_column(String, nullable=False)  # storage/lesson-packages/...
+    slug: Mapped[str | None] = mapped_column(String, nullable=True)
+    content_hash: Mapped[str | None] = mapped_column(String, nullable=True)
+    status: Mapped[str] = mapped_column(String, default="draft")

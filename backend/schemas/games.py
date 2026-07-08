@@ -3,6 +3,20 @@ from pydantic import BaseModel
 
 class GameResponse(BaseModel):
     id: str
+    lesson_id: str | None
+    title: str
+    slug: str | None = None
+    status: str = "draft"
+
+
+class GameCreateHTML(BaseModel):
+    lesson_id: str | None = None
+    title: str
+    html_content: str
+
+
+class GameCreate(BaseModel):
     lesson_id: str
     title: str
-    package_path: str
+    questions: list[dict] = []
+    options: list[dict] = []

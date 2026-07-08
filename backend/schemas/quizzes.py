@@ -2,15 +2,23 @@ from pydantic import BaseModel
 
 
 class QuizCreate(BaseModel):
-    lesson_id: str
+    lesson_id: str | None = None
     title: str
-    questions: list[dict]
+    questions: list[dict] = []
+
+
+class QuizCreateHTML(BaseModel):
+    lesson_id: str | None = None
+    title: str
+    html_content: str
 
 
 class QuizResponse(BaseModel):
     id: str
-    lesson_id: str
+    lesson_id: str | None
     title: str
+    slug: str | None = None
+    status: str = "draft"
 
 
 class QuizSubmission(BaseModel):

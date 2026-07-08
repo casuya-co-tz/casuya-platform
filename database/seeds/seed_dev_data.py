@@ -1,8 +1,11 @@
+import hashlib
 import uuid
+from pathlib import Path
 
 from backend.config.database import init_db, get_db
 from backend.config.security import hash_password
 from backend.models.lesson import Subject, Topic, Subtopic, Lesson
+from backend.models.lesson_version import LessonVersion
 from backend.models.role import Role
 from backend.models.student import Student
 from backend.models.teacher import Teacher
@@ -10,6 +13,14 @@ from backend.models.user import User
 from backend.models.game import Game
 from backend.models.quiz import Quiz
 from sqlalchemy.orm import Session
+
+settings_from_config = None
+def _settings():
+    global settings_from_config
+    if settings_from_config is None:
+        from backend.config.settings import get_settings
+        settings_from_config = get_settings()
+    return settings_from_config
 
 
 def run():
@@ -84,27 +95,57 @@ def run():
         db.add(Subtopic(topic_id=topics[topic_title].id, title=sub_title))
     db.flush()
 
+    linear_eq_subtopic = db.query(Subtopic).filter(Subtopic.title == "Linear Equations").first()
+    html = """<h1>Introduction to Linear Equations</h1>
+<p>A linear equation is an equation that makes a straight line when it is plotted on a graph.</p>
+<h2>Examples</h2>
+<ul>
+<li>2x + 3 = 7</li>
+<li>y = mx + c</li>
+<li>3x - 5 = 10</li>
+</ul>
+<h2>Solving Linear Equations</h2>
+<p>To solve a linear equation, isolate the variable on one side of the equation.</p>
+<pre>2x + 3 = 7
+2x = 7 - 3
+2x = 4
+x = 2</pre>"""
+    lesson_slug = "introduction-to-linear-equations-" + uuid.uuid4().hex[:8]
+    content_hash = hashlib.sha256(html.encode()).hexdigest()
     lesson = Lesson(
-        subtopic_id=db.query(Subtopic).filter(Subtopic.title == "Linear Equations").first().id,
-        slug="intro-to-linear-equations",
+        subtopic_id=linear_eq_subtopic.id,
+        slug=lesson_slug,
         title="Introduction to Linear Equations",
+        content_hash=content_hash,
         status="published",
     )
     db.add(lesson)
+    db.flush()
+    s = _settings()
+    pkg_dir = Path(s.storage_root) / "lesson-packages"
+    slug = lesson_slug
+    shard = pkg_dir / slug[:2] / slug[2:4]
+    shard.mkdir(parents=True, exist_ok=True)
+    package_path = shard / f"{slug}.html"
+    package_path.write_text(html, encoding="utf-8")
+    version = LessonVersion(
+        lesson_id=lesson.id,
+        package_version="1.0.0",
+        content_hash=content_hash,
+        package_path=str(package_path),
+    )
+    db.add(version)
 
     sample_game = Game(
+        lesson_id=lesson.id,
         title="Math Challenge",
-        description="Solve math problems against the clock",
-        subject_id=subjects["mathematics"].id,
-        form_level="I",
+        package_path="games/math-challenge.pkg",
     )
     db.add(sample_game)
 
     sample_quiz = Quiz(
+        lesson_id=lesson.id,
         title="Algebra Basics Quiz",
-        description="Test your algebra knowledge",
-        subject_id=subjects["mathematics"].id,
-        form_level="I",
     )
     db.add(sample_quiz)
 

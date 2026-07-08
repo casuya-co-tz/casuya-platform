@@ -1,5 +1,40 @@
 @import "main.css";
 
+.lesson-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+  cursor: pointer;
+  transition: box-shadow 0.15s;
+}
+
+.lesson-card:hover { box-shadow: var(--shadow); }
+
+.lesson-card.clickable {
+  cursor: pointer;
+  transition: box-shadow 0.15s, transform 0.15s;
+}
+
+.lesson-card.clickable:hover {
+  box-shadow: var(--shadow);
+  transform: translateY(-1px);
+}
+
+.lesson-viewer {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  line-height: 1.7;
+  overflow-x: auto;
+}
+
+.lesson-viewer img { max-width: 100%; height: auto; }
+.lesson-viewer video { max-width: 100%; height: auto; }
+.lesson-viewer table { max-width: 100%; overflow-x: auto; display: block; }
+
 .admin-layout {
   display: grid;
   grid-template-columns: 250px 1fr;
@@ -10,21 +45,106 @@
   background: var(--color-text);
   color: #fff;
   padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
 }
 
 .admin-sidebar a {
   color: #94a3b8;
   display: block;
   padding: 0.5rem 0;
+  text-decoration: none;
 }
 
 .admin-sidebar a:hover { color: #fff; text-decoration: none; }
+
+.admin-sidebar .nav-link.active {
+  color: #fff;
+  font-weight: 600;
+}
 
 .admin-main {
   padding: 2rem;
 }
 
+.admin-main h2 {
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Spinner */
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 1rem;
+  color: var(--color-text-muted);
+  gap: 0.75rem;
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Mobile sidebar */
+.sidebar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.sidebar-header h2 {
+  color: #fff;
+  margin: 0;
+}
+
+.sidebar-close {
+  display: none;
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  line-height: 1;
+}
+
+.sidebar-toggle {
+  display: none;
+  background: var(--color-text);
+  color: #fff;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius);
+  cursor: pointer;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+}
+
 @media (max-width: 768px) {
   .admin-layout { grid-template-columns: 1fr; }
-  .admin-sidebar { display: none; }
+  .admin-sidebar {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 280px;
+    height: 100vh;
+    z-index: 1000;
+    overflow-y: auto;
+  }
+  .admin-sidebar.open { display: flex; }
+  .sidebar-close { display: block; }
+  .sidebar-toggle { display: inline-flex; }
 }

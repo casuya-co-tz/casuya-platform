@@ -1,28 +1,56 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import FileResponse, HTMLResponse
 
-from backend.config.database import get_db
 from backend.middleware.auth import get_current_user
 from backend.middleware.permissions import require_role
 from backend.schemas.lessons import LessonCreate, LessonResponse
-from backend.services.lesson_service import create_lesson_from_html, get_lesson, list_lessons, publish_lesson
+from backend.services.lesson_service import (
+    create_lesson_from_html,
+    delete_lesson,
+    get_lesson,
+    get_package_path,
+    list_lessons,
+    publish_lesson,
+    read_lesson_content,
+)
 
 router = APIRouter(prefix="/lessons", tags=["lessons"])
 
 
-@router.get("/", response_model=list[dict])
+@router.get("/")
 def list_lessons_route(
-    subtopic_id: str | None = None, status: str | None = None, current_user=Depends(get_current_user)
+    subtopic_id: str | None = None,
+    status: str | None = None,
+    skip: int = 0,
+    limit: int = 100,
+    current_user=Depends(get_current_user),
 ):
-    return list_lessons(subtopic_id=subtopic_id, status=status)
+    return list_lessons(subtopic_id=subtopic_id, status=status, skip=skip, limit=limit)
 
 
-@router.get("/{lesson_id}", response_model=dict)
+@router.get("/{lesson_id}")
 def get_lesson_route(lesson_id: str, current_user=Depends(get_current_user)):
     lesson = get_lesson(lesson_id)
     if not lesson:
         raise HTTPException(status_code=404, detail="Lesson not found")
     return lesson
+
+
+@router.get("/{lesson_id}/content")
+def get_lesson_content_route(lesson_id: str, request: Request, current_user=Depends(get_current_user)):
+    lesson = get_lesson(lesson_id)
+    if not lesson:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+
+    slug = lesson["slug"]
+    pkg_path = get_package_path(slug)
+    if pkg_path.exists():
+        return FileResponse(str(pkg_path), media_type="text/html", headers={"X-Content-Hash": lesson.get("content_hash", "")})
+
+    html = read_lesson_content(slug)
+    if html is None:
+        raise HTTPException(status_code=404, detail="Lesson content not found")
+    return HTMLResponse(content=html, headers={"X-Content-Hash": lesson.get("content_hash", "")})
 
 
 @router.post("/", response_model=dict, dependencies=[Depends(require_role("admin"))])
@@ -41,5 +69,13 @@ def create_lesson_route(body: LessonCreate):
 def publish_lesson_route(lesson_id: str):
     try:
         return publish_lesson(lesson_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.delete("/{lesson_id}", dependencies=[Depends(require_role("admin"))])
+def delete_lesson_route(lesson_id: str):
+    try:
+        return delete_lesson(lesson_id)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))

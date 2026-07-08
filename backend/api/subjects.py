@@ -25,3 +25,18 @@ def create_subject(body: SubjectCreate):
     db.add(subject)
     db.commit()
     return SubjectResponse(id=subject.id, name=subject.name, slug=subject.slug)
+
+
+@router.delete("/{subject_id}", dependencies=[Depends(require_role("admin"))])
+def delete_subject(subject_id: str):
+    db: Session = next(get_db())
+    subject = db.query(Subject).filter(Subject.id == subject_id).first()
+    if not subject:
+        raise HTTPException(status_code=404, detail="Subject not found")
+    try:
+        db.delete(subject)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Cannot delete: subject has related topics. Delete topics first.")
+    return {"detail": "Subject deleted"}

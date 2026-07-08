@@ -18,6 +18,8 @@ def register(body: RegisterRequest):
         )
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Service unavailable: {e}")
 
 
 @router.post("/login", response_model=AuthResponse)
@@ -26,6 +28,8 @@ def login(body: LoginRequest):
         return authenticate_user(email=body.email, password=body.password)
     except ValueError as e:
         raise HTTPException(status_code=401, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Service unavailable: {e}")
 
 
 @router.post("/refresh")

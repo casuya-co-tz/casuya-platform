@@ -1,5 +1,7 @@
+import functools
 import hashlib
 import json
+import time
 import uuid
 from pathlib import Path
 
@@ -9,6 +11,71 @@ from backend.config.database import get_db
 from backend.config.settings import get_settings
 from backend.models.lesson import Lesson
 from backend.models.lesson_version import LessonVersion
+
+settings = get_settings()
+
+# ── In-memory content cache ──
+CONTENT_CACHE_TTL = 300  # 5 minutes
+content_cache: dict[str, tuple[float, str]] = {}
+
+
+def _cache_get(key: str) -> str | None:
+    entry = content_cache.get(key)
+    if entry and (time.monotonic() - entry[0]) < CONTENT_CACHE_TTL:
+        return entry[1]
+    if entry:
+        del content_cache[key]
+    return None
+
+
+def _cache_set(key: str, value: str):
+    content_cache[key] = (time.monotonic(), value)
+    # Evict oldest if cache exceeds 10k entries
+    if len(content_cache) > 10000:
+        oldest = min(content_cache.items(), key=lambda x: x[1][0])
+        del content_cache[oldest[0]]
+
+
+# ── Sharded package paths ──
+def get_package_path(slug: str) -> Path:
+    storage = Path(settings.storage_root) / "lesson-packages"
+    if len(slug) < 4:
+        return storage / f"{slug}.html"
+    return storage / slug[:2] / slug[2:4] / f"{slug}.html"
+
+
+def _migrate_old_package(slug: str) -> str | None:
+    """Migrate old flat JSON package to new sharded HTML format, return HTML content."""
+    old_path = Path(settings.storage_root) / "lesson-packages" / f"{slug}.json"
+    if not old_path.exists():
+        return None
+    try:
+        pkg = json.loads(old_path.read_text(encoding="utf-8"))
+        html = pkg.get("html", "")
+        new_path = get_package_path(slug)
+        new_path.parent.mkdir(parents=True, exist_ok=True)
+        new_path.write_text(html, encoding="utf-8")
+        old_path.unlink()  # remove old format after migration
+        return html
+    except Exception:
+        return None
+
+
+def read_lesson_content(slug: str) -> str | None:
+    cached = _cache_get(slug)
+    if cached is not None:
+        return cached
+
+    new_path = get_package_path(slug)
+    if new_path.exists():
+        html = new_path.read_text(encoding="utf-8")
+    else:
+        html = _migrate_old_package(slug)
+        if html is None:
+            return None
+
+    _cache_set(slug, html)
+    return html
 
 
 def create_lesson_from_html(subtopic_id: str, title: str, html: str) -> dict:
@@ -23,17 +90,14 @@ def create_lesson_from_html(subtopic_id: str, title: str, html: str) -> dict:
     )
     db.add(lesson)
     db.flush()
-    settings = get_settings()
-    package_dir = Path(settings.storage_root) / "lesson-packages"
-    package_dir.mkdir(parents=True, exist_ok=True)
-    package_path = package_dir / f"{slug}.json"
-    package = {"id": lesson.id, "slug": slug, "title": title, "html": html, "content_hash": content_hash}
-    package_path.write_text(json.dumps(package), encoding="utf-8")
+    pkg_path = get_package_path(slug)
+    pkg_path.parent.mkdir(parents=True, exist_ok=True)
+    pkg_path.write_text(html, encoding="utf-8")
     version = LessonVersion(
         lesson_id=lesson.id,
         package_version="1.0.0",
         content_hash=content_hash,
-        package_path=str(package_path),
+        package_path=str(pkg_path),
     )
     db.add(version)
     db.commit()
@@ -57,6 +121,21 @@ def publish_lesson(lesson_id: str) -> dict:
     return {"id": lesson.id, "slug": lesson.slug, "status": "published"}
 
 
+def delete_lesson(lesson_id: str) -> dict:
+    db: Session = next(get_db())
+    lesson = db.query(Lesson).filter(Lesson.id == lesson_id).first()
+    if not lesson:
+        raise ValueError("Lesson not found")
+    slug = lesson.slug
+    db.delete(lesson)
+    db.commit()
+    if slug:
+        pkg_path = get_package_path(slug)
+        if pkg_path.exists():
+            pkg_path.unlink()
+    return {"detail": "Lesson deleted"}
+
+
 def get_lesson(lesson_id: str) -> dict | None:
     db: Session = next(get_db())
     lesson = db.query(Lesson).filter(Lesson.id == lesson_id).first()
@@ -73,14 +152,14 @@ def get_lesson(lesson_id: str) -> dict | None:
     }
 
 
-def list_lessons(subtopic_id: str | None = None, status: str | None = None) -> list[dict]:
+def list_lessons(subtopic_id: str | None = None, status: str | None = None, skip: int = 0, limit: int = 100) -> list[dict]:
     db: Session = next(get_db())
     query = db.query(Lesson)
     if subtopic_id:
         query = query.filter(Lesson.subtopic_id == subtopic_id)
     if status:
         query = query.filter(Lesson.status == status)
-    lessons = query.all()
+    lessons = query.offset(skip).limit(limit).all()
     return [
         {
             "id": l.id,
