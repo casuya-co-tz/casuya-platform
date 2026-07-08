@@ -1,0 +1,4 @@
+﻿import http.server, socketserver, os
+os.chdir("frontend")
+httpd = socketserver.TCPServer(("", 5174), http.server.SimpleHTTPRequestHandler)
+httpd.serve_forever()

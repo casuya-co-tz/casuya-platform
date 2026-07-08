@@ -6,8 +6,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
-from .settings import get_settings
 from .redis import SafeRedis
+from .settings import get_settings
 
 settings = get_settings()
 

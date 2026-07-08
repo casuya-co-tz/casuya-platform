@@ -16,7 +16,7 @@ from backend.models.user import User
 settings = get_settings()
 
 
-def _dev_token_response(email: str, role: str = None) -> dict:
+def _dev_token_response(email: str, role: str | None = None) -> dict:
     """Generate a real JWT for a mock dev user when the database is unavailable."""
     if not role:
         if "admin" in email.lower():
