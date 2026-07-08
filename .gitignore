@@ -2,10 +2,13 @@ __pycache__/
 *.pyc
 .env
 casuya_platform.db
+database/casuya.db
 .pytest_cache/
 storage/backups/*
 !storage/backups/.gitkeep
 storage/lesson-packages/
+storage/quiz-packages/
+storage/game-packages/
 !storage/lesson-packages/.gitkeep
 node_modules/
 .DS_Store
@@ -17,4 +20,4 @@ dist/
 build/
 .coverage
 htmlcov/
-.pytest_cache/
+serve_static.py.bak
