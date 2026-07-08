@@ -152,6 +152,32 @@ def get_lesson(lesson_id: str) -> dict | None:
     }
 
 
+def update_lesson(lesson_id: str, title: str | None = None, html: str | None = None) -> dict:
+    db: Session = next(get_db())
+    lesson = db.query(Lesson).filter(Lesson.id == lesson_id).first()
+    if not lesson:
+        raise ValueError("Lesson not found")
+    if title is not None:
+        lesson.title = title
+    if html is not None:
+        content_hash = hashlib.sha256(html.encode()).hexdigest()
+        lesson.content_hash = content_hash
+        pkg_path = get_package_path(lesson.slug)
+        pkg_path.parent.mkdir(parents=True, exist_ok=True)
+        pkg_path.write_text(html, encoding="utf-8")
+        version = LessonVersion(
+            lesson_id=lesson.id,
+            package_version="1.0.0",
+            content_hash=content_hash,
+            package_path=str(pkg_path),
+        )
+        db.add(version)
+        if lesson.slug in content_cache:
+            del content_cache[lesson.slug]
+    db.commit()
+    return {"id": lesson.id, "slug": lesson.slug, "title": lesson.title, "status": lesson.status}
+
+
 def list_lessons(subtopic_id: str | None = None, status: str | None = None, skip: int = 0, limit: int = 100) -> list[dict]:
     db: Session = next(get_db())
     query = db.query(Lesson)

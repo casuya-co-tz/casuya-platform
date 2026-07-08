@@ -110,3 +110,20 @@ def delete_game(game_id: str) -> dict:
         if pkg_path.exists():
             pkg_path.unlink()
     return {"detail": "Game deleted"}
+
+
+def update_game(game_id: str, title: str | None = None, html: str | None = None) -> dict:
+    db: Session = next(get_db())
+    game = db.query(Game).filter(Game.id == game_id).first()
+    if not game:
+        raise ValueError("Game not found")
+    if title is not None:
+        game.title = title
+    if html is not None:
+        content_hash = hashlib.sha256(html.encode()).hexdigest()
+        game.content_hash = content_hash
+        pkg_path = _get_game_pkg_path(game.slug)
+        pkg_path.parent.mkdir(parents=True, exist_ok=True)
+        pkg_path.write_text(html, encoding="utf-8")
+    db.commit()
+    return {"id": game.id, "slug": game.slug, "title": game.title, "status": game.status}

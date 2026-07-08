@@ -13,6 +13,11 @@ class QuizCreateHTML(BaseModel):
     html_content: str
 
 
+class QuizUpdate(BaseModel):
+    title: str | None = None
+    html_content: str | None = None
+
+
 class QuizResponse(BaseModel):
     id: str
     lesson_id: str | None

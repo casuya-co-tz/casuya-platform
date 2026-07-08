@@ -15,6 +15,11 @@ class GameCreateHTML(BaseModel):
     html_content: str
 
 
+class GameUpdate(BaseModel):
+    title: str | None = None
+    html_content: str | None = None
+
+
 class GameCreate(BaseModel):
     lesson_id: str
     title: str

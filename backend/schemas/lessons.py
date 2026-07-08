@@ -8,6 +8,11 @@ class LessonCreate(BaseModel):
     html_content: str
 
 
+class LessonUpdate(BaseModel):
+    title: str | None = None
+    html_content: str | None = None
+
+
 class LessonResponse(BaseModel):
     id: str
     subtopic_id: str

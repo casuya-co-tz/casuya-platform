@@ -135,6 +135,23 @@ def delete_quiz(quiz_id: str) -> dict:
     return {"detail": "Quiz deleted"}
 
 
+def update_quiz(quiz_id: str, title: str | None = None, html: str | None = None) -> dict:
+    db: Session = next(get_db())
+    quiz = db.query(Quiz).filter(Quiz.id == quiz_id).first()
+    if not quiz:
+        raise ValueError("Quiz not found")
+    if title is not None:
+        quiz.title = title
+    if html is not None:
+        content_hash = hashlib.sha256(html.encode()).hexdigest()
+        quiz.content_hash = content_hash
+        pkg_path = _get_quiz_pkg_path(quiz.slug)
+        pkg_path.parent.mkdir(parents=True, exist_ok=True)
+        pkg_path.write_text(html, encoding="utf-8")
+    db.commit()
+    return {"id": quiz.id, "slug": quiz.slug, "title": quiz.title, "status": quiz.status}
+
+
 def grade_attempt(quiz_id: str, answers: dict) -> dict:
     db: Session = next(get_db())
     questions = db.query(QuizQuestion).filter(QuizQuestion.quiz_id == quiz_id).all()

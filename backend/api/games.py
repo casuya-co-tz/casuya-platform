@@ -3,14 +3,16 @@ from fastapi.responses import HTMLResponse
 
 from backend.middleware.auth import get_current_user
 from backend.middleware.permissions import require_role
-from backend.schemas.games import GameCreate, GameCreateHTML, GameResponse
+from backend.schemas.games import GameCreate, GameCreateHTML, GameResponse, GameUpdate
 from backend.services.game_service import (
     create_game_from_html,
+    delete_game,
     get_game,
     get_games_for_lesson,
     list_games,
     publish_game,
     read_game_content,
+    update_game,
 )
 
 router = APIRouter(prefix="/games", tags=["games"])
@@ -63,9 +65,16 @@ def publish_game_route(game_id: str):
 
 @router.delete("/{game_id}", dependencies=[Depends(require_role("admin"))])
 def delete_game_route(game_id: str):
-    from backend.services.game_service import delete_game
     try:
         return delete_game(game_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.put("/{game_id}", response_model=dict, dependencies=[Depends(require_role("admin"))])
+def update_game_route(game_id: str, body: GameUpdate):
+    try:
+        return update_game(game_id=game_id, title=body.title, html=body.html_content)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 

@@ -290,8 +290,8 @@ async function viewLessonContent(containerId, lessonId, backFn) {
       try {
         [bookmarked, quizData, gamesData, noteData] = await Promise.all([
           request(`/bookmarks/${lessonId}/status`).then(r => r.bookmarked).catch(() => false),
-          request(`/quizzes/${lessonId}`).catch(() => null),
-          request(`/games/${lessonId}`).catch(() => []),
+          request(`/quizzes/by-lesson/${lessonId}`).catch(() => null),
+          request(`/games/by-lesson/${lessonId}`).catch(() => []),
           request(`/notes/${lessonId}`).catch(() => ({ content: "" })),
         ]);
       } catch(e) {}
@@ -325,7 +325,13 @@ async function viewLessonContent(containerId, lessonId, backFn) {
       return `
         <div class="card" style="margin-top:1rem;padding:1rem">
           <h3 style="margin:0 0 0.5rem">Games & Activities</h3>
-          ${gamesData.map(g => `<div style="padding:0.5rem 0;border-bottom:1px solid var(--color-border)">${escapeHtml(g.title || "Game")}</div>`).join("")}
+          ${gamesData.map(g => `
+            <div class="game-item" data-game-id="${escapeHtml(g.id)}" style="padding:0.5rem 0;border-bottom:1px solid var(--color-border);cursor:pointer">
+              <span style="color:var(--color-primary)">${escapeHtml(g.title || "Game")}</span>
+              <span style="color:var(--color-text-muted);font-size:0.8rem;margin-left:0.5rem">${escapeHtml(g.status || "draft")}</span>
+            </div>
+          `).join("")}
+          <div id="game-content-area" style="margin-top:1rem"></div>
         </div>
       `;
     };
@@ -460,6 +466,25 @@ async function viewLessonContent(containerId, lessonId, backFn) {
       });
     }
 
+    document.querySelectorAll(".game-item").forEach(item => {
+      item.addEventListener("click", async () => {
+        const gameId = item.dataset.gameId;
+        const area = document.getElementById("game-content-area");
+        if (!area) return;
+        area.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Loading game...</p></div>';
+        try {
+          const resp = await fetch(`/games/${gameId}/content`, {
+            headers: { "Authorization": `Bearer ${localStorage.getItem("casuya_token")}` },
+          });
+          if (!resp.ok) throw new Error("Failed to load game content");
+          const html = await resp.text();
+          area.innerHTML = `<iframe style="width:100%;min-height:400px;border:none;border-radius:var(--radius)" srcdoc="${escapeHtml(html)}"></iframe>`;
+        } catch(err) {
+          area.innerHTML = `<p style="color:var(--color-danger)">Error loading game: ${escapeHtml(err.message)}</p>`;
+        }
+      });
+    });
+
     const backBtn = container.querySelector(".lesson-back-btn");
     backBtn.addEventListener("click", () => {
       if (isStudent && !quizScoreSent) sendProgress(80, null);
@@ -535,79 +560,6 @@ function renderApp() {
   } else {
     render("#app", `<div class="page" style="padding:2rem"><h2>${escapeHtml(role)} dashboard coming soon</h2></div>`);
   }
-}
-
-// --- Admin Layout ---
-
-const ADMIN_VIEWS = {
-  dashboard: { label: "Dashboard", handler: renderAdminDashboard },
-  subjects: { label: "Subjects", handler: renderAdminSubjects },
-  topics: { label: "Topics", handler: renderAdminTopics },
-  subtopics: { label: "Subtopics", handler: renderAdminSubtopics },
-  lessons: { label: "Lessons", handler: renderAdminLessons },
-  quizzes: { label: "Quizzes", handler: renderAdminQuizzes },
-  games: { label: "Games", handler: renderAdminGames },
-  users: { label: "Users", handler: renderAdminUsers },
-  progress: { label: "Progress", handler: renderAdminProgress },
-  payments: { label: "Payments", handler: renderAdminPayments },
-  notifications: { label: "Notifications", handler: renderAdminNotifications },
-  uploads: { label: "Uploads", handler: renderAdminUploads },
-  search: { label: "Search", handler: renderAdminSearch },
-  portals: { label: "Portals", handler: renderAdminPortals },
-  system: { label: "System", handler: renderAdminSystem },
-  analytics: { label: "Analytics", handler: renderAdminAnalytics },
-};
-
-function renderAdminLayout() {
-  render("#app", `
-    <div class="admin-layout">
-      <aside class="admin-sidebar" id="admin-sidebar">
-        <div class="sidebar-header">
-          <h2>Casuya</h2>
-          <button class="sidebar-close" id="sidebar-close">&times;</button>
-        </div>
-        <nav id="admin-nav">
-          ${Object.entries(ADMIN_VIEWS).map(([key, v]) =>
-            `<a href="#" data-view="${key}" class="nav-link${key === 'dashboard' ? ' active' : ''}">${escapeHtml(v.label)}</a>`
-          ).join("")}
-        </nav>
-        <div style="margin-top:auto;padding-top:2rem">
-          <a href="#" id="logout-link" style="color:#ef4444">Sign Out</a>
-        </div>
-      </aside>
-      <main class="admin-main">
-        <button class="sidebar-toggle" id="sidebar-toggle">&#9776; Menu</button>
-        <div id="admin-content"></div>
-      </main>
-    </div>
-  `);
-
-  document.getElementById("logout-link").addEventListener("click", (e) => {
-    e.preventDefault();
-    handleLogout();
-  });
-
-  document.getElementById("sidebar-toggle").addEventListener("click", () => {
-    document.getElementById("admin-sidebar").classList.toggle("open");
-  });
-
-  document.getElementById("sidebar-close").addEventListener("click", () => {
-    document.getElementById("admin-sidebar").classList.remove("open");
-  });
-
-  document.querySelectorAll("#admin-nav .nav-link").forEach((link) => {
-    link.addEventListener("click", (e) => {
-      e.preventDefault();
-      document.querySelectorAll("#admin-nav .nav-link").forEach((l) => l.classList.remove("active"));
-      link.classList.add("active");
-      document.getElementById("admin-sidebar").classList.remove("open");
-      const view = link.dataset.view;
-      const handler = ADMIN_VIEWS[view]?.handler;
-      if (handler) handler();
-    });
-  });
-
-  renderAdminDashboard();
 }
 
 function showLoading() {
@@ -2404,6 +2356,7 @@ async function renderAdminDashboard() {
             <div style="display:flex;gap:0.5rem;align-items:center">
               <span class="badge" style="background:var(--color-${lesson.status === "published" ? "success" : "warning"});color:#fff;padding:0.2rem 0.6rem;border-radius:var(--radius);font-size:0.8rem">${escapeHtml(lesson.status)}</span>
               ${lesson.status !== "published" ? `<button class="btn btn-primary" id="publish-btn">Publish</button>` : ""}
+              <button class="btn" id="edit-btn">Edit</button>
             </div>
           </div>
           <div class="card" style="padding:0;overflow:hidden">
@@ -2418,6 +2371,40 @@ async function renderAdminDashboard() {
           showToast("Lesson published!");
           viewAdminLesson(lessonId, lessonTitle);
         } catch(err) { showToast("Error: " + err.message); }
+      });
+      document.getElementById("edit-btn")?.addEventListener("click", async () => {
+        let currentHtml = "";
+        try {
+          const resp = await fetch(`${API_BASE}/lessons/${lessonId}/content`, { headers: { "Authorization": `Bearer ${localStorage.getItem("casuya_token") || ""}` } });
+          if (resp.ok) currentHtml = await resp.text();
+        } catch(e) {}
+        showAdminView(`
+          <div class="content">
+            <button class="btn" id="back-btn" style="margin-bottom:1rem">&larr; Back</button>
+            <h2>Edit Lesson</h2>
+            <div class="card" style="margin-top:1rem">
+              <form id="edit-lesson-form" style="display:flex;flex-direction:column;gap:0.5rem">
+                <input class="input" name="title" value="${escapeHtml(lesson.title || "")}" required>
+                <textarea class="input" name="content" rows="14" style="font-family:monospace">${escapeHtml(currentHtml)}</textarea>
+                <div style="display:flex;gap:0.5rem">
+                  <button class="btn btn-primary" type="submit">Save Changes</button>
+                  <button class="btn" type="button" id="cancel-btn">Cancel</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        `);
+        document.getElementById("back-btn")?.addEventListener("click", () => viewAdminLesson(lessonId, lessonTitle));
+        document.getElementById("cancel-btn")?.addEventListener("click", () => viewAdminLesson(lessonId, lessonTitle));
+        document.getElementById("edit-lesson-form").addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const fd = new FormData(e.target);
+          try {
+            await request(`/lessons/${lessonId}`, { method: "PUT", body: JSON.stringify({ title: fd.get("title"), html_content: fd.get("content") }) });
+            showToast("Lesson updated!");
+            viewAdminLesson(lessonId, lessonTitle);
+          } catch(err) { showToast("Error: " + err.message); }
+        });
       });
       try {
         const resp = await fetch(`${API_BASE}/lessons/${lessonId}/content`, { headers: { "Authorization": `Bearer ${localStorage.getItem("casuya_token") || ""}` } });
@@ -2615,6 +2602,7 @@ async function renderAdminDashboard() {
             <div style="display:flex;gap:0.5rem;align-items:center">
               <span class="badge" style="background:var(--color-${quiz.status === "published" ? "success" : "warning"});color:#fff;padding:0.2rem 0.6rem;border-radius:var(--radius);font-size:0.8rem">${escapeHtml(quiz.status)}</span>
               ${quiz.status !== "published" ? `<button class="btn btn-primary" id="publish-btn">Publish</button>` : ""}
+              <button class="btn" id="edit-btn">Edit</button>
             </div>
           </div>
           ${htmlContent ?
@@ -2632,6 +2620,35 @@ async function renderAdminDashboard() {
           showToast("Quiz published!");
           viewAdminQuiz(quizId, quizTitle);
         } catch(err) { showToast("Error: " + err.message); }
+      });
+      document.getElementById("edit-btn")?.addEventListener("click", () => {
+        showAdminView(`
+          <div class="content">
+            <button class="btn" id="back-btn" style="margin-bottom:1rem">&larr; Back</button>
+            <h2>Edit Quiz</h2>
+            <div class="card" style="margin-top:1rem">
+              <form id="edit-quiz-form" style="display:flex;flex-direction:column;gap:0.5rem">
+                <input class="input" name="title" value="${escapeHtml(quiz.title || "")}" required>
+                <textarea class="input" name="content" rows="14" style="font-family:monospace">${escapeHtml(htmlContent)}</textarea>
+                <div style="display:flex;gap:0.5rem">
+                  <button class="btn btn-primary" type="submit">Save Changes</button>
+                  <button class="btn" type="button" id="cancel-btn">Cancel</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        `);
+        document.getElementById("back-btn")?.addEventListener("click", () => viewAdminQuiz(quizId, quizTitle));
+        document.getElementById("cancel-btn")?.addEventListener("click", () => viewAdminQuiz(quizId, quizTitle));
+        document.getElementById("edit-quiz-form").addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const fd = new FormData(e.target);
+          try {
+            await request(`/quizzes/${quizId}`, { method: "PUT", body: JSON.stringify({ title: fd.get("title"), html_content: fd.get("content") }) });
+            showToast("Quiz updated!");
+            viewAdminQuiz(quizId, quizTitle);
+          } catch(err) { showToast("Error: " + err.message); }
+        });
       });
       if (htmlContent) {
         const iframe = document.getElementById("quiz-frame");
@@ -2743,6 +2760,7 @@ async function renderAdminDashboard() {
             <div style="display:flex;gap:0.5rem;align-items:center">
               <span class="badge" style="background:var(--color-${game.status === "published" ? "success" : "warning"});color:#fff;padding:0.2rem 0.6rem;border-radius:var(--radius);font-size:0.8rem">${escapeHtml(game.status)}</span>
               ${game.status !== "published" ? `<button class="btn btn-primary" id="publish-btn">Publish</button>` : ""}
+              <button class="btn" id="edit-btn">Edit</button>
             </div>
           </div>
           ${htmlContent ?
@@ -2758,6 +2776,35 @@ async function renderAdminDashboard() {
           showToast("Game published!");
           viewAdminGame(gameId, gameTitle);
         } catch(err) { showToast("Error: " + err.message); }
+      });
+      document.getElementById("edit-btn")?.addEventListener("click", () => {
+        showAdminView(`
+          <div class="content">
+            <button class="btn" id="back-btn" style="margin-bottom:1rem">&larr; Back</button>
+            <h2>Edit Game</h2>
+            <div class="card" style="margin-top:1rem">
+              <form id="edit-game-form" style="display:flex;flex-direction:column;gap:0.5rem">
+                <input class="input" name="title" value="${escapeHtml(game.title || "")}" required>
+                <textarea class="input" name="content" rows="14" style="font-family:monospace">${escapeHtml(htmlContent)}</textarea>
+                <div style="display:flex;gap:0.5rem">
+                  <button class="btn btn-primary" type="submit">Save Changes</button>
+                  <button class="btn" type="button" id="cancel-btn">Cancel</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        `);
+        document.getElementById("back-btn")?.addEventListener("click", () => viewAdminGame(gameId, gameTitle));
+        document.getElementById("cancel-btn")?.addEventListener("click", () => viewAdminGame(gameId, gameTitle));
+        document.getElementById("edit-game-form").addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const fd = new FormData(e.target);
+          try {
+            await request(`/games/${gameId}`, { method: "PUT", body: JSON.stringify({ title: fd.get("title"), html_content: fd.get("content") }) });
+            showToast("Game updated!");
+            viewAdminGame(gameId, gameTitle);
+          } catch(err) { showToast("Error: " + err.message); }
+        });
       });
       if (htmlContent) {
         const iframe = document.getElementById("game-frame");
@@ -2792,7 +2839,46 @@ async function renderAdminDashboard() {
   }
 
   async function loadAdminPayments() {
-    showAdminView('<h2>Payments</h2><div class="empty-state" style="margin-top:1rem"><p>Payment system coming soon</p></div>');
+    showAdminView('<div class="loading-state"><div class="spinner"></div><p>Loading...</p></div>');
+    showAdminView(`
+      <h2>Payments</h2>
+      <p style="color:var(--color-text-muted);margin-bottom:1rem">AzamPay mobile money integration</p>
+      <div class="card" style="max-width:500px">
+        <h3>Initiate Checkout</h3>
+        <form id="payment-form" style="display:flex;flex-direction:column;gap:0.5rem;margin-top:0.5rem">
+          <input class="input" name="mobile_number" placeholder="Mobile number (e.g. 0712345678)" required />
+          <input class="input" name="amount_tzs" type="number" placeholder="Amount (TZS)" required />
+          <select class="input" name="provider" required>
+            <option value="">Select provider...</option>
+            <option value="azampay">AzamPay</option>
+            <option value="m-pesa">M-Pesa</option>
+            <option value="tigo-pesa">Tigo Pesa</option>
+            <option value="halopesa">HaloPesa</option>
+          </select>
+          <button class="btn btn-success" type="submit">Initiate Payment</button>
+        </form>
+        <div id="payment-result" style="margin-top:0.5rem"></div>
+      </div>
+    `);
+    document.getElementById("payment-form")?.addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      const fd = new FormData(ev.target);
+      try {
+        const data = await request("/payments/checkout", {
+          method: "POST",
+          body: JSON.stringify({
+            mobile_number: fd.get("mobile_number"),
+            amount_tzs: parseInt(fd.get("amount_tzs"), 10),
+            provider: fd.get("provider"),
+            idempotency_key: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(),
+          }),
+        });
+        if (data === null) return;
+        document.getElementById("payment-result").innerHTML = `<p style="color:var(--color-success)">Payment initiated: ${escapeHtml(JSON.stringify(data))}</p>`;
+      } catch (err) {
+        document.getElementById("payment-result").innerHTML = `<p style="color:var(--color-danger)">${escapeHtml(err.message)}</p>`;
+      }
+    });
   }
 
   async function loadAdminNotifications() {
@@ -2811,7 +2897,42 @@ async function renderAdminDashboard() {
   }
 
   async function loadAdminUploads() {
-    showAdminView('<h2>Uploads</h2><div class="empty-state" style="margin-top:1rem"><p>Upload manager coming soon</p></div>');
+    showAdminView(`
+      <h2>Uploads</h2>
+      <div class="card" style="margin-top:1rem">
+        <h3>Upload File</h3>
+        <p style="color:var(--color-text-muted);font-size:0.85rem;margin-bottom:0.5rem">Supports images (png, jpg, gif, svg), videos (mp4, webm), audio (mp3, wav, ogg)</p>
+        <form id="upload-form" style="display:flex;flex-direction:column;gap:0.5rem">
+          <input class="input" type="file" id="upload-file" required />
+          <button class="btn btn-success" type="submit">Upload</button>
+        </form>
+        <div id="upload-result" style="margin-top:0.5rem"></div>
+      </div>
+    `);
+    document.getElementById("upload-form")?.addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      const fileInput = document.getElementById("upload-file");
+      const file = fileInput?.files?.[0];
+      if (!file) return;
+      const token = localStorage.getItem("casuya_token");
+      const formData = new FormData();
+      formData.append("file", file);
+      try {
+        const resp = await fetch("http://localhost:8000/uploads/", {
+          method: "POST",
+          headers: token ? { "Authorization": `Bearer ${token}` } : {},
+          body: formData,
+        });
+        const data = await resp.json();
+        if (resp.ok) {
+          document.getElementById("upload-result").innerHTML = `<p style="color:var(--color-success)">Uploaded: ${escapeHtml(data.filename)} → ${escapeHtml(data.path)}</p>`;
+        } else {
+          document.getElementById("upload-result").innerHTML = `<p style="color:var(--color-danger)">Error: ${escapeHtml(data.detail || "Upload failed")}</p>`;
+        }
+      } catch (err) {
+        document.getElementById("upload-result").innerHTML = `<p style="color:var(--color-danger)">${escapeHtml(err.message)}</p>`;
+      }
+    });
   }
 
   loadAdminOverview();

@@ -3,16 +3,18 @@ from fastapi.responses import HTMLResponse
 
 from backend.middleware.auth import get_current_user
 from backend.middleware.permissions import require_role
-from backend.schemas.quizzes import QuizCreate, QuizCreateHTML, QuizResult, QuizSubmission
+from backend.schemas.quizzes import QuizCreate, QuizCreateHTML, QuizResult, QuizSubmission, QuizUpdate
 from backend.services.quiz_service import (
     create_quiz,
     create_quiz_from_html,
+    delete_quiz,
     get_quiz,
     get_quiz_for_lesson,
     grade_attempt,
     list_quizzes,
     publish_quiz,
     read_quiz_content,
+    update_quiz,
 )
 
 router = APIRouter(prefix="/quizzes", tags=["quizzes"])
@@ -73,9 +75,16 @@ def publish_quiz_route(quiz_id: str):
 
 @router.delete("/{quiz_id}", dependencies=[Depends(require_role("admin"))])
 def delete_quiz_route(quiz_id: str):
-    from backend.services.quiz_service import delete_quiz
     try:
         return delete_quiz(quiz_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.put("/{quiz_id}", response_model=dict, dependencies=[Depends(require_role("admin"))])
+def update_quiz_route(quiz_id: str, body: QuizUpdate):
+    try:
+        return update_quiz(quiz_id=quiz_id, title=body.title, html=body.html_content)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
