@@ -1,6 +1,7 @@
 import functools
 import hashlib
 import json
+import re
 import time
 import uuid
 from pathlib import Path
@@ -61,6 +62,61 @@ def _migrate_old_package(slug: str) -> str | None:
         return None
 
 
+# ── LaTeX detection & KaTeX injection ──
+_LATEX_PATTERNS: list[re.Pattern[str]] | None = None
+
+
+def _compile_latex_patterns():
+    global _LATEX_PATTERNS
+    if _LATEX_PATTERNS is not None:
+        return
+    _LATEX_PATTERNS = [
+        re.compile(r"\$\$[^$]+\$\$"),
+        re.compile(r"\$[^$\n]+\$"),
+        re.compile(r"\\\[[^\\]+\\\]"),
+        re.compile(r"\\\([^\\]+\\\)"),
+    ]
+
+
+def _has_latex(html: str) -> bool:
+    _compile_latex_patterns()
+    if _LATEX_PATTERNS is None:
+        return False
+    return any(p.search(html) for p in _LATEX_PATTERNS)
+
+
+def _inject_katex(html: str) -> str:
+    if not _has_latex(html):
+        return html
+    katex_css = '<link rel="stylesheet" href="/static/lib/katex/katex.min.css" crossorigin="anonymous">'
+    katex_js = '<script src="/static/lib/katex/katex.min.js" crossorigin="anonymous"><\/script>'
+    auto_render_js = '<script src="/static/lib/katex/contrib/auto-render.min.js" crossorigin="anonymous"><\/script>'
+    render_call = (
+        '<script>'
+        'document.addEventListener("DOMContentLoaded",function(){'
+        'if(typeof renderMathInElement==="function"){'
+        'renderMathInElement(document.body,{delimiters:['
+        '{left:"$$",right:"$$",display:true},'
+        '{left:"$",right:"$",display:false},'
+        '{left:"\\\\[",right:"\\\\]",display:true},'
+        '{left:"\\\\(",right:"\\\\)",display:false}'
+        ']});'
+        '}'
+        '});'
+        '<\/script>'
+    )
+    if "<head>" in html:
+        html = html.replace("<head>", "<head>" + katex_css)
+    else:
+        html = katex_css + html
+    katex_scripts = katex_js + auto_render_js + render_call
+    if "</body>" in html:
+        html = html.replace("</body>", katex_scripts + "</body>")
+    else:
+        html += katex_scripts
+    return html
+
+
 def read_lesson_content(slug: str) -> str | None:
     cached = _cache_get(slug)
     if cached is not None:
@@ -74,6 +130,7 @@ def read_lesson_content(slug: str) -> str | None:
         if html is None:
             return None
 
+    html = _inject_katex(html)
     _cache_set(slug, html)
     return html
 

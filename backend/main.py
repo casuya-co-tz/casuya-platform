@@ -104,6 +104,11 @@ pkg_dir = Path(settings.storage_root) / "lesson-packages"
 pkg_dir.mkdir(parents=True, exist_ok=True)
 app.mount("/static/lessons", StaticFiles(directory=str(pkg_dir)), name="lesson-packages")
 
+# Mount shared library files (KaTeX, etc.) for offline-first lesson rendering
+lib_dir = Path(settings.storage_root) / "lib"
+lib_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/static/lib", StaticFiles(directory=str(lib_dir)), name="shared-lib")
+
 
 @app.get("/health")
 def health_check():

@@ -379,7 +379,7 @@ async function viewLessonContent(containerId, lessonId, backFn) {
     `;
 
     const iframe = container.querySelector(".lesson-iframe");
-    iframe.srcdoc = html;
+    iframe.srcdoc = html.replace("<head>", `<head><base href="${API_BASE}/">`);
     let heightSet = false;
     const setHeight = () => {
       if (heightSet) return;
@@ -1810,7 +1810,7 @@ async function renderStudentDashboard() {
       // Render lesson content in iframe
       const iframe = document.querySelector("#student-content .lesson-iframe");
       if (iframe) {
-        iframe.srcdoc = lessonContent;
+        iframe.srcdoc = lessonContent.replace("<head>", `<head><base href="${API_BASE}/">`);
         let heightSet = false;
         const setHeight = () => {
           if (heightSet) return;
@@ -2542,7 +2542,7 @@ async function renderAdminDashboard() {
         if (resp.ok) {
           const html = await resp.text();
           const iframe = document.getElementById("lesson-frame");
-          iframe.srcdoc = html;
+          iframe.srcdoc = html.replace("<head>", `<head><base href="${API_BASE}/">`);
           iframe.onload = () => {
             try { iframe.style.height = Math.max(iframe.contentDocument.documentElement.scrollHeight, 400) + "px"; } catch(e) {}
           };

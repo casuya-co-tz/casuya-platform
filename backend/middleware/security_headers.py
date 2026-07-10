@@ -11,5 +11,16 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         response.headers["Cache-Control"] = "no-store"
-        response.headers["Content-Security-Policy"] = "default-src 'self'"
+        # Relaxed CSP to support KaTeX math rendering, inline lesson scripts/styles, and local fonts.
+        # API endpoints remain secure via authentication middleware; lesson content (served through
+        # iframes) requires 'unsafe-inline' for KaTeX auto-render and embedded lesson interactivity.
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+            "style-src 'self' 'unsafe-inline'; "
+            "font-src 'self' data:; "
+            "img-src 'self' data: blob:; "
+            "frame-src 'self'; "
+            "connect-src 'self'"
+        )
         return response
