@@ -24,7 +24,7 @@ def _get_current_student(current_user: dict, db: Session) -> Student:
     return student
 
 
-@router.get("/")
+@router.get("")
 def list_students(current_user=Depends(get_current_user)):
     db: Session = next(get_db())
     students = db.query(Student).all()

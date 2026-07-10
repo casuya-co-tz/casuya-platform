@@ -6,7 +6,7 @@ from backend.services.upload_service import store_upload
 router = APIRouter(prefix="/uploads", tags=["uploads"])
 
 
-@router.post("/")
+@router.post("")
 async def upload_file(file: UploadFile, current_user=Depends(require_role("admin"))):
     if not file.filename:
         raise HTTPException(status_code=400, detail="No filename provided")

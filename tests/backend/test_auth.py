@@ -69,6 +69,36 @@ def test_refresh():
     assert "access_token" in resp.json()
 
 
+def _decode_role(access_token: str) -> str | None:
+    import base64
+    import json
+
+    payload = access_token.split(".")[1]
+    # JWT payload is base64url; normalize for standard base64 decoding.
+    payload += "=" * (-len(payload) % 4)
+    decoded = json.loads(base64.urlsafe_b64decode(payload))
+    return decoded.get("role")
+
+
+def test_refresh_preserves_role():
+    """A refreshed access token must carry the same role as the user."""
+    for role in ("admin", "teacher", "student"):
+        email = f"role-{role}@test.com"
+        reg = client.post("/auth/register", json={
+            "email": email,
+            "password": "test123",
+            "full_name": "Test User",
+            "role": role,
+        })
+        if reg.status_code == 409:
+            # Already registered from a prior run — authenticate instead.
+            reg = client.post("/auth/login", json={"email": email, "password": "test123"})
+        refresh_token = reg.json()["refresh_token"]
+        resp = client.post("/auth/refresh", json={"refresh_token": refresh_token})
+        assert resp.status_code == 200, f"refresh failed for {role}"
+        assert _decode_role(resp.json()["access_token"]) == role, f"role not preserved for {role}"
+
+
 def test_health():
     resp = client.get("/health")
     assert resp.status_code == 200

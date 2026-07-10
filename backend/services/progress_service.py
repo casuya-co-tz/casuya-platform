@@ -2,8 +2,10 @@ from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
+from sqlalchemy.orm import joinedload
+
 from backend.config.database import get_db
-from backend.models.lesson import Lesson
+from backend.models.lesson import Lesson, Subtopic, Topic, Subject
 from backend.models.progress import ProgressRecord
 
 
@@ -53,8 +55,14 @@ def get_student_progress(student_id: str) -> list[dict]:
     gen = get_db()
     db: Session = next(gen)
     try:
-        rows = db.query(ProgressRecord, Lesson.title).join(
+        rows = db.query(ProgressRecord, Lesson.title, Subject.name.label("subject_name")).join(
             Lesson, ProgressRecord.lesson_id == Lesson.id, isouter=True
+        ).join(
+            Subtopic, Lesson.subtopic_id == Subtopic.id, isouter=True
+        ).join(
+            Topic, Subtopic.topic_id == Topic.id, isouter=True
+        ).join(
+            Subject, Topic.subject_id == Subject.id, isouter=True
         ).filter(ProgressRecord.student_id == student_id).all()
 
         # Deduplicate by lesson_id — keep only the most recent record per lesson
@@ -73,6 +81,7 @@ def get_student_progress(student_id: str) -> list[dict]:
                 "id": r.ProgressRecord.id,
                 "lesson_id": r.ProgressRecord.lesson_id,
                 "lesson_title": r.title or "Unknown",
+                "subject_name": r.subject_name or "General",
                 "session_id": r.ProgressRecord.session_id,
                 "elapsed_ms": r.ProgressRecord.elapsed_ms,
                 "completion_percentage": r.ProgressRecord.completion_percentage,

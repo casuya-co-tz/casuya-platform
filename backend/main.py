@@ -16,10 +16,12 @@ from backend.api import (
     analytics,
     auth,
     bookmarks,
+    branding,
     games,
     lessons,
     note,
     notifications,
+    oauth,
     payments,
     progress,
     quizzes,
@@ -75,6 +77,8 @@ app.add_middleware(SecurityHeadersMiddleware)
 
 for router_module in (
     auth,
+    oauth,
+    branding,
     users,
     students,
     teachers,

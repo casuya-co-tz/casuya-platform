@@ -18,7 +18,7 @@ from backend.services.game_service import (
 router = APIRouter(prefix="/games", tags=["games"])
 
 
-@router.get("/", response_model=list[dict])
+@router.get("", response_model=list[dict])
 def list_games_route(current_user=Depends(get_current_user)):
     return list_games()
 
@@ -79,7 +79,7 @@ def update_game_route(game_id: str, body: GameUpdate):
         raise HTTPException(status_code=404, detail=str(e))
 
 
-@router.post("/", response_model=dict, dependencies=[Depends(require_role("admin"))])
+@router.post("", response_model=dict, dependencies=[Depends(require_role("admin"))])
 def create_game_route(body: GameCreate):
     # For now, just create a structured game (legacy support)
     from backend.services.game_service import create_structured_game

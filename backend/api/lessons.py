@@ -18,7 +18,7 @@ from backend.services.lesson_service import (
 router = APIRouter(prefix="/lessons", tags=["lessons"])
 
 
-@router.get("/")
+@router.get("")
 def list_lessons_route(
     subtopic_id: str | None = None,
     status: str | None = None,
@@ -54,7 +54,7 @@ def get_lesson_content_route(lesson_id: str, request: Request, current_user=Depe
     return HTMLResponse(content=html, headers={"X-Content-Hash": lesson.get("content_hash", "")})
 
 
-@router.post("/", response_model=dict, dependencies=[Depends(require_role("admin"))])
+@router.post("", response_model=dict, dependencies=[Depends(require_role("admin"))])
 def create_lesson_route(body: LessonCreate):
     try:
         return create_lesson_from_html(

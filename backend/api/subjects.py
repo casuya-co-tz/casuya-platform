@@ -9,14 +9,14 @@ from backend.schemas.subjects import SubjectCreate, SubjectResponse
 router = APIRouter(prefix="/subjects", tags=["subjects"])
 
 
-@router.get("/", response_model=list[SubjectResponse])
+@router.get("", response_model=list[SubjectResponse])
 def list_subjects():
     db: Session = next(get_db())
     subjects = db.query(Subject).all()
     return [SubjectResponse(id=s.id, name=s.name, slug=s.slug) for s in subjects]
 
 
-@router.post("/", response_model=SubjectResponse, dependencies=[Depends(require_role("admin"))])
+@router.post("", response_model=SubjectResponse, dependencies=[Depends(require_role("admin"))])
 def create_subject(body: SubjectCreate):
     db: Session = next(get_db())
     if db.query(Subject).filter(Subject.slug == body.slug).first():

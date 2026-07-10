@@ -72,21 +72,55 @@ def get_lesson_analytics(lesson_id: str) -> dict | None:
 def get_platform_overview() -> dict:
     from backend.models.lesson import Lesson, Subject
     from backend.models.student import Student
+    from backend.models.teacher import Teacher
 
     gen = get_db()
     db: Session = next(gen)
     try:
         total_students = db.query(Student).count()
+        total_teachers = db.query(Teacher).count()
         total_lessons = db.query(Lesson).filter(Lesson.status == "published").count()
         total_subjects = db.query(Subject).count()
         total_sessions = db.query(ProgressRecord).count()
         avg_completion = db.query(func.avg(ProgressRecord.completion_percentage)).scalar() or 0.0
         return {
             "total_students": total_students,
+            "total_teachers": total_teachers,
             "total_lessons": total_lessons,
             "total_subjects": total_subjects,
             "total_sessions": total_sessions,
             "avg_completion_rate": round(float(avg_completion), 2),
         }
+    finally:
+        gen.close()
+
+
+def get_lesson_distribution() -> list[dict]:
+    from backend.models.lesson import Lesson
+
+    gen = get_db()
+    db: Session = next(gen)
+    try:
+        rows = (
+            db.query(
+                Lesson.id,
+                Lesson.title,
+                func.avg(ProgressRecord.completion_percentage).label("avg_completion"),
+                func.count(ProgressRecord.id).label("session_count"),
+            )
+            .outerjoin(ProgressRecord, Lesson.id == ProgressRecord.lesson_id)
+            .filter(Lesson.status == "published")
+            .group_by(Lesson.id, Lesson.title)
+            .all()
+        )
+        return [
+            {
+                "lesson_id": r.id,
+                "lesson_title": r.title,
+                "avg_completion_percentage": round(float(r.avg_completion or 0.0), 1),
+                "session_count": r.session_count or 0,
+            }
+            for r in rows
+        ]
     finally:
         gen.close()

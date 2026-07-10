@@ -1,7 +1,20 @@
 from fastapi import APIRouter, HTTPException
 
-from backend.schemas.auth import AuthResponse, LoginRequest, RefreshTokenRequest, RegisterRequest
-from backend.services.auth_service import authenticate_user, refresh_access_token, register_user
+from backend.schemas.auth import (
+    AuthResponse,
+    ForgotPasswordRequest,
+    LoginRequest,
+    RefreshTokenRequest,
+    RegisterRequest,
+    ResetPasswordRequest,
+)
+from backend.services.auth_service import (
+    authenticate_user,
+    forgot_password,
+    refresh_access_token,
+    register_user,
+    reset_password,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -40,3 +53,21 @@ def refresh(body: RefreshTokenRequest):
         raise HTTPException(status_code=401, detail=str(e))
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
+
+
+@router.post("/forgot-password")
+def forgot_password_endpoint(body: ForgotPasswordRequest):
+    try:
+        return forgot_password(email=body.email)
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Service unavailable: {e}")
+
+
+@router.post("/reset-password")
+def reset_password_endpoint(body: ResetPasswordRequest):
+    try:
+        return reset_password(token=body.token, new_password=body.new_password)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Service unavailable: {e}")

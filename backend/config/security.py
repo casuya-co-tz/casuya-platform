@@ -25,9 +25,11 @@ def create_access_token(subject: str, extra_claims: dict | None = None) -> str:
     return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 
 
-def create_refresh_token(subject: str) -> str:
+def create_refresh_token(subject: str, role: str | None = None) -> str:
     expire = datetime.now(timezone.utc) + timedelta(days=7)
     payload = {"sub": subject, "exp": expire, "type": "refresh", "jti": str(uuid4())}
+    if role:
+        payload["role"] = role
     return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 
 

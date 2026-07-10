@@ -4,10 +4,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Teacher Portal — Casuya</title>
+  <link rel="stylesheet" href="/assets/css/main.css">
   <link rel="stylesheet" href="/assets/css/teacher.css">
+  <script type="module">
+    import { guardPortal } from "/assets/js/auth-guard.js";
+    guardPortal("teacher");
+  </script>
 </head>
 <body>
-  <div id="teacher-root"></div>
-  <script type="module" src="/assets/js/teacher.js"></script>
+  <div id="app"></div>
+  <script src="/assets/js/main.js"></script>
+  <script src="/assets/js/brand.js"></script>
 </body>
 </html>

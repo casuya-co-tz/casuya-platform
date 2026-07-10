@@ -20,7 +20,7 @@ from backend.services.quiz_service import (
 router = APIRouter(prefix="/quizzes", tags=["quizzes"])
 
 
-@router.get("/", response_model=list[dict])
+@router.get("", response_model=list[dict])
 def list_quizzes_route(current_user=Depends(get_current_user)):
     return list_quizzes()
 
@@ -47,15 +47,13 @@ def get_quiz_content_route(quiz_id: str, current_user=Depends(get_current_user))
     return HTMLResponse(content=html)
 
 
-@router.get("/by-lesson/{lesson_id}", response_model=dict)
+@router.get("/by-lesson/{lesson_id}", response_model=dict | None)
 def get_quiz_for_lesson_route(lesson_id: str, current_user=Depends(get_current_user)):
     quiz = get_quiz_for_lesson(lesson_id)
-    if not quiz:
-        raise HTTPException(status_code=404, detail="Quiz not found for this lesson")
     return quiz
 
 
-@router.post("/", response_model=dict, dependencies=[Depends(require_role("admin"))])
+@router.post("", response_model=dict, dependencies=[Depends(require_role("admin"))])
 def create_quiz_route(body: QuizCreate):
     return create_quiz(lesson_id=body.lesson_id, title=body.title, questions=body.questions)
 

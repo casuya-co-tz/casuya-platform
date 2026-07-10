@@ -68,6 +68,7 @@ def init_db() -> None:
         lesson_version,
         note,
         notification,
+        password_reset_token,
         payment,
         progress,
         quiz,

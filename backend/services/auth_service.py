@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+import secrets
+
 from sqlalchemy.orm import Session
 
 from backend.config.database import get_db
@@ -9,6 +13,7 @@ from backend.config.security import (
     verify_password,
 )
 from backend.config.settings import get_settings
+from backend.models.password_reset_token import PasswordResetToken
 from backend.models.student import Student
 from backend.models.teacher import Teacher
 from backend.models.user import User
@@ -27,7 +32,7 @@ def _dev_token_response(email: str, role: str | None = None) -> dict:
             role = "student"
     user_id = f"dev-{email.split('@')[0]}"
     access_token = create_access_token(user_id, extra_claims={"role": role})
-    refresh_token = create_refresh_token(user_id)
+    refresh_token = create_refresh_token(user_id, role=role)
     return {
         "access_token": access_token,
         "refresh_token": refresh_token,
@@ -60,7 +65,7 @@ def register_user(email: str, password: str, full_name: str, role: str = "studen
             db.add(profile)
         db.commit()
         access_token = create_access_token(user.id, extra_claims={"role": role})
-        refresh_token = create_refresh_token(user.id)
+        refresh_token = create_refresh_token(user.id, role=role)
         return {
             "access_token": access_token,
             "refresh_token": refresh_token,
@@ -85,7 +90,7 @@ def authenticate_user(email: str, password: str) -> dict:
         if not user.is_active:
             raise ValueError("Account is deactivated")
         access_token = create_access_token(user.id, extra_claims={"role": user.role})
-        refresh_token = create_refresh_token(user.id)
+        refresh_token = create_refresh_token(user.id, role=user.role)
         return {
             "access_token": access_token,
             "refresh_token": refresh_token,
@@ -114,11 +119,109 @@ def refresh_access_token(refresh_token: str) -> dict:
         raise
     except Exception:
         if settings.environment == "development":
-            role = "student"
-            try:
-                p = decode_refresh_token(refresh_token)
-            except Exception:
-                p = {}
+            # DB unavailable: preserve the role embedded in the refresh token
+            # so admins/teachers are not downgraded to students on refresh.
+            role = payload.get("role") or "student"
             access_token = create_access_token(payload["sub"], extra_claims={"role": role})
             return {"access_token": access_token, "token_type": "bearer"}
+        raise
+
+
+def forgot_password(email: str) -> dict:
+    """Generate a password-reset token for the given email.
+
+    Always returns a success response to prevent email enumeration.
+    In development the token is included in the response; in production
+    it would be sent via email.
+    """
+    try:
+        db: Session = next(get_db())
+        user = db.query(User).filter(User.email == email).first()
+        if user and user.is_active:
+            reset_token = PasswordResetToken.create_for_user(user.id)
+            db.add(reset_token)
+            db.commit()
+            result: dict = {"message": "If that email is registered, a reset link has been sent."}
+            if settings.environment == "development":
+                result["reset_token"] = reset_token.id
+            return result
+        # Always return the same message to avoid leaking which emails exist.
+        return {"message": "If that email is registered, a reset link has been sent."}
+    except Exception:
+        # Fail open — never reveal whether the email exists.
+        return {"message": "If that email is registered, a reset link has been sent."}
+
+
+def reset_password(token: str, new_password: str) -> dict:
+    """Reset a user's password using a valid, unused token."""
+    db: Session = next(get_db())
+    reset_token = db.query(PasswordResetToken).filter(PasswordResetToken.id == token).first()
+    if not reset_token:
+        raise ValueError("Invalid or expired reset token")
+    if reset_token.used:
+        raise ValueError("Reset token has already been used")
+    if reset_token.is_expired:
+        raise ValueError("Reset token has expired")
+
+    user = db.query(User).filter(User.id == reset_token.user_id).first()
+    if not user or not user.is_active:
+        raise ValueError("User account not found or is deactivated")
+
+    user.hashed_password = hash_password(new_password)
+    reset_token.used = True
+    db.commit()
+    return {"message": "Password has been reset successfully"}
+
+
+def oauth_login_or_register(
+    provider: str,
+    provider_user_id: str,
+    email: str,
+    full_name: str,
+    avatar: str = "",
+) -> dict:
+    """Find or create a user from an OAuth provider and return JWT tokens."""
+    try:
+        db: Session = next(get_db())
+        user = db.query(User).filter(User.email == email).first()
+
+        if user:
+            # Existing user — log them in
+            access_token = create_access_token(user.id, extra_claims={"role": user.role})
+            refresh_token = create_refresh_token(user.id, role=user.role)
+            return {
+                "access_token": access_token,
+                "refresh_token": refresh_token,
+                "token_type": "bearer",
+                "user_id": user.id,
+                "role": user.role,
+            }
+
+        # New user — create account with student role by default
+        user = User(
+            email=email,
+            hashed_password=hash_password(secrets.token_urlsafe(32)),  # random password
+            role="student",
+        )
+        db.add(user)
+        db.flush()
+
+        profile = Student(user_id=user.id, full_name=full_name)
+        db.add(profile)
+        db.commit()
+
+        access_token = create_access_token(user.id, extra_claims={"role": "student"})
+        refresh_token = create_refresh_token(user.id, role="student")
+        return {
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "token_type": "bearer",
+            "user_id": user.id,
+            "role": "student",
+        }
+    except ValueError:
+        raise
+    except Exception:
+        if settings.environment == "development":
+            return _dev_token_response(email, "student")
         raise

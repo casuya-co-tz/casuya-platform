@@ -1,4 +1,14 @@
-const API_BASE = "http://localhost:8000";
+// Derive the API base the same way auth-client.js does: when the page is
+// served from the API host (port 8000) use same-origin, otherwise assume the
+// backend runs on :8000. This keeps dev (separate frontend port) and a
+// reverse-proxied production deploy behaviour consistent.
+const API_HOST = window.location.hostname || "localhost";
+const API_PROTOCOL = (window.location.protocol === "http:" || window.location.protocol === "https:")
+  ? window.location.protocol
+  : "http:";
+const API_BASE = window.location.port === "8000"
+  ? window.location.origin
+  : `${API_PROTOCOL}//${API_HOST}:8000`;
 
 function decodeToken(token) {
   try {
@@ -40,7 +50,6 @@ async function request(path, options = {}) {
       }
       try {
         let fetchUrl = `${API_BASE}${path}`;
-        if (method !== "DELETE" && !fetchUrl.endsWith("/")) fetchUrl += "/";
         const resp = await fetch(fetchUrl, { ...options, headers });
         if (resp.status === 401) {
           localStorage.removeItem("casuya_token");
@@ -172,6 +181,7 @@ async function viewLessonContent(containerId, lessonId, backFn) {
     const token = localStorage.getItem("casuya_token");
     const payload = decodeToken(token);
     const isStudent = payload?.role === "student";
+    const canBookmark = isStudent || payload?.role === "teacher";
     const lessonStart = Date.now();
     let studentId = null;
     let sessionId = Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
@@ -286,13 +296,13 @@ async function viewLessonContent(containerId, lessonId, backFn) {
     let quizData = null;
     let gamesData = [];
     let noteData = { content: "" };
-    if (isStudent && studentId) {
+    if (canBookmark) {
       try {
         [bookmarked, quizData, gamesData, noteData] = await Promise.all([
           request(`/bookmarks/${lessonId}/status`).then(r => r.bookmarked).catch(() => false),
-          request(`/quizzes/by-lesson/${lessonId}`).catch(() => null),
-          request(`/games/by-lesson/${lessonId}`).catch(() => []),
-          request(`/notes/${lessonId}`).catch(() => ({ content: "" })),
+          isStudent ? request(`/quizzes/by-lesson/${lessonId}`).catch(() => null) : null,
+          isStudent ? request(`/games/by-lesson/${lessonId}`).catch(() => []) : [],
+          isStudent ? request(`/notes/${lessonId}`).catch(() => ({ content: "" })) : { content: "" },
         ]);
       } catch(e) {}
     }
@@ -341,8 +351,10 @@ async function viewLessonContent(containerId, lessonId, backFn) {
         <div style="padding:0.75rem 1rem;display:flex;align-items:center;gap:0.5rem;background:var(--color-surface);border-bottom:1px solid var(--color-border);flex-wrap:wrap">
           <button class="btn btn-primary lesson-back-btn" style="margin-bottom:0">&larr; Back</button>
           <span style="flex:1;font-weight:600;font-size:0.95rem">${escapeHtml(lessonTitle)}</span>
-          ${isStudent ? `
+          ${canBookmark ? `
             <button class="btn btn-sm lesson-bookmark-btn" style="${bookmarked ? 'background:var(--color-warning);color:#fff' : ''};margin-bottom:0">${bookmarked ? "★" : "☆"}</button>
+          ` : ""}
+          ${isStudent ? `
             <button class="btn btn-success btn-sm lesson-complete-btn" style="margin-bottom:0">Mark Complete</button>
           ` : ""}
         </div>
@@ -542,7 +554,7 @@ async function handleLogin(e) {
 
 function handleLogout() {
   localStorage.removeItem("casuya_token");
-  renderLogin();
+  window.location.href = "/index.html#features";
 }
 
 // --- App Router ---
@@ -1274,12 +1286,10 @@ async function renderStudentDashboard() {
         <div style="padding:0.75rem 1rem;border-bottom:1px solid var(--color-border)">
           <select id="form-filter" class="input" style="padding:0.4rem;font-size:0.85rem">
             <option value="">All Forms</option>
-            <option value="Form I">Form I</option>
-            <option value="Form II">Form II</option>
-            <option value="Form III">Form III</option>
-            <option value="Form IV">Form IV</option>
-            <option value="Form V">Form V</option>
-            <option value="Form VI">Form VI</option>
+            <option value="form1">Form 1</option>
+            <option value="form2">Form 2</option>
+            <option value="form3">Form 3</option>
+            <option value="form4">Form 4</option>
           </select>
         </div>
         <nav class="sidebar-nav" id="student-nav">
@@ -1335,8 +1345,16 @@ async function renderStudentDashboard() {
     }
   }, { signal: _globalAbort.signal });
 
-  // Form filter
-  document.getElementById("form-filter").addEventListener("change", (e) => {
+  // Form filter (persisted). Pre-select the student's own form level when known.
+  const formFilterEl = document.getElementById("form-filter");
+  const savedFormFilter = localStorage.getItem("casuya_form_filter") || "";
+  if (payload.form_level && !savedFormFilter) {
+    localStorage.setItem("casuya_form_filter", payload.form_level);
+    formFilterEl.value = payload.form_level;
+  } else if (savedFormFilter) {
+    formFilterEl.value = savedFormFilter;
+  }
+  formFilterEl.addEventListener("change", (e) => {
     localStorage.setItem("casuya_form_filter", e.target.value);
     loadStudentSubjects();
   });
@@ -1466,11 +1484,7 @@ async function renderStudentDashboard() {
     showStudentView('<div class="loading-state"><div class="spinner"></div><p>Loading...</p></div>');
     try {
       const subjects = await request("/subjects");
-      const formFilter = localStorage.getItem("casuya_form_filter") || "";
-      let filtered = Array.isArray(subjects) ? subjects : [];
-      if (formFilter) {
-        filtered = filtered.filter(s => !s.form_level || s.form_level === formFilter);
-      }
+      const filtered = Array.isArray(subjects) ? subjects : [];
       if (filtered.length === 0) {
         showStudentView('<div class="empty-state"><p>No subjects found</p></div>');
         return;
@@ -1497,7 +1511,11 @@ async function renderStudentDashboard() {
     showStudentView('<div class="loading-state"><div class="spinner"></div><p>Loading topics...</p></div>');
     try {
       const topics = await request("/topics");
-      const filtered = Array.isArray(topics) ? topics.filter(t => t.subject_id === subjectId) : [];
+      const formFilter = localStorage.getItem("casuya_form_filter") || "";
+      let filtered = Array.isArray(topics) ? topics.filter(t => t.subject_id === subjectId) : [];
+      if (formFilter) {
+        filtered = filtered.filter(t => !t.form_level || t.form_level === formFilter);
+      }
       if (filtered.length === 0) {
         showStudentView('<div class="empty-state"><p>No topics found</p><button class="btn" id="back-btn">← Back</button></div>');
         document.getElementById("back-btn")?.addEventListener("click", goBack);
@@ -1518,17 +1536,48 @@ async function renderStudentDashboard() {
       `);
       document.getElementById("back-btn").addEventListener("click", goBack);
       document.querySelectorAll(".topic-card").forEach(card => {
-        card.addEventListener("click", () => loadTopicLessons(card.dataset.id));
+        card.addEventListener("click", () => loadTopicSubtopics(card.dataset.id, subjectId));
       });
     } catch(e) { showStudentView('<div class="empty-state"><p>Error loading topics</p></div>'); }
   }
 
-  async function loadTopicLessons(topicId) {
-    _navStack.push(() => loadStudentSubjects());
+  async function loadTopicSubtopics(topicId, subjectId) {
+    _navStack.push(() => loadSubjectTopics(subjectId));
+    showStudentView('<div class="loading-state"><div class="spinner"></div><p>Loading subtopics...</p></div>');
+    try {
+      const subtopics = await request("/subtopics");
+      const filtered = Array.isArray(subtopics) ? subtopics.filter(s => s.topic_id === topicId) : [];
+      if (filtered.length === 0) {
+        showStudentView('<div class="empty-state"><p>No subtopics found</p><button class="btn" id="back-btn">← Back</button></div>');
+        document.getElementById("back-btn")?.addEventListener("click", goBack);
+        return;
+      }
+      showStudentView(`
+        <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1rem">
+          <button class="btn" id="back-btn">← Back</button>
+          <h2>Subtopics</h2>
+        </div>
+        <div class="card-grid">
+          ${filtered.map(s => `
+            <div class="card subtopic-card" data-id="${s.id}" style="cursor:pointer">
+              <h3>${escapeHtml(s.title)}</h3>
+            </div>
+          `).join("")}
+        </div>
+      `);
+      document.getElementById("back-btn").addEventListener("click", goBack);
+      document.querySelectorAll(".subtopic-card").forEach(card => {
+        card.addEventListener("click", () => loadSubtopicLessons(card.dataset.id, topicId, subjectId));
+      });
+    } catch(e) { showStudentView('<div class="empty-state"><p>Error loading subtopics</p></div>'); }
+  }
+
+  async function loadSubtopicLessons(subtopicId, topicId, subjectId) {
+    _navStack.push(() => loadTopicSubtopics(topicId, subjectId));
     showStudentView('<div class="loading-state"><div class="spinner"></div><p>Loading lessons...</p></div>');
     try {
       const lessons = await request("/lessons/?status=published");
-      const filtered = Array.isArray(lessons) ? lessons.filter(l => l.topic_id === topicId) : [];
+      const filtered = Array.isArray(lessons) ? lessons.filter(l => l.subtopic_id === subtopicId) : [];
       if (filtered.length === 0) {
         showStudentView('<div class="empty-state"><p>No lessons found</p><button class="btn" id="back-btn">← Back</button></div>');
         document.getElementById("back-btn")?.addEventListener("click", goBack);
@@ -1574,10 +1623,10 @@ async function renderStudentDashboard() {
       }
       const bySubject = {};
       progress.forEach(p => {
-        const subj = p.subject_name || "Unknown";
+        const subj = p.subject_name || "General";
         if (!bySubject[subj]) bySubject[subj] = { total: 0, completed: 0 };
         bySubject[subj].total++;
-        if (p.status === "completed" || p.completed) bySubject[subj].completed++;
+        if (p.completion_percentage >= 100) bySubject[subj].completed++;
       });
       showStudentView(`
         <h2>My Progress</h2>
@@ -1678,9 +1727,17 @@ async function renderStudentDashboard() {
     showStudentView('<div class="loading-state"><div class="spinner"></div><p>Loading lesson...</p></div>');
     try {
       const lesson = await request(`/lessons/${lessonId}`);
-      const bookmarkStatus = await request(`/bookmarks/${lessonId}/status`);
-      const noteData = await request(`/notes/${lessonId}`);
+      const [bookmarkStatus, noteData, contentResp, quizData, gamesData] = await Promise.all([
+        request(`/bookmarks/${lessonId}/status`).catch(() => ({ bookmarked: false })),
+        request(`/notes/${lessonId}`).catch(() => ({ content: "" })),
+        fetch(`${API_BASE}/lessons/${lessonId}/content`, {
+          headers: { "Authorization": `Bearer ${localStorage.getItem("casuya_token")}` },
+        }).then(r => r.ok ? r.text() : ""),
+        request(`/quizzes/by-lesson/${lessonId}`).catch(() => null),
+        request(`/games/by-lesson/${lessonId}`).catch(() => []),
+      ]);
       const isBookmarked = bookmarkStatus?.bookmarked || false;
+      const lessonContent = contentResp || "<p>No content</p>";
 
       // Track recently viewed
       const recent = JSON.parse(localStorage.getItem("casuya_recently_viewed") || "[]");
@@ -1690,30 +1747,104 @@ async function renderStudentDashboard() {
       if (recent.length > 20) recent.length = 20;
       localStorage.setItem("casuya_recently_viewed", JSON.stringify(recent));
 
+      const renderStudentQuiz = () => {
+        if (!quizData || !quizData.questions || quizData.questions.length === 0) return "";
+        return `
+          <div class="card" style="margin-top:0.75rem;padding:1rem">
+            <h3 style="margin:0 0 0.75rem">${escapeHtml(quizData.title || "Quiz")}</h3>
+            <form id="quiz-form">
+              ${quizData.questions.map((q, qi) => `
+                <div style="margin-bottom:1rem">
+                  <p style="font-weight:600;margin:0 0 0.5rem">${qi + 1}. ${escapeHtml(q.prompt)}</p>
+                  ${q.options.map(o => `
+                    <label style="display:block;padding:0.3rem 0.5rem;cursor:pointer;border:1px solid var(--color-border);border-radius:var(--radius);margin-bottom:0.25rem">
+                      <input type="radio" name="q_${escapeHtml(q.id)}" value="${escapeHtml(o.id)}" required> ${escapeHtml(o.text)}
+                    </label>
+                  `).join("")}
+                </div>
+              `).join("")}
+              <button type="submit" class="btn btn-primary" id="quiz-submit-btn">Submit Quiz</button>
+            </form>
+            <div id="quiz-result" style="display:none;margin-top:0.75rem"></div>
+          </div>
+        `;
+      };
+
+      const renderStudentGames = () => {
+        if (!Array.isArray(gamesData) || gamesData.length === 0) return "";
+        return `
+          <div class="card" style="margin-top:0.75rem;padding:1rem">
+            <h3 style="margin:0 0 0.5rem">Games & Activities</h3>
+            ${gamesData.map(g => `
+              <div class="game-item" data-game-id="${escapeHtml(g.id)}" style="padding:0.5rem 0;border-bottom:1px solid var(--color-border);cursor:pointer">
+                <span style="color:var(--color-primary)">${escapeHtml(g.title || "Game")}</span>
+              </div>
+            `).join("")}
+            <div id="game-content-area" style="margin-top:1rem"></div>
+          </div>
+        `;
+      };
+
       showStudentView(`
         <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1rem;flex-wrap:wrap">
           <button class="btn" id="back-btn">← Back</button>
           <h2 style="flex:1">${escapeHtml(lesson.title)}</h2>
           <button id="bookmark-btn" style="background:none;border:none;cursor:pointer;font-size:1.5rem" title="Bookmark">${isBookmarked ? "★" : "☆"}</button>
         </div>
-        <div class="card" style="margin-bottom:1rem">
-          <div id="lesson-body" style="line-height:1.6">${lesson.content || "<p>No content</p>"}</div>
+        <div style="width:100%">
+          <iframe class="lesson-iframe" style="width:100%;border:none;display:block"></iframe>
         </div>
-        <div class="card" style="margin-bottom:1rem">
-          <h3>Notes</h3>
-          <textarea id="lesson-note" class="input" rows="4" placeholder="Write your notes here...">${escapeHtml(noteData?.content || "")}</textarea>
-          <button class="btn btn-primary" id="save-note" style="margin-top:0.5rem">Save Note</button>
+        <div style="margin-top:0.75rem">
+          <details>
+            <summary style="cursor:pointer;font-weight:600;font-size:0.9rem;color:var(--color-text-muted)">📝 My Notes</summary>
+            <div class="card" style="margin-top:0.5rem">
+              <textarea id="lesson-note" class="input" rows="4" placeholder="Write your notes here...">${escapeHtml(noteData?.content || "")}</textarea>
+              <button class="btn btn-primary" id="save-note" style="margin-top:0.5rem">Save Note</button>
+            </div>
+          </details>
+          ${renderStudentQuiz()}
+          ${renderStudentGames()}
         </div>
-        ${lesson.quiz ? `
-          <div class="card" style="margin-bottom:1rem">
-            <h3>Quiz</h3>
-            <div id="quiz-area">${renderQuiz(lesson.quiz, lessonId)}</div>
-          </div>
-        ` : ""}
-        <div id="save-indicator" style="position:fixed;bottom:1rem;right:1rem;background:var(--color-success);color:#fff;padding:0.5rem 1rem;border-radius:var(--radius);display:none;z-index:1000">Saved</div>
       `);
 
-      document.getElementById("back-btn").addEventListener("click", () => loadStudentSubjects());
+      // Render lesson content in iframe
+      const iframe = document.querySelector("#student-content .lesson-iframe");
+      if (iframe) {
+        iframe.srcdoc = lessonContent;
+        let heightSet = false;
+        const setHeight = () => {
+          if (heightSet) return;
+          try {
+            const doc = iframe.contentWindow?.document;
+            if (doc) {
+              iframe.style.height = Math.max(doc.documentElement?.scrollHeight || 0, doc.body?.scrollHeight || 0, 300) + "px";
+              heightSet = true;
+            }
+          } catch(e) {}
+        };
+        iframe.addEventListener("load", setHeight);
+        const poll = setInterval(() => { setHeight(); if (heightSet) clearInterval(poll); }, 300);
+        setTimeout(() => { clearInterval(poll); if (!heightSet) iframe.style.height = "800px"; }, 10000);
+
+        // Bridge for quiz scores and progress
+        const onMessage = (e) => {
+          if (e.data?.type === "casuya-quiz" && e.data.score != null && e.data.total > 0) {
+            const pct = Math.round((e.data.score / e.data.total) * 100);
+            request("/progress/sync", {
+              method: "POST",
+              body: JSON.stringify({ lesson_id: lessonId, completion_percentage: 100, score_percentage: pct }),
+            }).catch(() => {});
+          } else if (e.data?.type === "casuya-progress" && e.data.percent != null) {
+            request("/progress/sync", {
+              method: "POST",
+              body: JSON.stringify({ lesson_id: lessonId, completion_percentage: e.data.percent }),
+            }).catch(() => {});
+          }
+        };
+        window.addEventListener("message", onMessage);
+      }
+
+      document.getElementById("back-btn").addEventListener("click", goBack);
 
       // Bookmark toggle
       document.getElementById("bookmark-btn").addEventListener("click", async () => {
@@ -1732,9 +1863,7 @@ async function renderStudentDashboard() {
       document.getElementById("save-note").addEventListener("click", async () => {
         const content = document.getElementById("lesson-note").value;
         await request(`/notes/${lessonId}`, { method: "PUT", body: JSON.stringify({ content }) });
-        const ind = document.getElementById("save-indicator");
-        ind.style.display = "block";
-        setTimeout(() => ind.style.display = "none", 2000);
+        showToast("Note saved");
       });
 
       // Auto-save notes on typing
@@ -1743,39 +1872,50 @@ async function renderStudentDashboard() {
         noteTimer = setTimeout(async () => {
           const content = document.getElementById("lesson-note").value;
           await request(`/notes/${lessonId}`, { method: "PUT", body: JSON.stringify({ content }) });
-          const ind = document.getElementById("save-indicator");
-          ind.style.display = "block";
-          setTimeout(() => ind.style.display = "none", 1500);
         }, 2000);
       });
 
-      // Inject bridge script for quizzes
-      if (lesson.content && lesson.content.includes("<iframe")) {
-        const bridgeScript = document.createElement("script");
-        bridgeScript.textContent = `
-          window.casuya = {
-            reportScore: async (quizId, score, total) => {
-              await fetch('/api/quizzes/' + quizId + '/submit', {
-                method: 'POST',
-                headers: { 'Authorization': 'Bearer ' + localStorage.getItem('casuya_token'), 'Content-Type': 'application/json' },
-                body: JSON.stringify({ score, total })
-              });
-            },
-            reportProgress: async (lessonId, pct) => {
-              await fetch('/api/progress', {
-                method: 'POST',
-                headers: { 'Authorization': 'Bearer ' + localStorage.getItem('casuya_token'), 'Content-Type': 'application/json' },
-                body: JSON.stringify({ lesson_id: lessonId, progress_pct: pct })
-              });
+      // Quiz submit
+      document.getElementById("quiz-form")?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        if (!quizData || !quizData.questions) return;
+        const fd = new FormData(e.target);
+        let score = 0;
+        quizData.questions.forEach(q => { if (fd.get(`q_${q.id}`)) score++; });
+        try {
+          const result = await request(`/quizzes/${quizData.id}/submit`, {
+            method: "POST", body: JSON.stringify({ score, total: quizData.questions.length }),
+          });
+          const el = document.getElementById("quiz-result");
+          el.innerHTML = `<p style="color:var(--color-success);font-weight:600">Score: ${score}/${quizData.questions.length}</p>`;
+          el.style.display = "block";
+        } catch(err) {
+          const el = document.getElementById("quiz-result");
+          el.innerHTML = `<p style="color:var(--color-danger)">Error: ${escapeHtml(err.message)}</p>`;
+          el.style.display = "block";
+        }
+      });
+
+      // Game items
+      document.querySelectorAll(".game-item").forEach(item => {
+        item.addEventListener("click", async () => {
+          const area = document.getElementById("game-content-area");
+          const gid = item.dataset.gameId;
+          try {
+            const resp = await fetch(`${API_BASE}/games/${gid}/content`, {
+              headers: { "Authorization": `Bearer ${localStorage.getItem("casuya_token")}` },
+            });
+            if (resp.ok) {
+              const html = await resp.text();
+              area.innerHTML = `<iframe style="width:100%;border:none;min-height:300px" srcdoc="${escapeHtml(html)}"></iframe>`;
             }
-          };
-        `;
-        document.head.appendChild(bridgeScript);
-      }
+          } catch(e) {}
+        });
+      });
+
     } catch(e) { showStudentView('<div class="empty-state"><p>Error loading lesson</p></div>'); }
   }
 
-  // Render quiz helper
   function renderQuiz(quiz, lessonId) {
     if (!quiz || !quiz.questions) return "";
     return quiz.questions.map((q, i) => `
@@ -1820,6 +1960,7 @@ async function renderAdminDashboard() {
           <div class="sidebar-nav-item" data-view="payments">💳 Payments</div>
           <div class="sidebar-nav-item" data-view="notifications">🔔 Notifications</div>
           <div class="sidebar-nav-item" data-view="uploads">📤 Uploads</div>
+          <div class="sidebar-nav-item" data-view="branding">🎨 Branding</div>
         </nav>
         <div class="sidebar-footer">
           <button id="admin-logout" class="btn btn-danger" style="width:100%;font-size:0.85rem">Sign Out</button>
@@ -1913,6 +2054,7 @@ async function renderAdminDashboard() {
     payments: () => { setActiveNav("payments"); loadAdminPayments(); },
     notifications: () => { setActiveNav("notifications"); loadAdminNotifications(); },
     uploads: () => { setActiveNav("uploads"); loadAdminUploads(); },
+    branding: () => { setActiveNav("branding"); loadAdminBranding(); },
   };
 
   document.querySelectorAll("#admin-nav .sidebar-nav-item").forEach(el => {
@@ -2221,26 +2363,15 @@ async function renderAdminDashboard() {
   async function loadAdminProgress() {
     showAdminView('<div class="loading-state"><div class="spinner"></div><p>Loading...</p></div>');
     try {
-      const [students, lessons, teachers, subjects] = await Promise.all([
+      const [students, teachers, subjects, distribution] = await Promise.all([
         request("/students"),
-        request("/lessons"),
         request("/teachers"),
         request("/subjects"),
+        request("/analytics/lesson-distribution"),
       ]);
 
-      // Calculate subject-level stats (match lessons to subjects via topics/subjects)
-      const bySubject = {};
-      if (students && lessons) {
-        lessons.forEach(l => {
-          const s = l.title || "Other";
-          if (!bySubject[s]) bySubject[s] = { title: s, completion: 0, score: 0, count: 0 };
-          bySubject[s].completion += 0; // No per-lesson progress for admin
-          bySubject[s].count++;
-        });
-        Object.values(bySubject).forEach(s => {
-          s.completion = Math.round(s.completion / s.count);
-        });
-      }
+      const dist = Array.isArray(distribution) ? distribution : [];
+      const lessonCount = dist.length;
 
       showAdminView(`
         <div class="content">
@@ -2248,25 +2379,25 @@ async function renderAdminDashboard() {
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:0.75rem;margin-top:0.5rem">
             <div class="card" style="padding:0.75rem"><h4>Students</h4><p style="font-size:1.6rem;font-weight:700">${Array.isArray(students) ? students.length : 0}</p></div>
             <div class="card" style="padding:0.75rem"><h4>Teachers</h4><p style="font-size:1.6rem;font-weight:700">${Array.isArray(teachers) ? teachers.length : 0}</p></div>
-            <div class="card" style="padding:0.75rem"><h4>Lessons</h4><p style="font-size:1.6rem;font-weight:700">${Array.isArray(lessons) ? lessons.length : 0}</p></div>
+            <div class="card" style="padding:0.75rem"><h4>Lessons</h4><p style="font-size:1.6rem;font-weight:700">${lessonCount}</p></div>
             <div class="card" style="padding:0.75rem"><h4>Subjects</h4><p style="font-size:1.6rem;font-weight:700">${Array.isArray(subjects) ? subjects.length : 0}</p></div>
           </div>
-          ${Object.keys(bySubject).length > 0 ? `
+          ${dist.length > 0 ? `
             <h3 style="margin-top:1.5rem">Lesson Distribution</h3>
             <div style="margin-top:0.5rem">
-              ${Object.values(bySubject).map(s => `
+              ${dist.map(d => `
                 <div style="margin-bottom:0.5rem">
                   <div style="display:flex;justify-content:space-between;margin-bottom:0.25rem">
-                    <span style="font-size:0.85rem">${escapeHtml(s.title)}</span>
-                    <span style="font-size:0.85rem;color:var(--color-text-muted)">${s.completion}%</span>
+                    <span style="font-size:0.85rem">${escapeHtml(d.lesson_title)}</span>
+                    <span style="font-size:0.85rem;color:var(--color-text-muted)">${d.avg_completion_percentage}% (${d.session_count} sessions)</span>
                   </div>
                   <div class="progress-bar">
-                    <div class="progress-bar-fill" style="width:${s.completion}%"></div>
+                    <div class="progress-bar-fill" style="width:${d.avg_completion_percentage}%"></div>
                   </div>
                 </div>
               `).join("")}
             </div>
-          ` : ""}
+          ` : '<div class="empty-state" style="margin-top:1rem"><p>No lesson progress data yet. Have students started lessons?</p></div>'}
         </div>
       `);
     } catch (err) {
@@ -2884,15 +3015,83 @@ async function renderAdminDashboard() {
   async function loadAdminNotifications() {
     showAdminView('<div class="loading-state"><div class="spinner"></div><p>Loading...</p></div>');
     try {
-      const data = await request("/notifications");
+      const [data, users] = await Promise.all([
+        request("/notifications"),
+        request("/users"),
+      ]);
       const list = Array.isArray(data) ? data : [];
+      const userList = Array.isArray(users) ? users : [];
       showAdminView(`
         <h2>Notifications</h2>
-        <div style="margin-top:1rem">
-          ${list.length === 0 ? '<div class="empty-state"><p>No notifications</p></div>' :
-            list.map(n => `<div class="card" style="padding:0.75rem;margin-bottom:0.5rem"><p style="margin:0">${escapeHtml(n.message)}</p></div>`).join("")}
+        <div class="card" style="margin-top:1rem;margin-bottom:1rem">
+          <h3>Send Notification</h3>
+          <form id="send-notif-form" style="display:flex;flex-direction:column;gap:0.5rem;margin-top:0.75rem">
+            <label style="font-size:0.85rem;font-weight:500">Recipient</label>
+            <select class="input" name="recipient_type" id="notif-recipient-type" required>
+              <option value="role_student">All Students</option>
+              <option value="role_teacher">All Teachers</option>
+              <option value="specific">Specific User...</option>
+            </select>
+            <div id="notif-specific-user" style="display:none">
+              <select class="input" name="user_id" id="notif-user-select">
+                <option value="">Select user...</option>
+                ${userList.map(u => `<option value="${escapeHtml(u.id)}">${escapeHtml(u.email)} (${escapeHtml(u.role)})</option>`).join("")}
+              </select>
+            </div>
+            <label style="font-size:0.85rem;font-weight:500">Message</label>
+            <textarea class="input" name="message" rows="3" placeholder="Write your notification message..." required></textarea>
+            <button class="btn btn-primary" type="submit">Send Notification</button>
+            <p id="notif-send-status" style="font-size:0.85rem;display:none"></p>
+          </form>
+        </div>
+        <h3>Notification History</h3>
+        <div style="margin-top:0.5rem">
+          ${list.length === 0 ? '<div class="empty-state"><p>No notifications yet</p></div>' :
+            list.map(n => `
+              <div class="card" style="padding:0.75rem;margin-bottom:0.5rem">
+                <p style="margin:0;font-size:0.85rem">${escapeHtml(n.message)}</p>
+                <p style="margin:0.25rem 0 0;font-size:0.75rem;color:var(--color-text-muted)">${n.is_read ? "Read" : "Unread"}</p>
+              </div>
+            `).join("")}
         </div>
       `);
+
+      // Toggle specific user select
+      document.getElementById("notif-recipient-type").addEventListener("change", (e) => {
+        document.getElementById("notif-specific-user").style.display = e.target.value === "specific" ? "block" : "none";
+      });
+
+      // Send form
+      document.getElementById("send-notif-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const fd = new FormData(e.target);
+        const type = fd.get("recipient_type");
+        const message = fd.get("message");
+        const statusEl = document.getElementById("notif-send-status");
+        try {
+          let body = { message };
+          if (type === "role_student") body.role = "student";
+          else if (type === "role_teacher") body.role = "teacher";
+          else body.user_id = fd.get("user_id");
+          if (!body.role && !body.user_id) {
+            statusEl.textContent = "Please select a user";
+            statusEl.style.color = "var(--color-danger)";
+            statusEl.style.display = "block";
+            return;
+          }
+          const result = await request("/notifications", { method: "POST", body: JSON.stringify(body) });
+          statusEl.textContent = `Sent to ${result.sent} user(s)`;
+          statusEl.style.color = "var(--color-success)";
+          statusEl.style.display = "block";
+          e.target.reset();
+          document.getElementById("notif-specific-user").style.display = "none";
+          loadAdminNotifications();
+        } catch(err) {
+          statusEl.textContent = "Error: " + err.message;
+          statusEl.style.color = "var(--color-danger)";
+          statusEl.style.display = "block";
+        }
+      });
     } catch(e) { showAdminView('<div class="empty-state"><p>Error loading notifications</p></div>'); }
   }
 
@@ -2935,6 +3134,130 @@ async function renderAdminDashboard() {
     });
   }
 
+  async function loadAdminBranding() {
+    const API = window.location.port === "8000" ? window.location.origin : `${window.location.protocol}//${window.location.hostname}:8000`;
+    const token = localStorage.getItem("casuya_token");
+    const headers = token ? { "Authorization": `Bearer ${token}` } : {};
+
+    // Check what's currently uploaded
+    let logoExists = false, faviconExists = false;
+    try {
+      const lr = await fetch(`${API}/branding/logo`);
+      logoExists = lr.ok;
+    } catch {}
+    try {
+      const fr = await fetch(`${API}/branding/favicon`);
+      faviconExists = fr.ok;
+    } catch {}
+
+    showAdminView(`
+      <div class="content">
+        <h2>🎨 Site Branding</h2>
+        <p style="color:var(--color-text-muted);font-size:0.85rem;margin-bottom:1.5rem">Upload your logo and favicon. These appear across the entire platform.</p>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem">
+          <!-- Logo -->
+          <div class="card" style="padding:1.5rem">
+            <h3 style="margin-bottom:0.75rem">Logo</h3>
+            <div style="text-align:center;margin-bottom:1rem">
+              ${logoExists
+                ? `<img src="${API}/branding/logo?t=${Date.now()}" alt="Current logo" style="max-width:120px;max-height:120px;border-radius:12px;border:1px solid var(--color-border)">`
+                : `<div style="width:120px;height:120px;margin:0 auto;background:var(--color-primary);border-radius:12px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:2rem;font-weight:800">C</div>`
+              }
+              <p style="font-size:0.75rem;color:var(--color-text-muted);margin-top:0.5rem">${logoExists ? "Custom logo active" : "Using default"}</p>
+            </div>
+            <form id="logo-upload-form" style="display:flex;flex-direction:column;gap:0.5rem">
+              <input class="input" type="file" id="logo-file" accept="image/*" required />
+              <div style="display:flex;gap:0.5rem">
+                <button class="btn btn-success" type="submit" style="flex:1">${logoExists ? "Replace" : "Upload"}</button>
+                ${logoExists ? '<button class="btn btn-danger" type="button" id="logo-delete" style="flex:0">Delete</button>' : ''}
+              </div>
+            </form>
+            <div id="logo-result" style="margin-top:0.5rem;font-size:0.8rem"></div>
+          </div>
+
+          <!-- Favicon -->
+          <div class="card" style="padding:1.5rem">
+            <h3 style="margin-bottom:0.75rem">Favicon</h3>
+            <div style="text-align:center;margin-bottom:1rem">
+              ${faviconExists
+                ? `<img src="${API}/branding/favicon?t=${Date.now()}" alt="Current favicon" style="width:64px;height:64px;border-radius:8px;border:1px solid var(--color-border)">`
+                : `<div style="width:64px;height:64px;margin:0 auto;background:var(--color-primary);border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.2rem;font-weight:800">C</div>`
+              }
+              <p style="font-size:0.75rem;color:var(--color-text-muted);margin-top:0.5rem">${faviconExists ? "Custom favicon active" : "Using default"}</p>
+            </div>
+            <form id="favicon-upload-form" style="display:flex;flex-direction:column;gap:0.5rem">
+              <input class="input" type="file" id="favicon-file" accept="image/*" required />
+              <div style="display:flex;gap:0.5rem">
+                <button class="btn btn-success" type="submit" style="flex:1">${faviconExists ? "Replace" : "Upload"}</button>
+                ${faviconExists ? '<button class="btn btn-danger" type="button" id="favicon-delete" style="flex:0">Delete</button>' : ''}
+              </div>
+            </form>
+            <div id="favicon-result" style="margin-top:0.5rem;font-size:0.8rem"></div>
+          </div>
+        </div>
+      </div>
+    `);
+
+    // Logo upload
+    document.getElementById("logo-upload-form")?.addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      const file = document.getElementById("logo-file")?.files?.[0];
+      if (!file) return;
+      const fd = new FormData();
+      fd.append("file", file);
+      try {
+        const r = await fetch(`${API}/branding/logo`, { method: "POST", headers, body: fd });
+        const d = await r.json();
+        if (r.ok) {
+          document.getElementById("logo-result").innerHTML = '<span style="color:var(--color-success)">Logo uploaded!</span>';
+          loadAdminBranding();
+        } else {
+          document.getElementById("logo-result").innerHTML = `<span style="color:var(--color-danger)">${escapeHtml(d.detail || "Failed")}</span>`;
+        }
+      } catch (e) {
+        document.getElementById("logo-result").innerHTML = `<span style="color:var(--color-danger)">${escapeHtml(e.message)}</span>`;
+      }
+    });
+
+    // Logo delete
+    document.getElementById("logo-delete")?.addEventListener("click", async () => {
+      try {
+        await fetch(`${API}/branding/logo`, { method: "DELETE", headers });
+        loadAdminBranding();
+      } catch {}
+    });
+
+    // Favicon upload
+    document.getElementById("favicon-upload-form")?.addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      const file = document.getElementById("favicon-file")?.files?.[0];
+      if (!file) return;
+      const fd = new FormData();
+      fd.append("file", file);
+      try {
+        const r = await fetch(`${API}/branding/favicon`, { method: "POST", headers, body: fd });
+        const d = await r.json();
+        if (r.ok) {
+          document.getElementById("favicon-result").innerHTML = '<span style="color:var(--color-success)">Favicon uploaded!</span>';
+          loadAdminBranding();
+        } else {
+          document.getElementById("favicon-result").innerHTML = `<span style="color:var(--color-danger)">${escapeHtml(d.detail || "Failed")}</span>`;
+        }
+      } catch (e) {
+        document.getElementById("favicon-result").innerHTML = `<span style="color:var(--color-danger)">${escapeHtml(e.message)}</span>`;
+      }
+    });
+
+    // Favicon delete
+    document.getElementById("favicon-delete")?.addEventListener("click", async () => {
+      try {
+        await fetch(`${API}/branding/favicon`, { method: "DELETE", headers });
+        loadAdminBranding();
+      } catch {}
+    });
+  }
+
   loadAdminOverview();
 }
 
@@ -2955,6 +3278,7 @@ async function renderTeacherDashboard() {
           <div class="sidebar-nav-item active" data-view="overview">📊 Overview</div>
           <div class="sidebar-nav-item" data-view="students">👥 Students</div>
           <div class="sidebar-nav-item" data-view="lessons">📝 Lessons</div>
+          <div class="sidebar-nav-item" data-view="bookmarks">🔖 Bookmarks</div>
         </nav>
         <div class="sidebar-footer">
           <div class="sidebar-footer-row">
@@ -3100,6 +3424,7 @@ async function renderTeacherDashboard() {
     overview: () => { setActiveNav("overview"); loadTeacherOverview(); },
     students: () => { setActiveNav("students"); loadTeacherStudents(); },
     lessons: () => { setActiveNav("lessons"); loadTeacherLessons(); },
+    bookmarks: () => { setActiveNav("bookmarks"); loadTeacherBookmarks(); },
   };
 
   document.querySelectorAll("#teacher-nav .sidebar-nav-item").forEach(el => {
@@ -3264,6 +3589,36 @@ async function renderTeacherDashboard() {
       });
     } catch (err) {
       showTeacherView(`<div class="empty-state"><h2>Error</h2><p>${escapeHtml(err.message)}</p></div>`);
+    }
+  }
+
+  async function loadTeacherBookmarks() {
+    showTeacherView('<div class="loading-state"><div class="spinner"></div><p>Loading bookmarks...</p></div>');
+    try {
+      const data = await request("/bookmarks/");
+      const bookmarks = Array.isArray(data) ? data : [];
+      if (bookmarks.length === 0) {
+        showTeacherView('<div class="content"><h2>Bookmarks</h2><div class="empty-state"><p>No bookmarks yet. Open a lesson and click ☆ to bookmark it.</p></div></div>');
+        return;
+      }
+      showTeacherView(`
+        <div class="content">
+          <h2>Bookmarks</h2>
+          <div class="card-grid" style="margin-top:1rem">
+            ${bookmarks.map(b => `
+              <div class="card lesson-card clickable" data-id="${escapeHtml(b.lesson_id || b.id)}" style="position:relative">
+                <h3>${escapeHtml(b.lesson_title || b.title || "Untitled")}</h3>
+                <span style="position:absolute;top:0.5rem;right:0.5rem;font-size:0.75rem">🔖</span>
+              </div>
+            `).join("")}
+          </div>
+        </div>
+      `);
+      document.querySelectorAll("#teacher-content .lesson-card.clickable").forEach(el => {
+        el.addEventListener("click", () => viewLessonContent("#teacher-content", el.dataset.id, loadTeacherBookmarks));
+      });
+    } catch(e) {
+      showTeacherView('<div class="content"><h2>Bookmarks</h2><div class="empty-state"><p>Error loading bookmarks</p></div></div>');
     }
   }
 

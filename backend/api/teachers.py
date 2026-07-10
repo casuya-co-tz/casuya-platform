@@ -22,7 +22,7 @@ def _get_current_teacher(current_user: dict, db: Session) -> Teacher:
     return teacher
 
 
-@router.get("/")
+@router.get("")
 def list_teachers(current_user=Depends(get_current_user)):
     db: Session = next(get_db())
     teachers = db.query(Teacher).all()

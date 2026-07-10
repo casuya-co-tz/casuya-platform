@@ -9,7 +9,7 @@ from backend.schemas.topics import TopicCreate, TopicResponse
 router = APIRouter(prefix="/topics", tags=["topics"])
 
 
-@router.get("/", response_model=list[TopicResponse])
+@router.get("", response_model=list[TopicResponse])
 def list_topics(subject_id: str | None = None):
     db: Session = next(get_db())
     query = db.query(Topic)
@@ -19,7 +19,7 @@ def list_topics(subject_id: str | None = None):
     return [TopicResponse(id=t.id, subject_id=t.subject_id, title=t.title, form_level=t.form_level) for t in topics]
 
 
-@router.post("/", response_model=TopicResponse, dependencies=[Depends(require_role("admin"))])
+@router.post("", response_model=TopicResponse, dependencies=[Depends(require_role("admin"))])
 def create_topic(body: TopicCreate):
     db: Session = next(get_db())
     topic = Topic(subject_id=body.subject_id, title=body.title, form_level=body.form_level)

@@ -22,7 +22,12 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 15
     refresh_token_expire_days: int = 7
 
-    allowed_origins: list[str] = ["http://localhost:5173", "http://localhost:8000"]
+    allowed_origins: list[str] = [
+        "http://localhost:5173",
+        "http://localhost:8000",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:8000",
+    ]
 
     casuya_core_signing_key: str | None = None
     casuya_bridge_shared_key: str | None = None
@@ -36,6 +41,13 @@ class Settings(BaseSettings):
     africastalking_api_key: str | None = None
 
     sentry_dsn: str | None = None
+
+    # OAuth providers
+    google_client_id: str | None = None
+    google_client_secret: str | None = None
+    facebook_client_id: str | None = None
+    facebook_client_secret: str | None = None
+    oauth_redirect_base: str = "http://localhost:5173"
 
     storage_root: str = "./storage"
     rate_limit_per_minute: int = 120

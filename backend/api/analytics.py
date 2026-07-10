@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 
 from backend.middleware.auth import get_current_user
-from backend.services.analytics_service import get_lesson_analytics, get_platform_overview
+from backend.services.analytics_service import get_lesson_analytics, get_lesson_distribution, get_platform_overview
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
@@ -14,3 +14,8 @@ def get_lesson_analytics_route(lesson_id: str, current_user=Depends(get_current_
 @router.get("/overview", response_model=dict)
 def get_platform_overview_route(current_user=Depends(get_current_user)):
     return get_platform_overview()
+
+
+@router.get("/lesson-distribution", response_model=list[dict])
+def get_lesson_distribution_route(current_user=Depends(get_current_user)):
+    return get_lesson_distribution()

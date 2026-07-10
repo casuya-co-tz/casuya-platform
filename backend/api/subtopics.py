@@ -9,7 +9,7 @@ from backend.schemas.subtopics import SubtopicCreate, SubtopicResponse
 router = APIRouter(prefix="/subtopics", tags=["subtopics"])
 
 
-@router.get("/", response_model=list[SubtopicResponse])
+@router.get("", response_model=list[SubtopicResponse])
 def list_subtopics(topic_id: str | None = None):
     db: Session = next(get_db())
     query = db.query(Subtopic)
@@ -19,7 +19,7 @@ def list_subtopics(topic_id: str | None = None):
     return [SubtopicResponse(id=s.id, topic_id=s.topic_id, title=s.title) for s in subtopics]
 
 
-@router.post("/", response_model=SubtopicResponse, dependencies=[Depends(require_role("admin"))])
+@router.post("", response_model=SubtopicResponse, dependencies=[Depends(require_role("admin"))])
 def create_subtopic(body: SubtopicCreate):
     db: Session = next(get_db())
     subtopic = Subtopic(topic_id=body.topic_id, title=body.title)

@@ -2,12 +2,288 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Casuya Platform</title>
-  <link rel="stylesheet" href="/assets/css/admin.css?v=3">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Casuya Platform - Transforming Education Through Technology</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+  </style>
+  <script src="/assets/js/brand.js"></script>
 </head>
-<body>
-  <div id="app"></div>
-  <script type="module" src="/assets/js/main.js?v=15"></script>
+<body class="bg-slate-50/50 text-slate-800 antialiased overflow-x-hidden">
+
+  <!-- NAVIGATION BAR -->
+  <nav class="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-100">
+    <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+      <!-- Logo -->
+      <div class="flex items-center gap-2">
+        <div data-brand-logo data-brand-logo-class="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center text-white font-extrabold text-lg shadow-md shadow-blue-200" class="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center text-white font-extrabold text-lg shadow-md shadow-blue-200">C</div>
+        <span class="text-xl font-extrabold tracking-tight text-slate-900">Casuya</span>
+      </div>
+      
+      <!-- Nav Links -->
+      <div class="hidden md:flex items-center gap-8 text-sm font-semibold text-slate-600">
+        <a href="#features" class="hover:text-blue-600 transition-colors">Features</a>
+        <a href="#subjects" class="hover:text-blue-600 transition-colors">Subjects</a>
+        <a href="#audiences" class="hover:text-blue-600 transition-colors">Users</a>
+        <a href="#about" class="hover:text-blue-600 transition-colors">About</a>
+      </div>
+
+      <!-- Auth Buttons (auth-aware: replaced with Dashboard/Log out when signed in) -->
+      <div class="flex items-center gap-4" id="auth-buttons">
+        <a href="/login.html" class="text-sm font-semibold text-slate-700 hover:text-blue-600 transition-colors">Login</a>
+        <a href="/register.html" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl shadow-lg shadow-blue-100 transition-all hover:-translate-y-0.5">Get Started</a>
+      </div>
+      <script type="module">
+        import { applyAuthChrome } from "/assets/js/auth-ui.js";
+        applyAuthChrome(document.getElementById("auth-buttons"));
+      </script>
+    </div>
+  </nav>
+
+  <!-- HERO SECTION -->
+  <section class="max-w-7xl mx-auto px-6 pt-16 pb-24 grid lg:grid-cols-12 gap-12 items-center">
+    <div class="lg:col-span-6 space-y-6">
+      <div class="inline-flex items-center gap-2 bg-blue-50 text-blue-700 text-xs font-semibold px-3 py-1.5 rounded-full">
+        <span class="w-1.5 h-1.5 bg-blue-600 rounded-full animate-pulse"></span>
+        Next-Generation EdTech Platform
+      </div>
+      <h1 class="text-5xl lg:text-6xl font-extrabold text-slate-900 tracking-tight leading-[1.1]">
+        Learn Smarter.<br>Teach Better.<br><span class="text-blue-600">Build the Future.</span>
+      </h1>
+      <p class="text-lg text-slate-600 max-w-lg leading-relaxed">
+        An intelligent educational ecosystem connecting teachers, students, and schools with modern digital tools built for any infrastructure.
+      </p>
+      
+      <!-- Value Checkmarks (rendered from enabled features) -->
+      <div id="hero-features" class="grid grid-cols-2 gap-3 text-sm font-medium text-slate-700 pt-2"></div>
+
+      <!-- Hero CTA -->
+      <div class="flex flex-wrap gap-4 pt-4">
+        <a href="/register.html" class="bg-slate-900 hover:bg-slate-800 text-white font-semibold px-8 py-4 rounded-xl shadow-xl shadow-slate-200 transition-all hover:-translate-y-0.5">Start Learning</a>
+        <a href="#demo" class="bg-white border border-slate-200 hover:border-slate-300 text-slate-700 font-semibold px-8 py-4 rounded-xl transition-all flex items-center gap-2">
+          Watch Demo
+        </a>
+      </div>
+    </div>
+
+    <!-- Hero Illustration Placeholder -->
+    <div class="lg:col-span-6 relative">
+      <div class="absolute inset-0 bg-gradient-to-tr from-blue-400 to-indigo-400 rounded-3xl opacity-10 blur-3xl -z-10"></div>
+      <div class="bg-white border border-slate-100 rounded-3xl p-6 shadow-2xl shadow-slate-200/80 aspect-[4/3] flex flex-col justify-between overflow-hidden">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+          <div class="flex gap-1.5">
+            <div class="w-3 h-3 rounded-full bg-red-400"></div>
+            <div class="w-3 h-3 rounded-full bg-yellow-400"></div>
+            <div class="w-3 h-3 rounded-full bg-green-400"></div>
+          </div>
+          <div class="text-xs font-semibold text-slate-400 bg-slate-50 px-3 py-1 rounded-md">casuya-workspace.edu</div>
+        </div>
+        <!-- Mock UI Elements simulating the ecosystem -->
+        <div class="flex-1 grid grid-cols-12 gap-4 pt-6">
+          <div class="col-span-4 bg-slate-50 rounded-xl p-3 space-y-3">
+            <div class="h-6 bg-blue-100 rounded-lg w-3/4"></div>
+            <div class="h-3 bg-slate-200 rounded w-full"></div>
+            <div class="h-3 bg-slate-200 rounded w-5/6"></div>
+            <div class="pt-4 space-y-2">
+              <div class="h-8 bg-white border border-slate-100 rounded-lg shadow-sm flex items-center px-2 text-[10px] font-bold text-slate-500">📚 Biology</div>
+              <div class="h-8 bg-white border border-slate-100 rounded-lg shadow-sm flex items-center px-2 text-[10px] font-bold text-slate-500">🧪 Chemistry</div>
+            </div>
+          </div>
+          <div class="col-span-8 space-y-4">
+            <div class="bg-blue-600 rounded-xl p-4 text-white space-y-2 shadow-lg shadow-blue-100">
+              <div class="text-xs font-bold uppercase tracking-wider opacity-75">Today's Lesson</div>
+              <div class="text-sm font-semibold">"Dive into interactive exercises with built-in quizzes and real-time progress tracking."</div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div class="bg-slate-50 border border-slate-100 rounded-xl p-3 text-center">
+                <div class="text-xs text-slate-400 font-medium">Class Sync</div>
+                <div class="text-sm font-bold text-slate-800">100% Offline ready</div>
+              </div>
+              <div class="bg-slate-50 border border-slate-100 rounded-xl p-3 text-center">
+                <div class="text-xs text-slate-400 font-medium">Avg Score</div>
+                <div class="text-sm font-bold text-green-600">+18% Progress</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TRUSTED BY SECTION (rendered from enabled features) -->
+  <section class="border-y border-slate-100 bg-white py-10 text-center">
+    <p class="text-xs font-bold tracking-widest text-slate-400 uppercase mb-4">Empowering Modern Educational Workflows</p>
+    <div id="trusted-features" class="flex flex-wrap justify-center items-center gap-12 font-bold text-lg text-slate-300"></div>
+  </section>
+
+  <!-- FEATURES GRID -->
+  <section id="features" class="max-w-7xl mx-auto px-6 py-24">
+    <div class="text-center max-w-2xl mx-auto mb-16 space-y-3">
+      <h2 class="text-xs font-bold text-blue-600 uppercase tracking-widest">Platform Capabilities</h2>
+      <p class="text-3xl lg:text-4xl font-extrabold text-slate-900 tracking-tight">Why Schools Choose Casuya</p>
+      <p class="text-slate-500">Every single module is optimized for lightning-fast speeds and reliable performance on low-end operational hardware.</p>
+    </div>
+
+    <div id="features-grid" class="grid md:grid-cols-2 lg:grid-cols-3 gap-8"></div>
+  </section>
+
+  <!-- SUBJECTS SECTION -->
+  <section id="subjects" class="bg-slate-900 text-white py-24">
+    <div class="max-w-7xl mx-auto px-6">
+      <div class="max-w-2xl mb-12">
+        <h2 class="text-xs font-bold text-blue-400 uppercase tracking-widest mb-2">Curriculum Framework</h2>
+        <h3 class="text-3xl font-extrabold tracking-tight">Explore Subjects Across the Ecosystem</h3>
+      </div>
+      <div class="flex flex-wrap gap-4">
+        <span class="bg-slate-800 border border-slate-700/50 px-6 py-3 rounded-xl font-medium hover:border-blue-500 transition-colors cursor-default">🧬 Biology</span>
+        <span class="bg-slate-800 border border-slate-700/50 px-6 py-3 rounded-xl font-medium hover:border-blue-500 transition-colors cursor-default">🧪 Chemistry</span>
+        <span class="bg-slate-800 border border-slate-700/50 px-6 py-3 rounded-xl font-medium hover:border-blue-500 transition-colors cursor-default">⚛️ Physics</span>
+        <span class="bg-slate-800 border border-slate-700/50 px-6 py-3 rounded-xl font-medium hover:border-blue-500 transition-colors cursor-default">📐 Mathematics</span>
+        <span class="bg-slate-800 border border-slate-700/50 px-6 py-3 rounded-xl font-medium hover:border-blue-500 transition-colors cursor-default">🌍 Geography</span>
+        <span class="bg-slate-800 border border-slate-700/50 px-6 py-3 rounded-xl font-medium hover:border-blue-500 transition-colors cursor-default">⏳ History</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- AUDIENCES SECTION -->
+  <section id="audiences" class="max-w-7xl mx-auto px-6 py-24">
+      <div class="text-center max-w-2xl mx-auto mb-16 space-y-3">
+        <h2 class="text-xs font-bold text-blue-600 uppercase tracking-widest">Tailored Experiences</h2>
+        <p class="text-3xl font-extrabold text-slate-900 tracking-tight">Built for Everyone in the School</p>
+        <p class="text-sm text-slate-500">Sign-up accounts are available as <strong>Student</strong> or <strong>Teacher</strong> (Admin accounts are provisioned by your school). Parents and schools benefit through the student and teacher experience.</p>
+      </div>
+
+    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div class="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm">
+        <div class="text-2xl mb-4">👨‍🏫</div>
+        <h4 class="font-bold text-slate-900 mb-3">Teachers</h4>
+        <ul class="text-xs text-slate-500 space-y-2">
+          <li>• Create rich digital content</li>
+          <li>• Coordinate modular cohorts</li>
+          <li>• Evaluate metrics streams</li>
+        </ul>
+      </div>
+      <div class="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm">
+        <div class="text-2xl mb-4">👩‍🎓</div>
+        <h4 class="font-bold text-slate-900 mb-3">Students</h4>
+        <ul class="text-xs text-slate-500 space-y-2">
+          <li>• Study from any location</li>
+          <li>• Interact with tests offline</li>
+          <li>• Monitor learning records</li>
+        </ul>
+      </div>
+      <div class="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm">
+        <div class="text-2xl mb-4">👨‍👩‍👧</div>
+        <h4 class="font-bold text-slate-900 mb-3">Parents</h4>
+        <ul class="text-xs text-slate-500 space-y-2">
+          <li>• Observe progress trackers</li>
+          <li>• View localized updates</li>
+        </ul>
+      </div>
+      <div class="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm">
+        <div class="text-2xl mb-4">🏫</div>
+        <h4 class="font-bold text-slate-900 mb-3">Schools</h4>
+        <ul class="text-xs text-slate-500 space-y-2">
+          <li>• Optimize staff delegation</li>
+          <li>• Export complex analytical datasets</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- CALL TO ACTION -->
+  <section class="max-w-7xl mx-auto px-6 mb-24">
+    <div class="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-3xl p-12 text-center text-white space-y-6 shadow-xl shadow-blue-100 relative overflow-hidden">
+      <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-white/10 to-transparent pointer-events-none"></div>
+      <h3 class="text-3xl lg:text-4xl font-extrabold tracking-tight">Ready to Transform Education?</h3>
+      <p class="text-blue-100 max-w-xl mx-auto text-sm lg:text-base">Join thousands of modern instructors, students, and system administrators configuring smarter school networks today.</p>
+      <div class="flex justify-center gap-4 pt-2">
+        <a href="/register.html" class="bg-white text-blue-700 font-bold px-6 py-3.5 rounded-xl transition-all hover:bg-blue-50 shadow-md">Create Account</a>
+        <a href="/login.html" class="bg-blue-700/50 text-white border border-blue-400/30 font-bold px-6 py-3.5 rounded-xl transition-all hover:bg-blue-700">Login</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="bg-white border-t border-slate-100 text-slate-500 text-xs py-12">
+    <div class="max-w-7xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-8">
+      <div class="space-y-3">
+        <div class="font-bold text-slate-900 text-sm">Platform</div>
+        <div><a href="#features" class="hover:text-blue-600">Features</a></div>
+        <div><a href="https://github.com/casuya-co-tz" class="hover:text-blue-600" target="_blank" rel="noopener">Documentation</a></div>
+        <div><a href="#subjects" class="hover:text-blue-600">Subjects</a></div>
+      </div>
+      <div class="space-y-3">
+        <div class="font-bold text-slate-900 text-sm">Support</div>
+        <div><a href="/help.html" class="hover:text-blue-600">Help Center</a></div>
+        <div><a href="/contact.html" class="hover:text-blue-600">Contact Us</a></div>
+      </div>
+      <div class="space-y-3">
+        <div class="font-bold text-slate-900 text-sm">Legal</div>
+        <div><a href="/privacy.html" class="hover:text-blue-600">Privacy Policy</a></div>
+        <div><a href="/terms.html" class="hover:text-blue-600">Terms of Service</a></div>
+      </div>
+      <div class="space-y-3">
+        <div class="font-bold text-slate-900 text-sm">Links</div>
+        <div><a href="https://github.com/casuya-co-tz" class="hover:text-blue-600" target="_blank" rel="noopener">GitHub Organization</a></div>
+        <div class="pt-2 text-[10px] text-slate-400">© 2026 Casuya Platform.</div>
+      </div>
+    </div>
+  </footer>
+
+  <script type="module">
+    import { FEATURES, PERSONAS, enabledFeatures } from "/assets/js/site-features.js";
+
+    // ── Hero value checkmarks ──────────────────────────────────────────
+    const heroEl = document.getElementById("hero-features");
+    if (heroEl) {
+      const heroItems = Object.values(FEATURES).filter((f) => f.enabled && f.hero);
+      heroEl.innerHTML = heroItems
+        .map(
+          (f) =>
+            `<div class="flex items-center gap-2"><span class="text-blue-600">✓</span>${f.title}</div>`
+        )
+        .join("");
+      if (!heroItems.length) heroEl.remove();
+    }
+
+    // ── Trusted-by strip ───────────────────────────────────────────────
+    const trustedEl = document.getElementById("trusted-features");
+    if (trustedEl) {
+      const trusted = Object.values(FEATURES).filter((f) => f.enabled && f.trusted);
+      trustedEl.innerHTML = trusted
+        .map(
+          (f, i) =>
+            `<span class="hover:text-slate-400 transition-colors cursor-default">${f.title}</span>${
+              i < trusted.length - 1
+                ? '<span class="text-blue-500">•</span>'
+                : ""
+            }`
+        )
+        .join("");
+      if (!trusted.length) trustedEl.closest("section")?.remove();
+    }
+
+    // ── Features grid ──────────────────────────────────────────────────
+    const gridEl = document.getElementById("features-grid");
+    if (gridEl) {
+      const cards = Object.values(FEATURES).filter((f) => f.enabled);
+      gridEl.innerHTML = cards
+        .map(
+          (f) =>
+            `<div class="bg-white border border-slate-100 rounded-2xl p-8 hover:shadow-xl hover:shadow-slate-100 transition-all group">
+              <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center font-bold text-xl mb-6 group-hover:bg-blue-600 group-hover:text-white transition-all">${f.icon}</div>
+              <h3 class="text-lg font-bold text-slate-900 mb-2">${f.title}</h3>
+              <p class="text-sm text-slate-500 leading-relaxed">${f.blurb}</p>
+            </div>`
+        )
+        .join("");
+    }
+  </script>
+
 </body>
 </html>

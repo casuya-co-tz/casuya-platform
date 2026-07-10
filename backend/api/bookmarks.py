@@ -6,7 +6,7 @@ from backend.services.bookmark_service import add_bookmark, is_bookmarked, list_
 router = APIRouter(prefix="/bookmarks", tags=["bookmarks"])
 
 
-@router.get("/", response_model=list[dict])
+@router.get("", response_model=list[dict])
 def list_bookmarks_route(current_user=Depends(get_current_user)):
     return list_bookmarks(current_user["sub"])
 

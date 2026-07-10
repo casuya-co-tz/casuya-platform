@@ -10,6 +10,13 @@ from backend.schemas.users import UserResponse, UserUpdateRequest
 router = APIRouter(prefix="/users", tags=["users"])
 
 
+@router.get("", response_model=list[dict], dependencies=[Depends(require_role("admin"))])
+def list_users_route():
+    db: Session = next(get_db())
+    users = db.query(User).filter(User.is_active == True).all()
+    return [{"id": u.id, "email": u.email, "phone": u.phone, "role": u.role} for u in users]
+
+
 @router.get("/me", response_model=UserResponse)
 def get_current_user_route(current_user=Depends(get_current_user)):
     db: Session = next(get_db())
