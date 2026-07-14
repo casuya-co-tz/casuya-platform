@@ -1,1 +1,0 @@
-# Teacher home — class overview.

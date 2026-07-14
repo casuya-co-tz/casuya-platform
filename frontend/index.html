@@ -1,70 +1,268 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="scroll-smooth">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Casuya Platform - Transforming Education Through Technology</title>
+  <meta name="description" content="Casuya is an offline-ready educational platform connecting teachers, students, and schools across Tanzania with interactive lessons, quizzes, and progress tracking — built for any infrastructure.">
+  <meta property="og:title" content="Casuya — Learn Smarter. Teach Better. Build the Future.">
+  <meta property="og:description" content="An intelligent educational ecosystem for Tanzanian schools, students, and teachers. Works great even with limited connectivity.">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="en_TZ">
+  <meta name="theme-color" content="#2563eb">
+  <link rel="icon" href="/favicon.ico">
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          screens: {
+            'xs': '475px',
+          }
+        }
+      }
+    }
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     body { font-family: 'Plus Jakarta Sans', sans-serif; }
+
+    /* Accessible keyboard focus states */
+    a:focus-visible, button:focus-visible {
+      outline: 2px solid #2563eb;
+      outline-offset: 2px;
+      border-radius: 4px;
+    }
+
+    /* Respect users who've asked for reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
+
+    /* Mobile-specific refinements */
+    @media (max-width: 639px) {
+      .hero-title { font-size: 2.15rem; line-height: 1.15; }
+      .mock-ui-sidebar { display: none !important; }
+    }
+
+    /* Ensure minimum tap target size for accessibility */
+    a, button { min-height: 0; }
+
+    /* ── Demo Modal ─────────────────────────────────────────────────── */
+    #demo-overlay {
+      position: fixed; inset: 0; z-index: 9999;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(8px);
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.4s ease;
+    }
+    #demo-overlay.open { opacity: 1; pointer-events: auto; }
+
+    #demo-modal {
+      position: relative;
+      width: 94vw; max-width: 480px;
+      background: #fff; border-radius: 24px;
+      box-shadow: 0 25px 60px rgba(0,0,0,0.3);
+      overflow: hidden;
+      transform: scale(0.9) translateY(30px);
+      transition: transform 0.4s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    #demo-overlay.open #demo-modal { transform: scale(1) translateY(0); }
+
+    .demo-close {
+      position: absolute; top: 12px; right: 12px; z-index: 10;
+      width: 36px; height: 36px; border-radius: 50%;
+      background: rgba(0,0,0,0.06); border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.2s;
+    }
+    .demo-close:hover { background: rgba(0,0,0,0.12); }
+
+    /* Phone frame */
+    .demo-phone {
+      width: 100%; aspect-ratio: 9/16; max-height: 72vh;
+      background: #f8fafc; position: relative; overflow: hidden;
+    }
+
+    /* Screen slides */
+    .demo-screen {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      transition: transform 0.6s cubic-bezier(0.4,0,0.2,1), opacity 0.4s ease;
+    }
+    .demo-screen.active { transform: translateX(0); opacity: 1; }
+    .demo-screen.left  { transform: translateX(-100%); opacity: 0; }
+    .demo-screen.right { transform: translateX(100%); opacity: 0; }
+
+    /* Mock input typing cursor */
+    .demo-cursor {
+      display: inline-block; width: 2px; height: 1em;
+      background: #2563eb; margin-left: 2px; vertical-align: text-bottom;
+      animation: blink 0.6s step-end infinite;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    /* Button press effect */
+    .demo-press {
+      animation: press 0.3s ease;
+    }
+    @keyframes press {
+      0% { transform: scale(1); }
+      50% { transform: scale(0.95); filter: brightness(0.9); }
+      100% { transform: scale(1); }
+    }
+
+    /* Step indicator dots */
+    .demo-step-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #cbd5e1; transition: all 0.3s ease;
+    }
+    .demo-step-dot.active { background: #2563eb; width: 24px; border-radius: 4px; }
+
+    /* Progress bar */
+    .demo-progress-bar {
+      height: 3px; background: #e2e8f0; border-radius: 2px; overflow: hidden;
+    }
+    .demo-progress-fill {
+      height: 100%; background: linear-gradient(90deg, #2563eb, #7c3aed);
+      border-radius: 2px; transition: width 0.6s ease;
+    }
+
+    /* Label badge */
+    .demo-label {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      background: rgba(37, 99, 235, 0.9); color: #fff;
+      font-size: 11px; font-weight: 700; letter-spacing: 0.05em;
+      padding: 6px 16px; border-radius: 20px;
+      opacity: 0; transition: opacity 0.3s ease;
+      pointer-events: none; white-space: nowrap; z-index: 5;
+    }
+    .demo-label.show { opacity: 1; }
+
+    /* Success checkmark */
+    .demo-check {
+      width: 48px; height: 48px; border-radius: 50%;
+      background: #dcfce7; display: flex; align-items: center; justify-content: center;
+      margin: 0 auto;
+      animation: popIn 0.4s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    @keyframes popIn {
+      0% { transform: scale(0); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    /* Dashboard card slide-up */
+    .demo-card-up {
+      animation: cardUp 0.5s cubic-bezier(0.4,0,0.2,1) both;
+    }
+    @keyframes cardUp {
+      0% { transform: translateY(20px); opacity: 0; }
+      100% { transform: translateY(0); opacity: 1; }
+    }
+
+    /* Nav bar inside demo screens */
+    .demo-nav {
+      height: 44px; background: #fff; border-bottom: 1px solid #f1f5f9;
+      display: flex; align-items: center; padding: 0 16px; gap: 8px;
+    }
+    .demo-nav-logo {
+      width: 24px; height: 24px; background: #2563eb; border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-size: 11px; font-weight: 800;
+    }
+
+    /* Scrollbar hide for phone */
+    .demo-phone::-webkit-scrollbar { display: none; }
+    .demo-phone { -ms-overflow-style: none; scrollbar-width: none; }
   </style>
   <script src="/assets/js/brand.js"></script>
 </head>
 <body class="bg-slate-50/50 text-slate-800 antialiased overflow-x-hidden">
 
+  <!-- Skip link for keyboard / screen-reader users -->
+  <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[100] bg-blue-600 text-white text-sm font-semibold px-4 py-2 rounded-lg">Skip to content</a>
+
   <!-- NAVIGATION BAR -->
   <nav class="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-100">
-    <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 sm:h-20 flex items-center justify-between">
       <!-- Logo -->
       <div class="flex items-center gap-2">
-        <div data-brand-logo data-brand-logo-class="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center text-white font-extrabold text-lg shadow-md shadow-blue-200" class="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center text-white font-extrabold text-lg shadow-md shadow-blue-200">C</div>
-        <span class="text-xl font-extrabold tracking-tight text-slate-900">Casuya</span>
-      </div>
-      
-      <!-- Nav Links -->
-      <div class="hidden md:flex items-center gap-8 text-sm font-semibold text-slate-600">
-        <a href="#features" class="hover:text-blue-600 transition-colors">Features</a>
-        <a href="#subjects" class="hover:text-blue-600 transition-colors">Subjects</a>
-        <a href="#audiences" class="hover:text-blue-600 transition-colors">Users</a>
-        <a href="#about" class="hover:text-blue-600 transition-colors">About</a>
+        <div data-brand-logo data-brand-logo-class="w-8 h-8 sm:w-9 sm:h-9 bg-blue-600 rounded-xl flex items-center justify-center text-white font-extrabold text-base sm:text-lg shadow-md shadow-blue-200" class="w-8 h-8 sm:w-9 sm:h-9 bg-blue-600 rounded-xl flex items-center justify-center text-white font-extrabold text-base sm:text-lg shadow-md shadow-blue-200">C</div>
+        <span class="text-lg sm:text-xl font-extrabold tracking-tight text-slate-900">Casuya</span>
       </div>
 
-      <!-- Auth Buttons (auth-aware: replaced with Dashboard/Log out when signed in) -->
-      <div class="flex items-center gap-4" id="auth-buttons">
-        <a href="/login.html" class="text-sm font-semibold text-slate-700 hover:text-blue-600 transition-colors">Login</a>
-        <a href="/register.html" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl shadow-lg shadow-blue-100 transition-all hover:-translate-y-0.5">Get Started</a>
+      <!-- Right-hand group: nav links, language toggle, auth, mobile menu button -->
+      <div class="flex items-center gap-2 sm:gap-5">
+        <!-- Nav Links (desktop) -->
+        <div class="hidden md:flex items-center gap-8 text-sm font-semibold text-slate-600">
+          <a href="#features" data-i18n="navFeatures" class="hover:text-blue-600 transition-colors">Features</a>
+          <a href="#subjects" data-i18n="navSubjects" class="hover:text-blue-600 transition-colors">Subjects</a>
+          <a href="#audiences" data-i18n="navUsers" class="hover:text-blue-600 transition-colors">Users</a>
+          <a href="#about" data-i18n="navAbout" class="hover:text-blue-600 transition-colors">About</a>
+        </div>
+
+        <!-- Language toggle (EN / SW) -->
+        <button id="lang-toggle" type="button" class="inline-flex items-center gap-1 text-[11px] sm:text-xs font-bold text-slate-500 hover:text-blue-600 hover:border-blue-200 border border-slate-200 rounded-lg px-2 py-1.5 sm:px-2.5 transition-colors" aria-label="Badilisha lugha / Switch language">
+          <span id="lang-toggle-label">SW</span>
+        </button>
+
+        <!-- Auth Buttons (auth-aware: replaced with Dashboard/Log out when signed in) -->
+        <div class="flex items-center gap-2 sm:gap-4" id="auth-buttons">
+          <a href="/login.html" data-i18n="login" class="hidden sm:inline text-sm font-semibold text-slate-700 hover:text-blue-600 transition-colors">Login</a>
+          <a href="/register.html" data-i18n="getStarted" class="bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-semibold px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl shadow-lg shadow-blue-100 transition-all hover:-translate-y-0.5 min-h-[40px] flex items-center justify-center">Get Started</a>
+        </div>
+        <script type="module">
+          import { applyAuthChrome } from "/assets/js/auth-ui.js";
+          applyAuthChrome(document.getElementById("auth-buttons"));
+        </script>
+
+        <!-- Mobile menu toggle -->
+        <button id="mobile-menu-btn" type="button" class="md:hidden inline-flex items-center justify-center w-10 h-10 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors" aria-label="Fungua menyu / Open menu" aria-expanded="false" aria-controls="mobile-menu">
+          <svg id="menu-icon-open" class="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
+          <svg id="menu-icon-close" class="w-5 h-5 sm:w-6 sm:h-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
       </div>
-      <script type="module">
-        import { applyAuthChrome } from "/assets/js/auth-ui.js";
-        applyAuthChrome(document.getElementById("auth-buttons"));
-      </script>
+    </div>
+
+    <!-- Mobile menu panel -->
+    <div id="mobile-menu" class="md:hidden hidden border-t border-slate-100 bg-white">
+      <div class="px-4 sm:px-6 py-4 flex flex-col gap-3 sm:gap-4 text-sm font-semibold text-slate-600">
+        <a href="#features" data-i18n="navFeatures" class="hover:text-blue-600 transition-colors">Features</a>
+        <a href="#subjects" data-i18n="navSubjects" class="hover:text-blue-600 transition-colors">Subjects</a>
+        <a href="#audiences" data-i18n="navUsers" class="hover:text-blue-600 transition-colors">Users</a>
+        <a href="#about" data-i18n="navAbout" class="hover:text-blue-600 transition-colors">About</a>
+        <a href="/login.html" data-i18n="login" class="sm:hidden pt-2 border-t border-slate-100 hover:text-blue-600 transition-colors">Login</a>
+      </div>
     </div>
   </nav>
 
+  <main id="main-content">
+
   <!-- HERO SECTION -->
-  <section class="max-w-7xl mx-auto px-6 pt-16 pb-24 grid lg:grid-cols-12 gap-12 items-center">
-    <div class="lg:col-span-6 space-y-6">
-      <div class="inline-flex items-center gap-2 bg-blue-50 text-blue-700 text-xs font-semibold px-3 py-1.5 rounded-full">
-        <span class="w-1.5 h-1.5 bg-blue-600 rounded-full animate-pulse"></span>
-        Next-Generation EdTech Platform
-      </div>
-      <h1 class="text-5xl lg:text-6xl font-extrabold text-slate-900 tracking-tight leading-[1.1]">
+  <section class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 sm:pt-16 pb-16 sm:pb-24 grid lg:grid-cols-12 gap-8 sm:gap-12 items-center">
+    <div class="lg:col-span-6 space-y-5 sm:space-y-6">
+      <h1 data-i18n-html="heroTitle" class="hero-title text-3xl xs:text-4xl sm:text-5xl lg:text-6xl font-extrabold text-slate-900 tracking-tight leading-[1.1]">
         Learn Smarter.<br>Teach Better.<br><span class="text-blue-600">Build the Future.</span>
       </h1>
-      <p class="text-lg text-slate-600 max-w-lg leading-relaxed">
+      <p data-i18n="heroSubtitle" class="text-base sm:text-lg text-slate-600 max-w-lg leading-relaxed">
         An intelligent educational ecosystem connecting teachers, students, and schools with modern digital tools built for any infrastructure.
       </p>
-      
+
       <!-- Value Checkmarks (rendered from enabled features) -->
-      <div id="hero-features" class="grid grid-cols-2 gap-3 text-sm font-medium text-slate-700 pt-2"></div>
+      <div id="hero-features" class="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 text-sm font-medium text-slate-700 pt-2"></div>
 
       <!-- Hero CTA -->
-      <div class="flex flex-wrap gap-4 pt-4">
-        <a href="/register.html" class="bg-slate-900 hover:bg-slate-800 text-white font-semibold px-8 py-4 rounded-xl shadow-xl shadow-slate-200 transition-all hover:-translate-y-0.5">Start Learning</a>
-        <a href="#demo" class="bg-white border border-slate-200 hover:border-slate-300 text-slate-700 font-semibold px-8 py-4 rounded-xl transition-all flex items-center gap-2">
+      <div class="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-4">
+        <a href="/register.html" data-i18n="ctaStart" class="bg-slate-900 hover:bg-slate-800 text-white font-semibold px-6 sm:px-8 py-3.5 sm:py-4 rounded-xl shadow-xl shadow-slate-200 transition-all hover:-translate-y-0.5 text-center min-h-[48px] flex items-center justify-center">Start Learning</a>
+        <a href="#demo" data-i18n="ctaDemo" class="bg-white border border-slate-200 hover:border-slate-300 text-slate-700 font-semibold px-6 sm:px-8 py-3.5 sm:py-4 rounded-xl transition-all flex items-center justify-center gap-2 min-h-[48px]">
           Watch Demo
         </a>
       </div>
@@ -72,40 +270,45 @@
 
     <!-- Hero Illustration Placeholder -->
     <div class="lg:col-span-6 relative">
-      <div class="absolute inset-0 bg-gradient-to-tr from-blue-400 to-indigo-400 rounded-3xl opacity-10 blur-3xl -z-10"></div>
-      <div class="bg-white border border-slate-100 rounded-3xl p-6 shadow-2xl shadow-slate-200/80 aspect-[4/3] flex flex-col justify-between overflow-hidden">
-        <div class="flex items-center justify-between border-b border-slate-100 pb-4">
-          <div class="flex gap-1.5">
-            <div class="w-3 h-3 rounded-full bg-red-400"></div>
-            <div class="w-3 h-3 rounded-full bg-yellow-400"></div>
-            <div class="w-3 h-3 rounded-full bg-green-400"></div>
+      <div class="absolute inset-0 bg-gradient-to-tr from-blue-400 to-indigo-400 rounded-3xl opacity-10 blur-3xl -z-10" aria-hidden="true"></div>
+      <div class="bg-white border border-slate-100 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl shadow-slate-200/80 aspect-[4/3] flex flex-col justify-between overflow-hidden">
+        <div class="flex items-center border-b border-slate-100 pb-3 sm:pb-4">
+          <div class="flex gap-1.5" aria-hidden="true">
+            <div class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-red-400"></div>
+            <div class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-yellow-400"></div>
+            <div class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-green-400"></div>
           </div>
-          <div class="text-xs font-semibold text-slate-400 bg-slate-50 px-3 py-1 rounded-md">casuya-workspace.edu</div>
         </div>
         <!-- Mock UI Elements simulating the ecosystem -->
-        <div class="flex-1 grid grid-cols-12 gap-4 pt-6">
-          <div class="col-span-4 bg-slate-50 rounded-xl p-3 space-y-3">
-            <div class="h-6 bg-blue-100 rounded-lg w-3/4"></div>
-            <div class="h-3 bg-slate-200 rounded w-full"></div>
-            <div class="h-3 bg-slate-200 rounded w-5/6"></div>
-            <div class="pt-4 space-y-2">
-              <div class="h-8 bg-white border border-slate-100 rounded-lg shadow-sm flex items-center px-2 text-[10px] font-bold text-slate-500">📚 Biology</div>
-              <div class="h-8 bg-white border border-slate-100 rounded-lg shadow-sm flex items-center px-2 text-[10px] font-bold text-slate-500">🧪 Chemistry</div>
+        <div class="flex-1 grid grid-cols-12 gap-3 sm:gap-4 pt-4 sm:pt-6">
+          <div class="col-span-12 sm:col-span-4 mock-ui-sidebar bg-slate-50 rounded-xl p-2.5 sm:p-3 space-y-2 sm:space-y-3">
+            <div class="h-5 sm:h-6 bg-blue-100 rounded-lg w-3/4"></div>
+            <div class="h-2.5 sm:h-3 bg-slate-200 rounded w-full"></div>
+            <div class="h-2.5 sm:h-3 bg-slate-200 rounded w-5/6"></div>
+            <div class="pt-3 sm:pt-4 space-y-2">
+              <div class="h-7 sm:h-8 bg-white border border-slate-100 rounded-lg shadow-sm flex items-center gap-1.5 px-2 text-[9px] sm:text-[10px] font-bold text-slate-500">
+                <svg class="w-3 h-3 sm:w-3.5 sm:h-3.5 text-blue-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20c0-9 6-15 15-15 0 9-6 15-15 15Z"/><path d="M6 18 17 7"/></svg>
+                Biology
+              </div>
+              <div class="h-7 sm:h-8 bg-white border border-slate-100 rounded-lg shadow-sm flex items-center gap-1.5 px-2 text-[9px] sm:text-[10px] font-bold text-slate-500">
+                <svg class="w-3 h-3 sm:w-3.5 sm:h-3.5 text-blue-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 7 6 15M12 7l6 8M7 16h10"/><circle cx="12" cy="5" r="1.6"/><circle cx="5" cy="17" r="1.6"/><circle cx="19" cy="17" r="1.6"/></svg>
+                Chemistry
+              </div>
             </div>
           </div>
-          <div class="col-span-8 space-y-4">
-            <div class="bg-blue-600 rounded-xl p-4 text-white space-y-2 shadow-lg shadow-blue-100">
-              <div class="text-xs font-bold uppercase tracking-wider opacity-75">Today's Lesson</div>
-              <div class="text-sm font-semibold">"Dive into interactive exercises with built-in quizzes and real-time progress tracking."</div>
+          <div class="col-span-12 sm:col-span-8 space-y-3 sm:space-y-4">
+            <div class="bg-blue-600 rounded-xl p-3 sm:p-4 text-white space-y-1.5 sm:space-y-2 shadow-lg shadow-blue-100">
+              <div class="text-[10px] sm:text-xs font-bold uppercase tracking-wider opacity-75">Today's Lesson</div>
+              <div class="text-xs sm:text-sm font-semibold">"Dive into interactive exercises with built-in quizzes and real-time progress tracking."</div>
             </div>
-            <div class="grid grid-cols-2 gap-3">
-              <div class="bg-slate-50 border border-slate-100 rounded-xl p-3 text-center">
-                <div class="text-xs text-slate-400 font-medium">Class Sync</div>
-                <div class="text-sm font-bold text-slate-800">100% Offline ready</div>
+            <div class="grid grid-cols-2 gap-2 sm:gap-3">
+              <div class="bg-slate-50 border border-slate-100 rounded-xl p-2.5 sm:p-3 text-center">
+                <div class="text-[10px] sm:text-xs text-slate-400 font-medium">Class Sync</div>
+                <div class="text-xs sm:text-sm font-bold text-slate-800">100% Offline ready</div>
               </div>
-              <div class="bg-slate-50 border border-slate-100 rounded-xl p-3 text-center">
-                <div class="text-xs text-slate-400 font-medium">Avg Score</div>
-                <div class="text-sm font-bold text-green-600">+18% Progress</div>
+              <div class="bg-slate-50 border border-slate-100 rounded-xl p-2.5 sm:p-3 text-center">
+                <div class="text-[10px] sm:text-xs text-slate-400 font-medium">Avg Score</div>
+                <div class="text-xs sm:text-sm font-bold text-green-600">+18% Progress</div>
               </div>
             </div>
           </div>
@@ -115,102 +318,398 @@
   </section>
 
   <!-- TRUSTED BY SECTION (rendered from enabled features) -->
-  <section class="border-y border-slate-100 bg-white py-10 text-center">
-    <p class="text-xs font-bold tracking-widest text-slate-400 uppercase mb-4">Empowering Modern Educational Workflows</p>
-    <div id="trusted-features" class="flex flex-wrap justify-center items-center gap-12 font-bold text-lg text-slate-300"></div>
+  <section class="border-y border-slate-100 bg-white py-8 sm:py-10 text-center">
+    <p class="text-[10px] sm:text-xs font-bold tracking-widest text-slate-400 uppercase mb-3 sm:mb-4 px-4">Empowering Modern Educational Workflows</p>
+    <div id="trusted-features" class="flex flex-wrap justify-center items-center gap-6 sm:gap-12 font-bold text-sm sm:text-lg text-slate-300 px-4"></div>
   </section>
 
   <!-- FEATURES GRID -->
-  <section id="features" class="max-w-7xl mx-auto px-6 py-24">
-    <div class="text-center max-w-2xl mx-auto mb-16 space-y-3">
-      <h2 class="text-xs font-bold text-blue-600 uppercase tracking-widest">Platform Capabilities</h2>
-      <p class="text-3xl lg:text-4xl font-extrabold text-slate-900 tracking-tight">Why Schools Choose Casuya</p>
-      <p class="text-slate-500">Every single module is optimized for lightning-fast speeds and reliable performance on low-end operational hardware.</p>
+  <section id="features" class="max-w-7xl mx-auto px-4 sm:px-6 py-16 sm:py-24">
+    <div class="text-center max-w-2xl mx-auto mb-10 sm:mb-16 space-y-2 sm:space-y-3 px-2">
+      <h2 class="text-[10px] sm:text-xs font-bold text-blue-600 uppercase tracking-widest">Platform Capabilities</h2>
+      <p class="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-slate-900 tracking-tight">Why Schools Choose Casuya</p>
+      <p class="text-sm sm:text-base text-slate-500">Every single module is optimized for lightning-fast speeds and reliable performance on low-end operational hardware.</p>
     </div>
 
-    <div id="features-grid" class="grid md:grid-cols-2 lg:grid-cols-3 gap-8"></div>
+    <div id="features-grid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8"></div>
   </section>
 
   <!-- SUBJECTS SECTION -->
-  <section id="subjects" class="bg-slate-900 text-white py-24">
-    <div class="max-w-7xl mx-auto px-6">
-      <div class="max-w-2xl mb-12">
-        <h2 class="text-xs font-bold text-blue-400 uppercase tracking-widest mb-2">Curriculum Framework</h2>
-        <h3 class="text-3xl font-extrabold tracking-tight">Explore Subjects Across the Ecosystem</h3>
+  <section id="subjects" class="bg-slate-900 text-white py-16 sm:py-24">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6">
+      <div class="max-w-2xl mb-8 sm:mb-12">
+        <h2 class="text-[10px] sm:text-xs font-bold text-blue-400 uppercase tracking-widest mb-2">Curriculum Framework</h2>
+        <h3 class="text-2xl sm:text-3xl font-extrabold tracking-tight">Explore Subjects Across the Ecosystem</h3>
       </div>
-      <div class="flex flex-wrap gap-4">
-        <span class="bg-slate-800 border border-slate-700/50 px-6 py-3 rounded-xl font-medium hover:border-blue-500 transition-colors cursor-default">🧬 Biology</span>
-        <span class="bg-slate-800 border border-slate-700/50 px-6 py-3 rounded-xl font-medium hover:border-blue-500 transition-colors cursor-default">🧪 Chemistry</span>
-        <span class="bg-slate-800 border border-slate-700/50 px-6 py-3 rounded-xl font-medium hover:border-blue-500 transition-colors cursor-default">⚛️ Physics</span>
-        <span class="bg-slate-800 border border-slate-700/50 px-6 py-3 rounded-xl font-medium hover:border-blue-500 transition-colors cursor-default">📐 Mathematics</span>
-        <span class="bg-slate-800 border border-slate-700/50 px-6 py-3 rounded-xl font-medium hover:border-blue-500 transition-colors cursor-default">🌍 Geography</span>
-        <span class="bg-slate-800 border border-slate-700/50 px-6 py-3 rounded-xl font-medium hover:border-blue-500 transition-colors cursor-default">⏳ History</span>
+      <div class="flex flex-wrap gap-2.5 sm:gap-4">
+        <span class="inline-flex items-center gap-2 bg-slate-800 border border-slate-700/50 px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl text-sm sm:font-medium hover:border-blue-500 transition-colors cursor-default">
+          <svg class="w-4 h-4 sm:w-5 sm:h-5 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12c2-5 4-5 6 0s4 5 6 0 4-5 6 0"/></svg>
+          Physics
+        </span>
+        <span class="inline-flex items-center gap-2 bg-slate-800 border border-slate-700/50 px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl text-sm sm:font-medium hover:border-blue-500 transition-colors cursor-default">
+          <svg class="w-4 h-4 sm:w-5 sm:h-5 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 7 6 15M12 7l6 8M7 16h10"/><circle cx="12" cy="5" r="2"/><circle cx="5" cy="17" r="2"/><circle cx="19" cy="17" r="2"/></svg>
+          Chemistry
+        </span>
+        <span class="inline-flex items-center gap-2 bg-slate-800 border border-slate-700/50 px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl text-sm sm:font-medium hover:border-blue-500 transition-colors cursor-default">
+          <svg class="w-4 h-4 sm:w-5 sm:h-5 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20c0-9 6-15 15-15 0 9-6 15-15 15Z"/><path d="M6 18 17 7"/></svg>
+          Biology
+        </span>
+        <span class="inline-flex items-center gap-2 bg-slate-800 border border-slate-700/50 px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl text-sm sm:font-medium hover:border-blue-500 transition-colors cursor-default">
+          <svg class="w-4 h-4 sm:w-5 sm:h-5 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20 12 4l8 16"/><path d="M8 14h8"/></svg>
+          Mathematics
+        </span>
       </div>
     </div>
   </section>
 
   <!-- AUDIENCES SECTION -->
-  <section id="audiences" class="max-w-7xl mx-auto px-6 py-24">
-      <div class="text-center max-w-2xl mx-auto mb-16 space-y-3">
-        <h2 class="text-xs font-bold text-blue-600 uppercase tracking-widest">Tailored Experiences</h2>
-        <p class="text-3xl font-extrabold text-slate-900 tracking-tight">Built for Everyone in the School</p>
-        <p class="text-sm text-slate-500">Sign-up accounts are available as <strong>Student</strong> or <strong>Teacher</strong> (Admin accounts are provisioned by your school). Parents and schools benefit through the student and teacher experience.</p>
+  <section id="about" class="max-w-7xl mx-auto px-4 sm:px-6 py-16 sm:py-24">
+      <div class="text-center max-w-2xl mx-auto mb-10 sm:mb-16 space-y-2 sm:space-y-3 px-2">
+        <h2 class="text-[10px] sm:text-xs font-bold text-blue-600 uppercase tracking-widest">Tailored Experiences</h2>
+        <p class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Built for Everyone in the School</p>
+        <p class="text-xs sm:text-sm text-slate-500">Sign-up accounts are available as <strong>Student</strong> or <strong>Teacher</strong>. Parents and schools benefit through the student and teacher experience.</p>
       </div>
 
-    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-      <div class="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm">
-        <div class="text-2xl mb-4">👨‍🏫</div>
-        <h4 class="font-bold text-slate-900 mb-3">Teachers</h4>
-        <ul class="text-xs text-slate-500 space-y-2">
-          <li>• Create rich digital content</li>
-          <li>• Coordinate modular cohorts</li>
-          <li>• Evaluate metrics streams</li>
+    <div class="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+      <div class="bg-white border border-slate-100 rounded-2xl p-5 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
+        <div class="w-10 h-10 sm:w-11 sm:h-11 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mb-3 sm:mb-4" aria-hidden="true">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M8 20h8M12 16v4"/><path d="M7 10l3-2 2 1.5 4-3"/></svg>
+        </div>
+        <h4 class="font-bold text-slate-900 mb-2 sm:mb-3 text-sm sm:text-base">Teachers</h4>
+        <ul class="text-xs text-slate-500 space-y-1.5 sm:space-y-2">
+          <li class="flex items-start gap-1.5"><span class="text-blue-500 mt-0.5 shrink-0">•</span>Create rich digital content</li>
+          <li class="flex items-start gap-1.5"><span class="text-blue-500 mt-0.5 shrink-0">•</span>Coordinate modular cohorts</li>
+          <li class="flex items-start gap-1.5"><span class="text-blue-500 mt-0.5 shrink-0">•</span>Evaluate metrics streams</li>
         </ul>
       </div>
-      <div class="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm">
-        <div class="text-2xl mb-4">👩‍🎓</div>
-        <h4 class="font-bold text-slate-900 mb-3">Students</h4>
-        <ul class="text-xs text-slate-500 space-y-2">
-          <li>• Study from any location</li>
-          <li>• Interact with tests offline</li>
-          <li>• Monitor learning records</li>
+      <div class="bg-white border border-slate-100 rounded-2xl p-5 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
+        <div class="w-10 h-10 sm:w-11 sm:h-11 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mb-3 sm:mb-4" aria-hidden="true">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6c-2-1.5-5-2-8-1.5v13c3-.5 6 0 8 1.5 2-1.5 5-2 8-1.5v-13c-3-.5-6 0-8 1.5Z"/><path d="M12 6v13"/></svg>
+        </div>
+        <h4 class="font-bold text-slate-900 mb-2 sm:mb-3 text-sm sm:text-base">Students</h4>
+        <ul class="text-xs text-slate-500 space-y-1.5 sm:space-y-2">
+          <li class="flex items-start gap-1.5"><span class="text-blue-500 mt-0.5 shrink-0">•</span>Study from any location</li>
+          <li class="flex items-start gap-1.5"><span class="text-blue-500 mt-0.5 shrink-0">•</span>Interact with tests offline</li>
+          <li class="flex items-start gap-1.5"><span class="text-blue-500 mt-0.5 shrink-0">•</span>Monitor learning records</li>
         </ul>
       </div>
-      <div class="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm">
-        <div class="text-2xl mb-4">👨‍👩‍👧</div>
-        <h4 class="font-bold text-slate-900 mb-3">Parents</h4>
-        <ul class="text-xs text-slate-500 space-y-2">
-          <li>• Observe progress trackers</li>
-          <li>• View localized updates</li>
+      <div class="bg-white border border-slate-100 rounded-2xl p-5 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
+        <div class="w-10 h-10 sm:w-11 sm:h-11 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mb-3 sm:mb-4" aria-hidden="true">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11 12 4l8 7"/><path d="M6 10v10h12V10"/><path d="M12 14c-1.2-1.5-3.5-1-3.5 1 0 1.6 2 2.8 3.5 4 1.5-1.2 3.5-2.4 3.5-4 0-2-2.3-2.5-3.5-1Z"/></svg>
+        </div>
+        <h4 class="font-bold text-slate-900 mb-2 sm:mb-3 text-sm sm:text-base">Parents</h4>
+        <ul class="text-xs text-slate-500 space-y-1.5 sm:space-y-2">
+          <li class="flex items-start gap-1.5"><span class="text-blue-500 mt-0.5 shrink-0">•</span>Observe progress trackers</li>
+          <li class="flex items-start gap-1.5"><span class="text-blue-500 mt-0.5 shrink-0">•</span>View localized updates</li>
         </ul>
       </div>
-      <div class="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm">
-        <div class="text-2xl mb-4">🏫</div>
-        <h4 class="font-bold text-slate-900 mb-3">Schools</h4>
-        <ul class="text-xs text-slate-500 space-y-2">
-          <li>• Optimize staff delegation</li>
-          <li>• Export complex analytical datasets</li>
+      <div class="bg-white border border-slate-100 rounded-2xl p-5 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
+        <div class="w-10 h-10 sm:w-11 sm:h-11 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mb-3 sm:mb-4" aria-hidden="true">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V9l8-5 8 5v12"/><path d="M9 21v-6h6v6"/><path d="M12 4V2M12 2h3l-3 2"/></svg>
+        </div>
+        <h4 class="font-bold text-slate-900 mb-2 sm:mb-3 text-sm sm:text-base">Schools</h4>
+        <ul class="text-xs text-slate-500 space-y-1.5 sm:space-y-2">
+          <li class="flex items-start gap-1.5"><span class="text-blue-500 mt-0.5 shrink-0">•</span>Optimize staff delegation</li>
+          <li class="flex items-start gap-1.5"><span class="text-blue-500 mt-0.5 shrink-0">•</span>Export complex analytical datasets</li>
         </ul>
       </div>
     </div>
   </section>
 
   <!-- CALL TO ACTION -->
-  <section class="max-w-7xl mx-auto px-6 mb-24">
-    <div class="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-3xl p-12 text-center text-white space-y-6 shadow-xl shadow-blue-100 relative overflow-hidden">
-      <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-white/10 to-transparent pointer-events-none"></div>
-      <h3 class="text-3xl lg:text-4xl font-extrabold tracking-tight">Ready to Transform Education?</h3>
-      <p class="text-blue-100 max-w-xl mx-auto text-sm lg:text-base">Join thousands of modern instructors, students, and system administrators configuring smarter school networks today.</p>
-      <div class="flex justify-center gap-4 pt-2">
-        <a href="/register.html" class="bg-white text-blue-700 font-bold px-6 py-3.5 rounded-xl transition-all hover:bg-blue-50 shadow-md">Create Account</a>
-        <a href="/login.html" class="bg-blue-700/50 text-white border border-blue-400/30 font-bold px-6 py-3.5 rounded-xl transition-all hover:bg-blue-700">Login</a>
+  <section class="max-w-7xl mx-auto px-4 sm:px-6 mb-16 sm:mb-24">
+    <div class="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-blue-600 via-blue-600 to-indigo-700 px-6 py-12 sm:px-16 sm:py-20 text-center text-white shadow-2xl shadow-blue-200/50">
+      <!-- Decorative accents -->
+      <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-white/15 to-transparent pointer-events-none" aria-hidden="true"></div>
+      <div class="absolute -top-16 -left-16 w-64 h-64 bg-indigo-400/30 rounded-full blur-3xl pointer-events-none" aria-hidden="true"></div>
+      <div class="absolute -bottom-20 -right-10 w-72 h-72 bg-blue-300/20 rounded-full blur-3xl pointer-events-none" aria-hidden="true"></div>
+
+      <div class="relative max-w-2xl mx-auto space-y-5 sm:space-y-6">
+        <h3 class="text-2xl sm:text-3xl lg:text-5xl font-extrabold tracking-tight leading-tight">Ready to Transform Education?</h3>
+        <p class="text-blue-100 max-w-xl mx-auto text-sm sm:text-base lg:text-lg leading-relaxed">Join thousands of modern instructors, students, and system administrators configuring smarter school networks today.</p>
+        <div class="flex flex-col sm:flex-row flex-wrap justify-center gap-3 sm:gap-4 pt-4">
+          <a href="/register.html" class="inline-flex items-center justify-center gap-2 bg-white text-blue-700 font-bold px-6 sm:px-8 py-3.5 sm:py-4 rounded-xl transition-all hover:bg-blue-50 hover:-translate-y-0.5 shadow-lg shadow-blue-900/20 min-h-[48px]">
+            Create Account
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
+          </a>
+          <a href="/login.html" class="inline-flex items-center justify-center gap-2 bg-white/10 text-white border border-white/30 font-bold px-6 sm:px-8 py-3.5 sm:py-4 rounded-xl transition-all hover:bg-white/20 hover:-translate-y-0.5 backdrop-blur-sm min-h-[48px]">
+            Login
+          </a>
+        </div>
       </div>
     </div>
   </section>
 
+  <!-- ═══════════════════ DEMO MODAL ═══════════════════ -->
+  <div id="demo-overlay" role="dialog" aria-modal="true" aria-label="Platform demo">
+    <div id="demo-modal">
+      <!-- Close button -->
+      <button class="demo-close" onclick="closeDemo()" aria-label="Close demo">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+
+      <!-- Step label badge -->
+      <div id="demo-label" class="demo-label"></div>
+
+      <!-- Phone frame -->
+      <div class="demo-phone" id="demo-phone">
+
+        <!-- ═══ SCREEN 1: LOGIN ═══ -->
+        <div class="demo-screen active" id="ds-login">
+          <div class="demo-nav">
+            <div class="demo-nav-logo">C</div>
+            <span style="font-size:13px;font-weight:700;color:#0f172a">Casuya</span>
+          </div>
+          <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:20px">
+            <div style="width:100%;max-width:300px">
+              <div style="text-align:center;margin-bottom:24px">
+                <div style="font-size:22px;font-weight:800;color:#0f172a;margin-bottom:4px">Welcome Back</div>
+                <div style="font-size:12px;color:#94a3b8">Sign in to continue your learning journey</div>
+              </div>
+              <div style="margin-bottom:14px">
+                <label style="font-size:11px;font-weight:600;color:#334155;display:block;margin-bottom:4px">Email Address</label>
+                <div style="position:relative">
+                  <div style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#94a3b8">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V14a2 2 0 10-5 0v1.5"/></svg>
+                  </div>
+                  <div id="demo-email-input" style="width:100%;padding:10px 12px 10px 34px;border:1px solid #e2e8f0;border-radius:10px;font-size:12px;color:#334155;background:#fff;min-height:40px;display:flex;align-items:center">
+                    <span id="demo-email-text"></span><span class="demo-cursor" id="demo-email-cursor" style="display:none"></span>
+                  </div>
+                </div>
+              </div>
+              <div style="margin-bottom:14px">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                  <label style="font-size:11px;font-weight:600;color:#334155">Password</label>
+                  <a id="demo-forgot-link" style="font-size:11px;color:#2563eb;cursor:pointer;font-weight:500">Forgot password?</a>
+                </div>
+                <div style="position:relative">
+                  <div style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#94a3b8">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-7a2 2 0 00-2-2H6a2 2 0 00-2 2v7a2 2 0 002 2zm10-10V7a4 4 0 10-8 0v4h8z"/></svg>
+                  </div>
+                  <div id="demo-pass-input" style="width:100%;padding:10px 12px 10px 34px;border:1px solid #e2e8f0;border-radius:10px;font-size:12px;color:#334155;background:#fff;min-height:40px;display:flex;align-items:center">
+                    <span id="demo-pass-text"></span><span class="demo-cursor" id="demo-pass-cursor" style="display:none"></span>
+                  </div>
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:18px">
+                <div id="demo-remember-box" style="width:14px;height:14px;border:1.5px solid #cbd5e1;border-radius:3px;display:flex;align-items:center;justify-content:center;transition:all 0.2s"></div>
+                <span style="font-size:11px;color:#64748b">Remember me</span>
+              </div>
+              <div id="demo-signin-btn" style="width:100%;padding:12px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:600;text-align:center;cursor:pointer;transition:all 0.2s">
+                Sign In
+              </div>
+              <div style="text-align:center;margin-top:16px">
+                <span style="font-size:11px;color:#64748b">Don't have an account? </span>
+                <a id="demo-register-link" style="font-size:11px;color:#2563eb;font-weight:600;cursor:pointer">Sign up for free</a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ SCREEN 2: FORGOT PASSWORD ═══ -->
+        <div class="demo-screen right" id="ds-forgot">
+          <div class="demo-nav">
+            <div class="demo-nav-logo">C</div>
+            <span style="font-size:13px;font-weight:700;color:#0f172a">Casuya</span>
+          </div>
+          <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:20px">
+            <div style="width:100%;max-width:300px">
+              <div style="text-align:center;margin-bottom:24px">
+                <div style="width:48px;height:48px;background:#eff6ff;border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 12px">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><path d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+                </div>
+                <div style="font-size:22px;font-weight:800;color:#0f172a;margin-bottom:4px">Forgot Password?</div>
+                <div style="font-size:12px;color:#94a3b8">Enter your email and we'll send you a reset link.</div>
+              </div>
+              <div style="margin-bottom:14px">
+                <label style="font-size:11px;font-weight:600;color:#334155;display:block;margin-bottom:4px">Email Address</label>
+                <div style="position:relative">
+                  <div style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#94a3b8">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"/></svg>
+                  </div>
+                  <div id="demo-forgot-email-input" style="width:100%;padding:10px 12px 10px 34px;border:1px solid #e2e8f0;border-radius:10px;font-size:12px;color:#334155;background:#fff;min-height:40px;display:flex;align-items:center">
+                    <span id="demo-forgot-email-text"></span><span class="demo-cursor" id="demo-forgot-email-cursor" style="display:none"></span>
+                  </div>
+                </div>
+              </div>
+              <div id="demo-send-btn" style="width:100%;padding:12px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:600;text-align:center;cursor:pointer">
+                Send Reset Link
+              </div>
+              <!-- Success state (hidden initially) -->
+              <div id="demo-forgot-success" style="display:none;text-align:center;margin-top:20px">
+                <div class="demo-check">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round"><path d="M5 13l4 4L19 7"/></svg>
+                </div>
+                <div style="font-size:14px;font-weight:700;color:#0f172a;margin-top:12px">Link Sent!</div>
+                <div style="font-size:11px;color:#94a3b8;margin-top:4px">Check your email for the reset link.</div>
+              </div>
+              <div style="text-align:center;margin-top:16px">
+                <span style="font-size:11px;color:#64748b">Remember your password? </span>
+                <a id="demo-back-to-login" style="font-size:11px;color:#2563eb;font-weight:600;cursor:pointer">Sign in</a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ SCREEN 3: REGISTER ═══ -->
+        <div class="demo-screen right" id="ds-register">
+          <div class="demo-nav">
+            <div class="demo-nav-logo">C</div>
+            <span style="font-size:13px;font-weight:700;color:#0f172a">Casuya</span>
+          </div>
+          <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto">
+            <div style="width:100%;max-width:300px">
+              <div style="text-align:center;margin-bottom:18px">
+                <div style="font-size:20px;font-weight:800;color:#0f172a;margin-bottom:4px">Create your account</div>
+                <div style="font-size:11px;color:#94a3b8">Join Casuya and start learning today.</div>
+              </div>
+              <div style="margin-bottom:12px">
+                <label style="font-size:11px;font-weight:600;color:#334155;display:block;margin-bottom:4px">Full Name</label>
+                <div id="demo-reg-name" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:10px;font-size:12px;color:#334155;background:#fff;min-height:38px;display:flex;align-items:center">
+                  <span id="demo-reg-name-text"></span><span class="demo-cursor" id="demo-reg-name-cursor" style="display:none"></span>
+                </div>
+              </div>
+              <div style="margin-bottom:12px">
+                <label style="font-size:11px;font-weight:600;color:#334155;display:block;margin-bottom:4px">Email Address</label>
+                <div id="demo-reg-email" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:10px;font-size:12px;color:#334155;background:#fff;min-height:38px;display:flex;align-items:center">
+                  <span id="demo-reg-email-text"></span><span class="demo-cursor" id="demo-reg-email-cursor" style="display:none"></span>
+                </div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+                <div>
+                  <label style="font-size:11px;font-weight:600;color:#334155;display:block;margin-bottom:4px">Role</label>
+                  <div style="padding:10px 12px;border:1px solid #e2e8f0;border-radius:10px;font-size:12px;color:#334155;background:#fff;display:flex;align-items:center">
+                    <span id="demo-reg-role">Student</span>
+                  </div>
+                </div>
+                <div>
+                  <label style="font-size:11px;font-weight:600;color:#334155;display:block;margin-bottom:4px">Phone</label>
+                  <div style="padding:10px 12px;border:1px solid #e2e8f0;border-radius:10px;font-size:12px;color:#94a3b8;background:#fff;display:flex;align-items:center">
+                    +255...
+                  </div>
+                </div>
+              </div>
+              <div style="margin-bottom:12px">
+                <label style="font-size:11px;font-weight:600;color:#334155;display:block;margin-bottom:4px">Password</label>
+                <div id="demo-reg-pass" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:10px;font-size:12px;color:#334155;background:#fff;min-height:38px;display:flex;align-items:center">
+                  <span id="demo-reg-pass-text"></span><span class="demo-cursor" id="demo-reg-pass-cursor" style="display:none"></span>
+                </div>
+              </div>
+              <div style="margin-bottom:16px">
+                <label style="font-size:11px;font-weight:600;color:#334155;display:block;margin-bottom:4px">Confirm Password</label>
+                <div id="demo-reg-confirm" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:10px;font-size:12px;color:#334155;background:#fff;min-height:38px;display:flex;align-items:center">
+                  <span id="demo-reg-confirm-text"></span><span class="demo-cursor" id="demo-reg-confirm-cursor" style="display:none"></span>
+                </div>
+              </div>
+              <div id="demo-register-btn" style="width:100%;padding:12px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:600;text-align:center;cursor:pointer">
+                Create Account
+              </div>
+              <div style="text-align:center;margin-top:14px">
+                <span style="font-size:11px;color:#64748b">Already have an account? </span>
+                <a id="demo-back-login2" style="font-size:11px;color:#2563eb;font-weight:600;cursor:pointer">Sign in</a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ SCREEN 4: DASHBOARD (POST-LOGIN) ═══ -->
+        <div class="demo-screen right" id="ds-dashboard">
+          <div class="demo-nav" style="justify-content:space-between">
+            <div style="display:flex;align-items:center;gap:8px">
+              <div class="demo-nav-logo">C</div>
+              <span style="font-size:13px;font-weight:700;color:#0f172a">Casuya</span>
+            </div>
+            <div style="width:28px;height:28px;background:#2563eb;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700">A</div>
+          </div>
+          <div style="flex:1;padding:16px;overflow-y:auto;background:#f8fafc">
+            <!-- Welcome banner -->
+            <div class="demo-card-up" style="background:linear-gradient(135deg,#2563eb,#7c3aed);border-radius:14px;padding:16px;color:#fff;margin-bottom:14px">
+              <div style="font-size:10px;font-weight:600;opacity:0.7;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">Welcome back</div>
+              <div style="font-size:16px;font-weight:800;margin-bottom:2px">Amina Husen</div>
+              <div style="font-size:11px;opacity:0.85">Ready to continue your learning journey?</div>
+            </div>
+            <!-- Stats row -->
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px">
+              <div class="demo-card-up" style="background:#fff;border:1px solid #f1f5f9;border-radius:12px;padding:12px;text-align:center;animation-delay:0.1s">
+                <div style="font-size:18px;font-weight:800;color:#2563eb">12</div>
+                <div style="font-size:9px;color:#94a3b8;font-weight:600">Lessons</div>
+              </div>
+              <div class="demo-card-up" style="background:#fff;border:1px solid #f1f5f9;border-radius:12px;padding:12px;text-align:center;animation-delay:0.2s">
+                <div style="font-size:18px;font-weight:800;color:#16a34a">87%</div>
+                <div style="font-size:9px;color:#94a3b8;font-weight:600">Avg Score</div>
+              </div>
+              <div class="demo-card-up" style="background:#fff;border:1px solid #f1f5f9;border-radius:12px;padding:12px;text-align:center;animation-delay:0.3s">
+                <div style="font-size:18px;font-weight:800;color:#ea580c">5</div>
+                <div style="font-size:9px;color:#94a3b8;font-weight:600">Streak</div>
+              </div>
+            </div>
+            <!-- Today's lesson -->
+            <div class="demo-card-up" style="background:#fff;border:1px solid #f1f5f9;border-radius:14px;padding:14px;margin-bottom:10px;animation-delay:0.4s">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+                <div style="width:36px;height:36px;background:#eff6ff;border-radius:10px;display:flex;align-items:center;justify-content:center">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><path d="M12 7 6 15M12 7l6 8M7 16h10"/><circle cx="12" cy="5" r="2"/><circle cx="5" cy="17" r="2"/><circle cx="19" cy="17" r="2"/></svg>
+                </div>
+                <div>
+                  <div style="font-size:12px;font-weight:700;color:#0f172a">Chemistry - Organic Compounds</div>
+                  <div style="font-size:10px;color:#94a3b8">Chapter 3 • 45 min</div>
+                </div>
+              </div>
+              <div style="height:4px;background:#f1f5f9;border-radius:4px;overflow:hidden">
+                <div style="height:100%;width:65%;background:linear-gradient(90deg,#2563eb,#7c3aed);border-radius:4px"></div>
+              </div>
+              <div style="font-size:9px;color:#94a3b8;margin-top:4px;font-weight:600">65% Complete</div>
+            </div>
+            <!-- Subject cards -->
+            <div class="demo-card-up" style="background:#fff;border:1px solid #f1f5f9;border-radius:14px;padding:14px;animation-delay:0.5s">
+              <div style="font-size:12px;font-weight:700;color:#0f172a;margin-bottom:10px">My Subjects</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <div style="flex:1;min-width:80px;background:#eff6ff;border-radius:10px;padding:10px;text-align:center">
+                  <div style="font-size:16px">🧪</div>
+                  <div style="font-size:10px;font-weight:600;color:#2563eb;margin-top:4px">Chemistry</div>
+                </div>
+                <div style="flex:1;min-width:80px;background:#f0fdf4;border-radius:10px;padding:10px;text-align:center">
+                  <div style="font-size:16px">🧬</div>
+                  <div style="font-size:10px;font-weight:600;color:#16a34a;margin-top:4px">Biology</div>
+                </div>
+                <div style="flex:1;min-width:80px;background:#fef3c7;border-radius:10px;padding:10px;text-align:center">
+                  <div style="font-size:16px">📐</div>
+                  <div style="font-size:10px;font-weight:600;color:#d97706;margin-top:4px">Math</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /demo-phone -->
+
+      <!-- Controls -->
+      <div style="padding:14px 20px;background:#fff;border-top:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between">
+        <!-- Step dots -->
+        <div id="demo-steps" style="display:flex;gap:6px;align-items:center">
+          <div class="demo-step-dot active" data-step="0"></div>
+          <div class="demo-step-dot" data-step="1"></div>
+          <div class="demo-step-dot" data-step="2"></div>
+          <div class="demo-step-dot" data-step="3"></div>
+        </div>
+        <!-- Play/Pause + Next -->
+        <div style="display:flex;align-items:center;gap:10px">
+          <button id="demo-play-btn" onclick="toggleDemoPlay()" style="width:36px;height:36px;border-radius:50%;background:#2563eb;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.2s" aria-label="Play/Pause">
+            <svg id="demo-play-icon" width="16" height="16" viewBox="0 0 24 24" fill="#fff"><polygon points="5,3 19,12 5,21"/></svg>
+            <svg id="demo-pause-icon" width="16" height="16" viewBox="0 0 24 24" fill="#fff" style="display:none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+          </button>
+          <button id="demo-next-btn" onclick="demoNextStep()" style="width:36px;height:36px;border-radius:50%;background:#f1f5f9;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.2s" aria-label="Next step">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="2.5" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  </main>
+
   <!-- FOOTER -->
-  <footer class="bg-white border-t border-slate-100 text-slate-500 text-xs py-12">
-    <div class="max-w-7xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-8">
+  <footer class="bg-white border-t border-slate-100 text-slate-500 text-xs py-10 sm:py-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
       <div class="space-y-3">
         <div class="font-bold text-slate-900 text-sm">Platform</div>
         <div><a href="#features" class="hover:text-blue-600">Features</a></div>
@@ -221,6 +720,7 @@
         <div class="font-bold text-slate-900 text-sm">Support</div>
         <div><a href="/help.html" class="hover:text-blue-600">Help Center</a></div>
         <div><a href="/contact.html" class="hover:text-blue-600">Contact Us</a></div>
+        <div><a href="https://wa.me/255748386745" target="_blank" rel="noopener" class="hover:text-blue-600">WhatsApp</a></div>
       </div>
       <div class="space-y-3">
         <div class="font-bold text-slate-900 text-sm">Legal</div>
@@ -235,6 +735,13 @@
     </div>
   </footer>
 
+  <!-- WhatsApp floating contact button — replace the number below with your real one -->
+  <a href="https://wa.me/255748386745" target="_blank" rel="noopener" class="fixed bottom-5 right-5 sm:bottom-6 sm:right-6 z-40 w-12 h-12 sm:w-14 sm:h-14 bg-green-500 hover:bg-green-600 rounded-full shadow-xl shadow-green-200/60 flex items-center justify-center transition-all hover:-translate-y-0.5" aria-label="Chat with us on WhatsApp">
+    <svg class="w-6 h-6 sm:w-7 sm:h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8-1.5 0-2.91-.32-4.15-.9L3 20l1.05-3.65C3.39 15.14 3 13.62 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+    </svg>
+  </a>
+
   <script type="module">
     import { FEATURES, PERSONAS, enabledFeatures } from "/assets/js/site-features.js";
 
@@ -245,7 +752,7 @@
       heroEl.innerHTML = heroItems
         .map(
           (f) =>
-            `<div class="flex items-center gap-2"><span class="text-blue-600">✓</span>${f.title}</div>`
+            `<div class="flex items-center gap-2 text-xs sm:text-sm"><span class="w-4 h-4 shrink-0 text-blue-600" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></span>${f.title}</div>`
         )
         .join("");
       if (!heroItems.length) heroEl.remove();
@@ -258,7 +765,7 @@
       trustedEl.innerHTML = trusted
         .map(
           (f, i) =>
-            `<span class="hover:text-slate-400 transition-colors cursor-default">${f.title}</span>${
+            `<span class="hover:text-slate-400 transition-colors cursor-default text-xs sm:text-sm lg:text-lg">${f.title}</span>${
               i < trusted.length - 1
                 ? '<span class="text-blue-500">•</span>'
                 : ""
@@ -275,14 +782,368 @@
       gridEl.innerHTML = cards
         .map(
           (f) =>
-            `<div class="bg-white border border-slate-100 rounded-2xl p-8 hover:shadow-xl hover:shadow-slate-100 transition-all group">
-              <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center font-bold text-xl mb-6 group-hover:bg-blue-600 group-hover:text-white transition-all">${f.icon}</div>
-              <h3 class="text-lg font-bold text-slate-900 mb-2">${f.title}</h3>
-              <p class="text-sm text-slate-500 leading-relaxed">${f.blurb}</p>
+            `<div class="bg-white border border-slate-100 rounded-2xl p-5 sm:p-6 lg:p-8 hover:shadow-xl hover:shadow-slate-100 transition-all group">
+              <div class="w-10 h-10 sm:w-11 sm:h-11 lg:w-12 lg:h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center font-bold text-lg sm:text-xl mb-4 sm:mb-5 lg:mb-6 group-hover:bg-blue-600 group-hover:text-white transition-all">${f.icon}</div>
+              <h3 class="text-base sm:text-lg font-bold text-slate-900 mb-1.5 sm:mb-2">${f.title}</h3>
+              <p class="text-xs sm:text-sm text-slate-500 leading-relaxed">${f.blurb}</p>
             </div>`
         )
         .join("");
     }
+  </script>
+
+  <!-- Mobile menu + language toggle (no external dependencies) -->
+  <script>
+    (function () {
+      // Mobile menu
+      var menuBtn = document.getElementById('mobile-menu-btn');
+      var mobileMenu = document.getElementById('mobile-menu');
+      var iconOpen = document.getElementById('menu-icon-open');
+      var iconClose = document.getElementById('menu-icon-close');
+
+      function closeMenu() {
+        mobileMenu.classList.add('hidden');
+        iconOpen.classList.remove('hidden');
+        iconClose.classList.add('hidden');
+        menuBtn.setAttribute('aria-expanded', 'false');
+      }
+
+      if (menuBtn && mobileMenu) {
+        menuBtn.addEventListener('click', function () {
+          var isOpen = !mobileMenu.classList.contains('hidden');
+          if (isOpen) {
+            closeMenu();
+          } else {
+            mobileMenu.classList.remove('hidden');
+            iconOpen.classList.add('hidden');
+            iconClose.classList.remove('hidden');
+            menuBtn.setAttribute('aria-expanded', 'true');
+          }
+        });
+        mobileMenu.querySelectorAll('a').forEach(function (link) {
+          link.addEventListener('click', closeMenu);
+        });
+      }
+
+      // Lightweight EN / SW toggle for top-of-page copy.
+      // NOTE: this covers nav + hero + primary CTAs only. Wiring the rest of
+      // the page (feature cards, subjects, personas) should go through
+      // site-features.js so copy stays in one place.
+      var translations = {
+        en: {
+          navFeatures: 'Features', navSubjects: 'Subjects', navUsers: 'Users', navAbout: 'About',
+          heroTitle: 'Learn Smarter.<br>Teach Better.<br><span class="text-blue-600">Build the Future.</span>',
+          heroSubtitle: 'An intelligent educational ecosystem connecting teachers, students, and schools with modern digital tools built for any infrastructure.',
+          ctaStart: 'Start Learning',
+          ctaDemo: 'Watch Demo',
+          login: 'Login',
+          getStarted: 'Get Started'
+        },
+        sw: {
+          navFeatures: 'Vipengele', navSubjects: 'Masomo', navUsers: 'Watumiaji', navAbout: 'Kuhusu',
+          heroTitle: 'Jifunze kwa Akili.<br>Fundisha kwa Ubora.<br><span class="text-blue-600">Jenga Mustakabali.</span>',
+          heroSubtitle: 'Mfumo wa kielimu wenye akili unaounganisha walimu, wanafunzi na shule kupitia zana za kisasa za kidijitali zinazofanya kazi popote.',
+          ctaStart: 'Anza Kujifunza',
+          ctaDemo: 'Tazama Onyesho',
+          login: 'Ingia',
+          getStarted: 'Anza Sasa'
+        }
+      };
+
+      var langToggle = document.getElementById('lang-toggle');
+      var langLabel = document.getElementById('lang-toggle-label');
+
+      function applyLang(lang) {
+        var dict = translations[lang];
+        if (!dict) return;
+        document.querySelectorAll('[data-i18n]').forEach(function (el) {
+          var key = el.getAttribute('data-i18n');
+          if (dict[key]) el.textContent = dict[key];
+        });
+        document.querySelectorAll('[data-i18n-html]').forEach(function (el) {
+          var key = el.getAttribute('data-i18n-html');
+          if (dict[key]) el.innerHTML = dict[key];
+        });
+        if (langLabel) langLabel.textContent = lang === 'en' ? 'SW' : 'EN';
+        document.documentElement.setAttribute('lang', lang);
+        try { localStorage.setItem('casuya-lang', lang); } catch (e) {}
+      }
+
+      var savedLang = 'en';
+      try { savedLang = localStorage.getItem('casuya-lang') || 'en'; } catch (e) {}
+      applyLang(savedLang);
+
+      if (langToggle) {
+        langToggle.addEventListener('click', function () {
+          var current = document.documentElement.getAttribute('lang') === 'sw' ? 'sw' : 'en';
+          applyLang(current === 'en' ? 'sw' : 'en');
+        });
+      }
+    })();
+  </script>
+
+  <!-- ═══════════════════ DEMO SCRIPT ═══════════════════ -->
+  <script>
+  (function () {
+    var playing = false;
+    var currentStep = 0;
+    var totalSteps = 4;
+    var timer = null;
+    var typingTimer = null;
+    var screens = ['ds-login', 'ds-forgot', 'ds-register', 'ds-dashboard'];
+    var labels = ['Sign In', 'Forgot Password', 'Create Account', 'Dashboard'];
+    var overlay = document.getElementById('demo-overlay');
+    var dots = document.querySelectorAll('#demo-steps .demo-step-dot');
+    var playIcon = document.getElementById('demo-play-icon');
+    var pauseIcon = document.getElementById('demo-pause-icon');
+    var labelEl = document.getElementById('demo-label');
+
+    // ── Show / hide label badge ────────────────────────────────
+    function showLabel(text) {
+      labelEl.textContent = text;
+      labelEl.classList.add('show');
+      setTimeout(function () { labelEl.classList.remove('show'); }, 1800);
+    }
+
+    // ── Navigate to a screen ──────────────────────────────────
+    function goToScreen(index) {
+      screens.forEach(function (id, i) {
+        var el = document.getElementById(id);
+        el.classList.remove('active', 'left', 'right');
+        if (i < index) el.classList.add('left');
+        else if (i > index) el.classList.add('right');
+        else el.classList.add('active');
+      });
+      dots.forEach(function (d, i) {
+        d.classList.toggle('active', i === index);
+      });
+    }
+
+    // ── Typing animation helper ───────────────────────────────
+    function typeText(elId, cursorId, text, speed, cb) {
+      var el = document.getElementById(elId);
+      var cursor = document.getElementById(cursorId);
+      el.textContent = '';
+      cursor.style.display = 'inline-block';
+      var i = 0;
+      clearInterval(typingTimer);
+      typingTimer = setInterval(function () {
+        if (i < text.length) {
+          el.textContent += text[i];
+          i++;
+        } else {
+          clearInterval(typingTimer);
+          setTimeout(function () { cursor.style.display = 'none'; }, 600);
+          if (cb) cb();
+        }
+      }, speed);
+    }
+
+    // ── Step animations ───────────────────────────────────────
+    function runStep0(cb) {
+      // Login screen: type email, password, check remember, click sign in
+      showLabel('Step 1 — Sign In');
+      goToScreen(0);
+      setTimeout(function () {
+        typeText('demo-email-text', 'demo-email-cursor', 'amina@school.tz', 60, function () {
+          setTimeout(function () {
+            typeText('demo-pass-text', 'demo-pass-cursor', '••••••••', 50, function () {
+              setTimeout(function () {
+                var box = document.getElementById('demo-remember-box');
+                box.style.background = '#2563eb';
+                box.style.borderColor = '#2563eb';
+                box.innerHTML = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"><path d="M5 13l4 4L19 7"/></svg>';
+                setTimeout(function () {
+                  var btn = document.getElementById('demo-signin-btn');
+                  btn.classList.add('demo-press');
+                  btn.style.background = '#1d4ed8';
+                  setTimeout(function () { btn.classList.remove('demo-press'); btn.style.background = '#2563eb'; }, 400);
+                  if (cb) setTimeout(cb, 500);
+                }, 500);
+              }, 400);
+            });
+          }, 300);
+        });
+      }, 600);
+    }
+
+    function runStep1(cb) {
+      // Forgot password: navigate from login, type email, send
+      showLabel('Step 2 — Forgot Password');
+      goToScreen(1);
+      setTimeout(function () {
+        typeText('demo-forgot-email-text', 'demo-forgot-email-cursor', 'amina@school.tz', 60, function () {
+          setTimeout(function () {
+            var btn = document.getElementById('demo-send-btn');
+            btn.classList.add('demo-press');
+            btn.style.background = '#1d4ed8';
+            setTimeout(function () {
+              btn.classList.remove('demo-press');
+              btn.style.background = '#2563eb';
+              btn.textContent = 'Sending...';
+              setTimeout(function () {
+                btn.style.display = 'none';
+                document.getElementById('demo-forgot-success').style.display = 'block';
+                if (cb) setTimeout(cb, 1200);
+              }, 800);
+            }, 400);
+          }, 400);
+        });
+      }, 600);
+    }
+
+    function runStep2(cb) {
+      // Register: navigate, fill form fields with typing
+      showLabel('Step 3 — Register');
+      goToScreen(2);
+      setTimeout(function () {
+        typeText('demo-reg-name-text', 'demo-reg-name-cursor', 'Amina Husen', 60, function () {
+          setTimeout(function () {
+            typeText('demo-reg-email-text', 'demo-reg-email-cursor', 'amina@school.tz', 50, function () {
+              setTimeout(function () {
+                typeText('demo-reg-pass-text', 'demo-reg-pass-cursor', '••••••••', 50, function () {
+                  setTimeout(function () {
+                    typeText('demo-reg-confirm-text', 'demo-reg-confirm-cursor', '••••••••', 50, function () {
+                      setTimeout(function () {
+                        var btn = document.getElementById('demo-register-btn');
+                        btn.classList.add('demo-press');
+                        btn.style.background = '#1d4ed8';
+                        setTimeout(function () { btn.classList.remove('demo-press'); btn.style.background = '#2563eb'; }, 400);
+                        if (cb) setTimeout(cb, 600);
+                      }, 400);
+                    });
+                  }, 200);
+                });
+              }, 200);
+            });
+          }, 200);
+        });
+      }, 600);
+    }
+
+    function runStep3(cb) {
+      // Dashboard: just slide in and show cards
+      showLabel('Step 4 — Dashboard');
+      goToScreen(3);
+      if (cb) setTimeout(cb, 1500);
+    }
+
+    var stepRunners = [runStep0, runStep1, runStep2, runStep3];
+
+    function runCurrentStep() {
+      stepRunners[currentStep](function () {
+        if (playing && currentStep < totalSteps - 1) {
+          timer = setTimeout(function () {
+            currentStep++;
+            runCurrentStep();
+          }, 1800);
+        } else if (playing && currentStep === totalSteps - 1) {
+          // Loop back to start
+          timer = setTimeout(function () {
+            currentStep = 0;
+            resetScreens();
+            runCurrentStep();
+          }, 2500);
+        }
+      });
+    }
+
+    function resetScreens() {
+      // Reset forgot screen
+      var fb = document.getElementById('demo-send-btn');
+      fb.style.display = '';
+      fb.textContent = 'Send Reset Link';
+      fb.style.background = '#2563eb';
+      document.getElementById('demo-forgot-success').style.display = 'none';
+      document.getElementById('demo-forgot-email-text').textContent = '';
+      // Reset login
+      document.getElementById('demo-email-text').textContent = '';
+      document.getElementById('demo-pass-text').textContent = '';
+      var rbox = document.getElementById('demo-remember-box');
+      rbox.style.background = '';
+      rbox.style.borderColor = '';
+      rbox.innerHTML = '';
+      // Reset register
+      document.getElementById('demo-reg-name-text').textContent = '';
+      document.getElementById('demo-reg-email-text').textContent = '';
+      document.getElementById('demo-reg-pass-text').textContent = '';
+      document.getElementById('demo-reg-confirm-text').textContent = '';
+      // Hide cursors
+      document.querySelectorAll('.demo-cursor').forEach(function (c) { c.style.display = 'none'; });
+    }
+
+    // ── Public API ────────────────────────────────────────────
+    window.openDemo = function () {
+      overlay.classList.add('open');
+      document.body.style.overflow = 'hidden';
+      currentStep = 0;
+      resetScreens();
+      goToScreen(0);
+      // Auto-start after a short delay
+      setTimeout(function () {
+        playing = true;
+        playIcon.style.display = 'none';
+        pauseIcon.style.display = '';
+        runCurrentStep();
+      }, 800);
+    };
+
+    window.closeDemo = function () {
+      overlay.classList.remove('open');
+      document.body.style.overflow = '';
+      playing = false;
+      clearTimeout(timer);
+      clearInterval(typingTimer);
+      playIcon.style.display = '';
+      pauseIcon.style.display = 'none';
+    };
+
+    window.toggleDemoPlay = function () {
+      playing = !playing;
+      if (playing) {
+        playIcon.style.display = 'none';
+        pauseIcon.style.display = '';
+        runCurrentStep();
+      } else {
+        playIcon.style.display = '';
+        pauseIcon.style.display = 'none';
+        clearTimeout(timer);
+        clearInterval(typingTimer);
+      }
+    };
+
+    window.demoNextStep = function () {
+      clearTimeout(timer);
+      clearInterval(typingTimer);
+      playing = false;
+      playIcon.style.display = '';
+      pauseIcon.style.display = 'none';
+      currentStep = (currentStep + 1) % totalSteps;
+      if (currentStep === 0) resetScreens();
+      goToScreen(currentStep);
+      stepRunners[currentStep](null);
+    };
+
+    // ── Wire up "Watch Demo" button ──────────────────────────
+    document.querySelectorAll('a[href="#demo"]').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        window.openDemo();
+      });
+    });
+
+    // ── Close on overlay click (outside modal) ────────────────
+    overlay.addEventListener('click', function (e) {
+      if (e.target === overlay) window.closeDemo();
+    });
+
+    // ── Close on Escape key ───────────────────────────────────
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && overlay.classList.contains('open')) {
+        window.closeDemo();
+      }
+    });
+  })();
   </script>
 
 </body>

@@ -1,14 +1,14 @@
 // Derive the API base the same way auth-client.js does: when the page is
 // served from the API host (port 8000) use same-origin, otherwise assume the
-// backend runs on :8000. This keeps dev (separate frontend port) and a
+// backend runs on :8765. This keeps dev (separate frontend port) and a
 // reverse-proxied production deploy behaviour consistent.
 const API_HOST = window.location.hostname || "localhost";
 const API_PROTOCOL = (window.location.protocol === "http:" || window.location.protocol === "https:")
   ? window.location.protocol
   : "http:";
-const API_BASE = window.location.port === "8000"
+const API_BASE = window.location.port === "8765"
   ? window.location.origin
-  : `${API_PROTOCOL}//${API_HOST}:8000`;
+  : `${API_PROTOCOL}//${API_HOST}:8765`;
 
 function decodeToken(token) {
   try {
@@ -101,6 +101,18 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+function timeAgo(timestamp) {
+  const seconds = Math.floor((Date.now() - timestamp) / 1000);
+  if (seconds < 60) return "Just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return minutes + "m ago";
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return hours + "h ago";
+  const days = Math.floor(hours / 24);
+  if (days < 7) return days + "d ago";
+  return new Date(timestamp).toLocaleDateString();
+}
+
 function showToast(msg) {
   let t = document.getElementById("global-toast");
   if (!t) {
@@ -160,15 +172,22 @@ async function viewLessonContent(containerId, lessonId, backFn) {
 
     // Update recently viewed title
     try {
-      const recent = JSON.parse(localStorage.getItem("casuya_recent") || "[]");
+      const recent = JSON.parse(localStorage.getItem("casuya_recently_viewed") || "[]");
       const idx = recent.findIndex(r => r.id === lessonId);
-      if (idx >= 0) { recent[idx].title = lessonTitle; localStorage.setItem("casuya_recent", JSON.stringify(recent)); }
+      if (idx >= 0) { recent[idx].title = lessonTitle; localStorage.setItem("casuya_recently_viewed", JSON.stringify(recent)); }
     } catch(e) {}
 
     if (!html) {
       const resp = await fetch(`${API_BASE}/lessons/${lessonId}/content`, {
         headers: { "Authorization": `Bearer ${localStorage.getItem("casuya_token")}` },
       });
+      if (resp.status === 404) {
+        const recent = JSON.parse(localStorage.getItem("casuya_recently_viewed") || "[]");
+        const filtered = recent.filter(r => r.id !== lessonId);
+        localStorage.setItem("casuya_recently_viewed", JSON.stringify(filtered));
+        container.innerHTML = '<div class="empty-state"><p>This lesson is no longer available.</p></div>';
+        return;
+      }
       if (!resp.ok) throw new Error("Failed to load lesson");
       html = await resp.text();
       lessonContentCache.set(lessonId, html);
@@ -570,694 +589,14 @@ function renderApp() {
   } else if (role === "teacher") {
     renderTeacherDashboard();
   } else {
-    render("#app", `<div class="page" style="padding:2rem"><h2>${escapeHtml(role)} dashboard coming soon</h2></div>`);
-  }
-}
-
-function showLoading() {
-  render("#admin-content", `<div class="loading-state"><div class="spinner"></div><p>Loading...</p></div>`);
-}
-
-function showError(msg) {
-  render("#admin-content", `<div class="empty-state"><h2>Error</h2><p>${escapeHtml(msg)}</p></div>`);
-}
-
-// --- Admin: Dashboard ---
-
-// (old simple admin dashboard removed — full version at line 1269+)
-
-// --- Admin: Subjects ---
-
-async function renderAdminSubjects() {
-  showLoading();
-  try {
-    const subjects = await request("/subjects");
-    if (subjects === null) return;
-    render("#admin-content", `
-      <h2>Subjects</h2>
-      <button class="btn btn-primary" id="add-subject-btn" style="margin:1rem 0">+ Add Subject</button>
-      <div id="subject-form-area"></div>
-      <div class="card-grid">
-        ${subjects.length === 0 ? '<div class="empty-state"><p>No subjects yet</p></div>' :
-          subjects.map(s => `
-            <div class="card">
-              <h3>${escapeHtml(s.name)}</h3>
-              <p style="color:var(--color-text-muted)">${escapeHtml(s.slug || "")}</p>
-            </div>
-          `).join("")}
+    render("#app", `
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:2rem;text-align:center">
+        <h2 style="margin-bottom:0.5rem">Access Not Available</h2>
+        <p style="color:var(--color-text-muted);margin-bottom:1.5rem">Your account role ("<strong>${escapeHtml(role || "unknown")}</strong>") does not have a dashboard yet.</p>
+        <button class="btn btn-primary" onclick="localStorage.removeItem('casuya_token');window.location.href='/login.html'">Log Out</button>
       </div>
     `);
-    document.getElementById("add-subject-btn")?.addEventListener("click", () => {
-      render("#subject-form-area", `
-        <div class="card" style="margin-bottom:1rem">
-          <h3>New Subject</h3>
-          <form id="subject-form" style="display:flex;flex-direction:column;gap:0.5rem;margin-top:0.5rem">
-            <input class="input" name="name" placeholder="Subject name (e.g. Mathematics)" required />
-            <input class="input" name="slug" placeholder="Slug (e.g. mathematics)" required />
-            <button class="btn btn-success" type="submit">Save</button>
-          </form>
-        </div>
-      `);
-      document.getElementById("subject-form").addEventListener("submit", async (ev) => {
-        ev.preventDefault();
-        const fd = new FormData(ev.target);
-        try {
-          await request("/subjects", { method: "POST", body: JSON.stringify({ name: fd.get("name"), slug: fd.get("slug") }) });
-          renderAdminSubjects();
-        } catch (err) { showError(err.message); }
-      });
-    });
-  } catch (err) {
-    showError(err.message);
   }
-}
-
-// --- Admin: Topics ---
-
-async function renderAdminTopics() {
-  showLoading();
-  try {
-    const [topics, subjects] = await Promise.all([
-      request("/topics"),
-      request("/subjects"),
-    ]);
-    if (topics === null || subjects === null) return;
-    const subjectMap = {};
-    if (Array.isArray(subjects)) subjects.forEach(s => subjectMap[s.id] = s.name);
-    render("#admin-content", `
-      <h2>Topics</h2>
-      <button class="btn btn-primary" id="add-topic-btn" style="margin:1rem 0">+ Add Topic</button>
-      <div id="topic-form-area"></div>
-      <div class="card-grid">
-        ${!Array.isArray(topics) || topics.length === 0 ? '<div class="empty-state"><p>No topics yet</p></div>' :
-          topics.map(t => `
-            <div class="card">
-              <h3>${escapeHtml(t.title)}</h3>
-              <p>${escapeHtml(subjectMap[t.subject_id] || "No subject")} ${t.form_level ? `&mdash; ${escapeHtml(t.form_level)}` : ""}</p>
-            </div>
-          `).join("")}
-      </div>
-    `);
-    document.getElementById("add-topic-btn")?.addEventListener("click", () => {
-      render("#topic-form-area", `
-        <div class="card" style="margin-bottom:1rem">
-          <h3>New Topic</h3>
-          <form id="topic-form" style="display:flex;flex-direction:column;gap:0.5rem;margin-top:0.5rem">
-            <input class="input" name="title" placeholder="Topic title" required />
-            <select class="input" name="subject_id" required>
-              <option value="">Select subject...</option>
-              ${subjects.map(s => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join("")}
-            </select>
-            <select class="input" name="form_level" required>
-              <option value="">Form level...</option>
-              <option value="form1">Form 1</option>
-              <option value="form2">Form 2</option>
-              <option value="form3">Form 3</option>
-              <option value="form4">Form 4</option>
-            </select>
-            <button class="btn btn-success" type="submit">Save</button>
-          </form>
-        </div>
-      `);
-      document.getElementById("topic-form").addEventListener("submit", async (ev) => {
-        ev.preventDefault();
-        const fd = new FormData(ev.target);
-        try {
-          await request("/topics", { method: "POST", body: JSON.stringify({ title: fd.get("title"), subject_id: fd.get("subject_id"), form_level: fd.get("form_level") }) });
-          renderAdminTopics();
-        } catch (err) { showError(err.message); }
-      });
-    });
-  } catch (err) {
-    showError(err.message);
-  }
-}
-
-// --- Admin: Subtopics ---
-
-async function renderAdminSubtopics() {
-  showLoading();
-  try {
-    const [subtopics, topics] = await Promise.all([
-      request("/subtopics"),
-      request("/topics"),
-    ]);
-    if (subtopics === null || topics === null) return;
-    const topicMap = {};
-    if (Array.isArray(topics)) topics.forEach(t => topicMap[t.id] = t.title);
-    render("#admin-content", `
-      <h2>Subtopics</h2>
-      <button class="btn btn-primary" id="add-subtopic-btn" style="margin:1rem 0">+ Add Subtopic</button>
-      <div id="subtopic-form-area"></div>
-      <div class="card-grid">
-        ${!Array.isArray(subtopics) || subtopics.length === 0 ? '<div class="empty-state"><p>No subtopics yet</p></div>' :
-          subtopics.map(st => `
-            <div class="card">
-              <h3>${escapeHtml(st.title)}</h3>
-              <p>${escapeHtml(topicMap[st.topic_id] || "No topic")}</p>
-            </div>
-          `).join("")}
-      </div>
-    `);
-    document.getElementById("add-subtopic-btn")?.addEventListener("click", () => {
-      render("#subtopic-form-area", `
-        <div class="card" style="margin-bottom:1rem">
-          <h3>New Subtopic</h3>
-          <form id="subtopic-form" style="display:flex;flex-direction:column;gap:0.5rem;margin-top:0.5rem">
-            <input class="input" name="title" placeholder="Subtopic title" required />
-            <select class="input" name="topic_id" required>
-              <option value="">Select topic...</option>
-              ${topics.map(t => `<option value="${t.id}">${escapeHtml(t.title)}</option>`).join("")}
-            </select>
-            <button class="btn btn-success" type="submit">Save</button>
-          </form>
-        </div>
-      `);
-      document.getElementById("subtopic-form").addEventListener("submit", async (ev) => {
-        ev.preventDefault();
-        const fd = new FormData(ev.target);
-        try {
-          await request("/subtopics", { method: "POST", body: JSON.stringify({ title: fd.get("title"), topic_id: fd.get("topic_id") }) });
-          renderAdminSubtopics();
-        } catch (err) { showError(err.message); }
-      });
-    });
-  } catch (err) {
-    showError(err.message);
-  }
-}
-
-// --- Admin: Lessons ---
-
-async function renderAdminLessons() {
-  showLoading();
-  try {
-    const [lessons, subtopics] = await Promise.all([
-      request("/lessons"),
-      request("/subtopics"),
-    ]);
-    if (lessons === null) return;
-    render("#admin-content", `
-      <h2>Lessons</h2>
-      <button class="btn btn-primary" id="add-lesson-btn" style="margin:1rem 0">+ Add Lesson</button>
-      <div id="lesson-form-area"></div>
-      <div class="card-grid" style="margin-top:1rem">
-        ${!Array.isArray(lessons) || lessons.length === 0 ? '<div class="empty-state"><p>No lessons yet</p></div>' :
-          lessons.map(l => `
-            <div class="card lesson-card clickable" data-id="${escapeHtml(l.id)}">
-              <h3>${escapeHtml(l.title)}</h3>
-              <p>Status: ${escapeHtml(l.status)}</p>
-              ${l.status === "draft" ? `<button class="btn btn-sm btn-success publish-btn" data-id="${escapeHtml(l.id)}" style="margin-top:0.5rem">Publish</button>` : ""}
-            </div>
-          `).join("")}
-      </div>
-    `);
-    document.querySelectorAll("#admin-content .lesson-card.clickable").forEach(el => {
-      el.addEventListener("click", (e) => { if (!e.target.classList.contains("publish-btn")) viewLessonContent("#admin-content", el.dataset.id, renderAdminLessons); });
-    });
-    document.querySelectorAll("#admin-content .publish-btn").forEach(btn => {
-      btn.addEventListener("click", async (e) => {
-        e.stopPropagation();
-        try {
-          await request(`/lessons/${btn.dataset.id}/publish`, { method: "POST" });
-          renderAdminLessons();
-        } catch (err) { showError(err.message); }
-      });
-    });
-    document.getElementById("add-lesson-btn")?.addEventListener("click", () => {
-      render("#lesson-form-area", `
-        <div class="card" style="margin-bottom:1rem">
-          <h3>New Lesson</h3>
-          <form id="lesson-form" style="display:flex;flex-direction:column;gap:0.5rem;margin-top:0.5rem">
-            <input class="input" name="title" placeholder="Lesson title" required />
-            <input class="input" name="slug" placeholder="Slug (e.g. introduction-to-algebra)" required />
-            <select class="input" name="subtopic_id" required>
-              <option value="">Select subtopic...</option>
-              ${Array.isArray(subtopics) ? subtopics.map(st => `<option value="${st.id}">${escapeHtml(st.title)}</option>`).join("") : ""}
-            </select>
-            <textarea class="input" name="html_content" rows="10" placeholder="Lesson HTML content..." required></textarea>
-            <button class="btn btn-success" type="submit">Save Lesson</button>
-          </form>
-        </div>
-      `);
-      document.getElementById("lesson-form").addEventListener("submit", async (ev) => {
-        ev.preventDefault();
-        const fd = new FormData(ev.target);
-        try {
-          await request("/lessons", { method: "POST", body: JSON.stringify({ subtopic_id: fd.get("subtopic_id"), title: fd.get("title"), slug: fd.get("slug"), html_content: fd.get("html_content") }) });
-          renderAdminLessons();
-        } catch (err) { showError(err.message); }
-      });
-    });
-  } catch (err) {
-    showError(err.message);
-  }
-}
-
-// --- Admin: Users ---
-
-async function renderAdminUsers() {
-  showLoading();
-  try {
-    const [students, teachers] = await Promise.all([
-      request("/students"),
-      request("/teachers"),
-    ]);
-    if (students === null || teachers === null) return;
-    render("#admin-content", `
-      <h2>Users</h2>
-      <h3 style="margin-top:1.5rem">Students (${Array.isArray(students) ? students.length : 0})</h3>
-      <div class="card-grid" style="margin-top:0.5rem">
-        ${!Array.isArray(students) || students.length === 0 ? '<div class="empty-state"><p>No students</p></div>' :
-          students.map(s => `
-            <div class="card">
-              <h3>${escapeHtml(s.full_name || s.user_id)}</h3>
-              <p>${escapeHtml(s.email || "")}</p>
-            </div>
-          `).join("")}
-      </div>
-      <h3 style="margin-top:1.5rem">Teachers (${Array.isArray(teachers) ? teachers.length : 0})</h3>
-      <div class="card-grid" style="margin-top:0.5rem">
-        ${!Array.isArray(teachers) || teachers.length === 0 ? '<div class="empty-state"><p>No teachers</p></div>' :
-          teachers.map(t => `
-            <div class="card">
-              <h3>${escapeHtml(t.full_name || t.user_id)}</h3>
-              <p>${escapeHtml(t.email || "")}</p>
-            </div>
-          `).join("")}
-      </div>
-    `);
-  } catch (err) {
-    showError(err.message);
-  }
-}
-
-// --- Admin: Analytics ---
-
-async function renderAdminAnalytics() {
-  showLoading();
-  try {
-    const overview = await request("/analytics/overview");
-    if (overview === null) return;
-    render("#admin-content", `
-      <h2>Analytics</h2>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-top:1rem">
-        <div class="card"><h3>Total Students</h3><p style="font-size:2rem;font-weight:700">${overview.total_students ?? 0}</p></div>
-        <div class="card"><h3>Total Lessons</h3><p style="font-size:2rem;font-weight:700">${overview.total_lessons ?? 0}</p></div>
-        <div class="card"><h3>Total Sessions</h3><p style="font-size:2rem;font-weight:700">${overview.total_sessions ?? 0}</p></div>
-        <div class="card"><h3>Avg Completion</h3><p style="font-size:2rem;font-weight:700">${(overview.avg_completion_rate ?? 0) }%</p></div>
-      </div>
-    `);
-  } catch (err) {
-    showError(err.message);
-  }
-}
-
-// --- Admin: Quizzes ---
-
-async function renderAdminQuizzes() {
-  showLoading();
-  try {
-    const lessons = await request("/lessons");
-    if (lessons === null) return;
-    render("#admin-content", `
-      <h2>Quizzes</h2>
-      <div style="margin:1rem 0">
-        <label>Select lesson to view quiz:</label>
-        <select class="input" id="quiz-lesson-select" style="margin-top:0.25rem">
-          <option value="">Choose a lesson...</option>
-          ${Array.isArray(lessons) ? lessons.map(l => `<option value="${l.id}">${escapeHtml(l.title)}</option>`).join("") : ""}
-        </select>
-      </div>
-      <div id="quiz-results"></div>
-      <button class="btn btn-primary" id="add-quiz-btn" style="margin:1rem 0">+ Create Quiz</button>
-      <div id="quiz-form-area"></div>
-    `);
-    document.getElementById("quiz-lesson-select")?.addEventListener("change", async (e) => {
-      const lessonId = e.target.value;
-      if (!lessonId) return;
-      try {
-        const data = await request(`/quizzes/${lessonId}`);
-        if (data === null) return;
-        render("#quiz-results", `
-          <div class="card" style="margin-bottom:1rem">
-            <h3>${escapeHtml(data.title || "Untitled Quiz")}</h3>
-            <p>${Array.isArray(data.questions) ? `${data.questions.length} questions` : ""}</p>
-          </div>
-        `);
-      } catch (err) {
-        if (err.message.includes("not found")) {
-          render("#quiz-results", `<div class="empty-state"><p>No quiz for this lesson yet</p></div>`);
-        } else {
-          showError(err.message);
-        }
-      }
-    });
-    document.getElementById("add-quiz-btn")?.addEventListener("click", () => {
-      render("#quiz-form-area", `
-        <div class="card" style="margin-bottom:1rem">
-          <h3>New Quiz</h3>
-          <form id="quiz-form" style="display:flex;flex-direction:column;gap:0.5rem;margin-top:0.5rem">
-            <input class="input" name="title" placeholder="Quiz title" required />
-            <select class="input" name="lesson_id" required>
-              <option value="">Select lesson...</option>
-              ${Array.isArray(lessons) ? lessons.map(l => `<option value="${l.id}">${escapeHtml(l.title)}</option>`).join("") : ""}
-            </select>
-            <div id="questions-area">
-              <p style="color:var(--color-text-muted);font-size:0.85rem">Questions (JSON format: [{"prompt":"...","options":[{"text":"...","is_correct":true},...]}])</p>
-              <textarea class="input" name="questions" rows="6" placeholder='[{"prompt":"What is 2+2?","options":[{"text":"3","is_correct":false},{"text":"4","is_correct":true},{"text":"5","is_correct":false}]}]' required></textarea>
-            </div>
-            <button class="btn btn-success" type="submit">Save Quiz</button>
-          </form>
-        </div>
-      `);
-      document.getElementById("quiz-form").addEventListener("submit", async (ev) => {
-        ev.preventDefault();
-        const fd = new FormData(ev.target);
-        try {
-          const questions = JSON.parse(fd.get("questions"));
-          await request("/quizzes", { method: "POST", body: JSON.stringify({ lesson_id: fd.get("lesson_id"), title: fd.get("title"), questions }) });
-          render("#quiz-form-area", `<p style="color:var(--color-success)">Quiz created!</p>`);
-        } catch (err) { showError(err.message); }
-      });
-    });
-  } catch (err) {
-    showError(err.message);
-  }
-}
-
-// --- Admin: Progress ---
-
-async function renderAdminProgress() {
-  showLoading();
-  try {
-    const students = await request("/students");
-    if (students === null) return;
-    render("#admin-content", `
-      <h2>Student Progress</h2>
-      <div style="margin:1rem 0">
-        <label>Select student:</label>
-        <select class="input" id="progress-student-select" style="margin-top:0.25rem">
-          <option value="">Choose a student...</option>
-          ${Array.isArray(students) ? students.map(s => `<option value="${s.user_id || s.id}">${escapeHtml(s.full_name || s.user_id)}</option>`).join("") : ""}
-        </select>
-      </div>
-      <div id="progress-results"></div>
-    `);
-    document.getElementById("progress-student-select")?.addEventListener("change", async (e) => {
-      const studentId = e.target.value;
-      if (!studentId) return;
-      try {
-        const data = await request(`/progress/${studentId}`);
-        if (data === null) return;
-        render("#progress-results", `
-          <h3>Progress Records</h3>
-          ${!Array.isArray(data) || data.length === 0 ? '<div class="empty-state"><p>No progress records</p></div>' :
-            `<div style="overflow-x:auto">
-              <table class="card" style="width:100%;border-collapse:collapse">
-                <tr style="border-bottom:1px solid var(--color-border)">
-                  <th style="padding:0.5rem;text-align:left">Lesson</th>
-                  <th style="padding:0.5rem;text-align:left">Completion</th>
-                  <th style="padding:0.5rem;text-align:left">Score</th>
-                  <th style="padding:0.5rem;text-align:left">Date</th>
-                </tr>
-                ${data.map(r => `
-                  <tr style="border-bottom:1px solid var(--color-border)">
-                    <td style="padding:0.5rem">${escapeHtml(r.lesson_id || "")}</td>
-                    <td style="padding:0.5rem">${r.completion_percentage ?? 0}%</td>
-                    <td style="padding:0.5rem">${r.score_percentage ?? 0}%</td>
-                    <td style="padding:0.5rem">${r.synced_at ? new Date(r.synced_at).toLocaleDateString() : ""}</td>
-                  </tr>
-                `).join("")}
-              </table>
-            </div>`
-          }
-        `);
-      } catch (err) { showError(err.message); }
-    });
-  } catch (err) {
-    showError(err.message);
-  }
-}
-
-// --- Admin: Notifications ---
-
-async function renderAdminNotifications() {
-  showLoading();
-  try {
-    const notifications = await request("/notifications");
-    if (notifications === null) return;
-    render("#admin-content", `
-      <h2>Notifications</h2>
-      <div style="margin-top:1rem">
-        ${!Array.isArray(notifications) || notifications.length === 0 ? '<div class="empty-state"><p>No notifications</p></div>' :
-          notifications.map(n => `
-            <div class="card" style="margin-bottom:0.5rem;display:flex;justify-content:space-between;align-items:center">
-              <div>
-                <p>${escapeHtml(n.message)}</p>
-                <small style="color:var(--color-text-muted)">${n.created_at ? new Date(n.created_at).toLocaleString() : ""}</small>
-              </div>
-              <span style="color:${n.is_read ? 'var(--color-text-muted)' : 'var(--color-primary)'};font-size:0.85rem">${n.is_read ? "Read" : "New"}</span>
-            </div>
-          `).join("")}
-      </div>
-    `);
-  } catch (err) {
-    showError(err.message);
-  }
-}
-
-// --- Admin: Uploads ---
-
-async function renderAdminUploads() {
-  showLoading();
-  render("#admin-content", `
-    <h2>Uploads</h2>
-    <div class="card" style="margin-top:1rem">
-      <h3>Upload File</h3>
-      <p style="color:var(--color-text-muted);font-size:0.85rem;margin-bottom:0.5rem">Supports images (png, jpg, gif, svg), videos (mp4, webm), audio (mp3, wav, ogg)</p>
-      <form id="upload-form" style="display:flex;flex-direction:column;gap:0.5rem">
-        <input class="input" type="file" id="upload-file" required />
-        <button class="btn btn-success" type="submit">Upload</button>
-      </form>
-      <div id="upload-result" style="margin-top:0.5rem"></div>
-    </div>
-  `);
-  document.getElementById("upload-form")?.addEventListener("submit", async (ev) => {
-    ev.preventDefault();
-    const fileInput = document.getElementById("upload-file");
-    const file = fileInput?.files?.[0];
-    if (!file) return;
-    const token = localStorage.getItem("casuya_token");
-    const formData = new FormData();
-    formData.append("file", file);
-    try {
-      const resp = await fetch("http://localhost:8001/uploads/", {
-        method: "POST",
-        headers: token ? { "Authorization": `Bearer ${token}` } : {},
-        body: formData,
-      });
-      const data = await resp.json();
-      if (resp.ok) {
-        render("#upload-result", `<p style="color:var(--color-success)">Uploaded: ${escapeHtml(data.filename)} → ${escapeHtml(data.path)}</p>`);
-      } else {
-        render("#upload-result", `<p style="color:var(--color-danger)">Error: ${escapeHtml(data.detail || "Upload failed")}</p>`);
-      }
-    } catch (err) {
-      render("#upload-result", `<p style="color:var(--color-danger)">${escapeHtml(err.message)}</p>`);
-    }
-  });
-}
-
-// --- Admin: Search ---
-
-async function renderAdminSearch() {
-  render("#admin-content", `
-    <h2>Search</h2>
-    <div style="margin:1rem 0">
-      <input class="input" id="search-query" placeholder="Search lessons, subjects, topics..." style="max-width:500px" />
-      <button class="btn btn-primary" id="search-btn" style="margin-left:0.5rem">Search</button>
-    </div>
-    <div id="search-results"></div>
-  `);
-  async function doSearch() {
-    const q = document.getElementById("search-query")?.value;
-    if (!q) return;
-    try {
-      const data = await request(`/search/?q=${encodeURIComponent(q)}`);
-      if (data === null) return;
-      const results = Array.isArray(data) ? data : [];
-      render("#search-results", `
-        <h3>Results (${results.length})</h3>
-        <div class="card-grid" style="margin-top:0.5rem">
-          ${results.length === 0 ? '<div class="empty-state"><p>No results found</p></div>' :
-            results.map(r => `
-              <div class="card">
-                <h3>${escapeHtml(r.title || r.name || "")}</h3>
-                <p style="color:var(--color-text-muted)">${escapeHtml(r.type || "")} ${r.status ? `&mdash; ${escapeHtml(r.status)}` : ""}</p>
-              </div>
-            `).join("")}
-        </div>
-      `);
-    } catch (err) { showError(err.message); }
-  }
-  document.getElementById("search-btn")?.addEventListener("click", doSearch);
-  document.getElementById("search-query")?.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") doSearch();
-  });
-}
-
-// --- Admin: Games ---
-
-async function renderAdminGames() {
-  showLoading();
-  try {
-    const lessons = await request("/lessons");
-    if (lessons === null) return;
-    render("#admin-content", `
-      <h2>Games</h2>
-      <div style="margin:1rem 0">
-        <label>Select lesson to view games:</label>
-        <select class="input" id="games-lesson-select" style="margin-top:0.25rem">
-          <option value="">Choose a lesson...</option>
-          ${Array.isArray(lessons) ? lessons.map(l => `<option value="${l.id}">${escapeHtml(l.title)}</option>`).join("") : ""}
-        </select>
-      </div>
-      <div id="games-results"></div>
-    `);
-    document.getElementById("games-lesson-select")?.addEventListener("change", async (e) => {
-      const lessonId = e.target.value;
-      if (!lessonId) return;
-      try {
-        const data = await request(`/games/${lessonId}`);
-        if (data === null) return;
-        render("#games-results", `
-          <h3>Games (${Array.isArray(data) ? data.length : 0})</h3>
-          <div class="card-grid" style="margin-top:0.5rem">
-            ${!Array.isArray(data) || data.length === 0 ? '<div class="empty-state"><p>No games for this lesson</p></div>' :
-              data.map(g => `
-                <div class="card">
-                  <h3>${escapeHtml(g.title || "Untitled")}</h3>
-                  <p style="color:var(--color-text-muted)">${g.package_path ? `Package: ${escapeHtml(g.package_path)}` : ""}</p>
-                </div>
-              `).join("")}
-          </div>
-        `);
-      } catch (err) { showError(err.message); }
-    });
-  } catch (err) {
-    showError(err.message);
-  }
-}
-
-// --- Admin: Payments ---
-
-async function renderAdminPayments() {
-  showLoading();
-  render("#admin-content", `
-    <h2>Payments</h2>
-    <p style="color:var(--color-text-muted);margin-bottom:1rem">AzamPay mobile money integration</p>
-    <div class="card" style="max-width:500px">
-      <h3>Initiate Checkout</h3>
-      <form id="payment-form" style="display:flex;flex-direction:column;gap:0.5rem;margin-top:0.5rem">
-        <input class="input" name="mobile_number" placeholder="Mobile number (e.g. 0712345678)" required />
-        <input class="input" name="amount_tzs" type="number" placeholder="Amount (TZS)" required />
-        <select class="input" name="provider" required>
-          <option value="">Select provider...</option>
-          <option value="azampay">AzamPay</option>
-          <option value="m-pesa">M-Pesa</option>
-          <option value="tigo-pesa">Tigo Pesa</option>
-          <option value="halopesa">HaloPesa</option>
-        </select>
-        <button class="btn btn-success" type="submit">Initiate Payment</button>
-      </form>
-      <div id="payment-result" style="margin-top:0.5rem"></div>
-    </div>
-  `);
-  document.getElementById("payment-form")?.addEventListener("submit", async (ev) => {
-    ev.preventDefault();
-    const fd = new FormData(ev.target);
-    try {
-      const data = await request("/payments/checkout", {
-        method: "POST",
-        body: JSON.stringify({
-          mobile_number: fd.get("mobile_number"),
-          amount_tzs: parseInt(fd.get("amount_tzs"), 10),
-          provider: fd.get("provider"),
-          idempotency_key: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(),
-        }),
-      });
-      if (data === null) return;
-      render("#payment-result", `<p style="color:var(--color-success)">Payment initiated: ${escapeHtml(JSON.stringify(data))}</p>`);
-    } catch (err) {
-      render("#payment-result", `<p style="color:var(--color-danger)">${escapeHtml(err.message)}</p>`);
-    }
-  });
-}
-
-// --- Admin: Portals ---
-
-function renderAdminPortals() {
-  render("#admin-content", `
-    <h2>Portals</h2>
-    <p style="color:var(--color-text-muted);margin-bottom:1rem">Access the dedicated portals for each role</p>
-    <div class="card-grid">
-      <div class="card">
-        <h3>Student Portal</h3>
-        <p>Browse and study published lessons, take quizzes, play games, track progress.</p>
-        <a href="/student/" target="_blank" class="btn btn-primary" style="margin-top:0.5rem;display:inline-block">Open Student Portal &rarr;</a>
-      </div>
-      <div class="card">
-        <h3>Teacher Portal</h3>
-        <p>View student stats, lesson analytics, and class performance.</p>
-        <a href="/teacher/" target="_blank" class="btn btn-primary" style="margin-top:0.5rem;display:inline-block">Open Teacher Portal &rarr;</a>
-      </div>
-      <div class="card">
-        <h3>Admin Portal</h3>
-        <p>Dedicated admin dashboard with user management and platform controls.</p>
-        <a href="/admin/" target="_blank" class="btn btn-primary" style="margin-top:0.5rem;display:inline-block">Open Admin Portal &rarr;</a>
-      </div>
-    </div>
-  `);
-}
-
-// --- Admin: System ---
-
-function renderAdminSystem() {
-  render("#admin-content", `
-    <h2>System Overview</h2>
-    <p style="color:var(--color-text-muted);margin-bottom:1rem">All packages and features available in the Casuya ecosystem</p>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem">
-      ${[
-        { name: "Casuya Platform", status: "Active", desc: "Backend API (FastAPI) with auth, lessons, quizzes, games, progress, analytics, payments, notifications, search, uploads, subjects, topics, subtopics" },
-        { name: "Casuya API Gateway", status: "Active", desc: "Express-based REST/GraphQL/WebSocket gateway with contract registry, caching, monitoring, versioning" },
-        { name: "Casuya Bridge", status: "Available", desc: "Offline-first sync engine with IndexedDB storage, conflict resolution, background sync, client-side encryption" },
-        { name: "Casuya Runtime", status: "Available", desc: "Sandboxed lesson content runtime with renderers (HTML/CSS/Canvas/Media), security policies, session management" },
-        { name: "Casuya Core (Python)", status: "Available", desc: "Lesson packaging, compiling, signing, validation, versioning, compression" },
-        { name: "Casuya AI", status: "Available", desc: "AI tutoring, content recommendations, quiz generation, learning paths, summarization, translation" },
-        { name: "Casuya Exams", status: "Available", desc: "Question bank, exam builder, scheduling, auto-grading, certificates, reports, security" },
-        { name: "Casuya Content", status: "Available", desc: "Content repository, taxonomies, categories, tags, publishing workflows, versioning, import/export" },
-        { name: "Casuya Media", status: "Available", desc: "Image/video/audio processing: transcoding, thumbnails, compression, streaming, storage" },
-        { name: "Casuya Analytics", status: "Available", desc: "ETL pipelines, trend analysis, anomaly detection, predictions, CSV/JSON exports" },
-        { name: "Casuya Search", status: "Available", desc: "Full-text indexing, ranking, autocomplete suggestions, faceted filtering, recommendations" },
-        { name: "Casuya Notifications", status: "Available", desc: "Multi-channel (in-app/email/SMS/push), templates, scheduling, retries, delivery tracking" },
-        { name: "Casuya Payments", status: "Available", desc: "Payment engine, subscriptions, refunds, invoices, billing, reconciliation, fraud detection" },
-        { name: "Casuya Auth", status: "Available", desc: "Authentication, authorization, MFA, SSO (Google/Microsoft/OAuth), sessions, audit" },
-        { name: "Casuya Design System", status: "Available", desc: "30+ React components, 8 hooks, design tokens, themes (light/dark/high-contrast), icons, a11y" },
-        { name: "Casuya DevTools", status: "Active", desc: "CLI with 12 commands, repo generators, architecture validation, automation tasks" },
-        { name: "Casuya Common", status: "Available", desc: "Shared utilities: strings, arrays, objects, errors, validators, crypto, dates, logging" },
-        { name: "Casuya Orchestrator", status: "Active", desc: "Workflow engine, deployment pipelines (blue-green/canary), monitoring, security, governance, plugins" },
-      ].map(p => `
-        <div class="card">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.35rem">
-            <h3 style="font-size:0.95rem">${escapeHtml(p.name)}</h3>
-            <span style="font-size:0.75rem;padding:0.15rem 0.4rem;border-radius:4px;background:${p.status === 'Active' ? '#dcfce7' : '#f0f0f0'};color:${p.status === 'Active' ? '#16a34a' : '#64748b'}">${escapeHtml(p.status)}</span>
-          </div>
-          <p style="font-size:0.85rem;color:var(--color-text-muted)">${escapeHtml(p.desc)}</p>
-        </div>
-      `).join("")}
-    </div>
-  `);
 }
 
 // --- Student Dashboard ---
@@ -1272,7 +611,7 @@ async function renderStudentDashboard() {
       const prev = _navStack.pop();
       prev();
     } else {
-      loadStudentSubjects();
+      loadStudentOverview();
     }
   }
 
@@ -1281,22 +620,30 @@ async function renderStudentDashboard() {
       <aside id="student-sidebar" class="sidebar">
         <div class="sidebar-header">
           <h2>Casuya</h2>
-          <p>Student Portal</p>
+          <p>${escapeHtml(payload.full_name || payload.email || "Student")}</p>
         </div>
         <div style="padding:0.75rem 1rem;border-bottom:1px solid var(--color-border)">
           <select id="form-filter" class="input" style="padding:0.4rem;font-size:0.85rem">
             <option value="">All Forms</option>
-            <option value="form1">Form 1</option>
-            <option value="form2">Form 2</option>
-            <option value="form3">Form 3</option>
-            <option value="form4">Form 4</option>
+            <option value="Form I">Form I</option>
+            <option value="Form II">Form II</option>
+            <option value="Form III">Form III</option>
+            <option value="Form IV">Form IV</option>
+            <option value="Form V">Form V</option>
+            <option value="Form VI">Form VI</option>
           </select>
         </div>
         <nav class="sidebar-nav" id="student-nav">
-          <div class="sidebar-nav-item active" data-view="subjects">📚 Subjects</div>
+          <div class="sidebar-nav-item active" data-view="dashboard">🏠 Dashboard</div>
+          <div class="sidebar-nav-item" data-view="subjects">📚 Subjects</div>
           <div class="sidebar-nav-item" data-view="progress">📊 Progress</div>
           <div class="sidebar-nav-item" data-view="bookmarks">🔖 Bookmarks</div>
           <div class="sidebar-nav-item" data-view="games">🎮 Games</div>
+          <div class="sidebar-nav-item" data-view="downloads">📥 Downloads</div>
+          <div class="sidebar-nav-item" data-view="exams">📝 Exams</div>
+          <div class="sidebar-nav-item" data-view="files">📁 Files</div>
+          <div class="sidebar-nav-item" data-view="notifications">🔔 Notifications</div>
+          <div class="sidebar-nav-item" data-view="settings">⚙️ Settings</div>
         </nav>
         <div class="sidebar-footer">
           <div class="sidebar-footer-row">
@@ -1460,16 +807,19 @@ async function renderStudentDashboard() {
 
   function showStudentView(content) {
     document.getElementById("student-content").innerHTML = content;
-    ["s-subjects", "s-progress", "s-bookmarks", "s-games"].forEach(id => {
-      document.getElementById(id)?.classList.remove("active");
-    });
   }
 
   const navHandlers = {
+    dashboard: () => { setActiveNav("dashboard"); loadStudentOverview(); },
     subjects: () => { setActiveNav("subjects"); loadStudentSubjects(); },
     progress: () => { setActiveNav("progress"); loadStudentProgress(); },
     bookmarks: () => { setActiveNav("bookmarks"); loadStudentBookmarks(); },
     games: () => { setActiveNav("games"); loadStudentGames(); },
+    downloads: () => { setActiveNav("downloads"); loadStudentDownloads(); },
+    exams: () => { setActiveNav("exams"); loadStudentExams(); },
+    files: () => { setActiveNav("files"); loadStudentFiles(); },
+    notifications: () => { setActiveNav("notifications"); loadStudentNotifications(); },
+    settings: () => { setActiveNav("settings"); loadStudentSettings(); },
   };
 
   document.querySelectorAll("#student-nav .sidebar-nav-item").forEach(el => {
@@ -1478,6 +828,191 @@ async function renderStudentDashboard() {
       navHandlers[el.dataset.view]?.();
     });
   });
+
+  // Load dashboard overview
+  async function loadStudentOverview() {
+    showStudentView('<div class="loading-state"><div class="spinner"></div><p>Loading dashboard...</p></div>');
+    try {
+      const [subjects, profile] = await Promise.all([
+        request("/subjects"),
+        request("/students/me").catch(() => null),
+      ]);
+
+      const name = profile?.full_name || payload.full_name || payload.email || "Student";
+      const formLevel = profile?.form_level || "";
+
+      // Recently viewed lessons from localStorage
+      let recent = [];
+      try { recent = JSON.parse(localStorage.getItem("casuya_recently_viewed") || "[]"); } catch(e) {}
+
+      // Build subject list with icon colors
+      const subjectList = Array.isArray(subjects) ? subjects : [];
+      const iconColors = [
+        { bg: "#eff6ff", color: "#2563eb", emoji: "📚" },
+        { bg: "#f0fdf4", color: "#16a34a", emoji: "🧬" },
+        { bg: "#fef3c7", color: "#d97706", emoji: "📐" },
+        { bg: "#fce7f3", color: "#db2777", emoji: "🧪" },
+        { bg: "#ede9fe", color: "#7c3aed", emoji: "🌍" },
+        { bg: "#e0f2fe", color: "#0284c7", emoji: "💻" },
+      ];
+
+      // Try to get progress data for stats
+      let progressData = [];
+      let totalCompleted = 0;
+      let avgScore = 0;
+      try {
+        if (profile?.id) {
+          progressData = await request(`/progress/${profile.id}`).catch(() => []);
+          if (Array.isArray(progressData) && progressData.length > 0) {
+            totalCompleted = progressData.filter(p => p.completion_percentage >= 100).length;
+            const scores = progressData.filter(p => p.score_percentage != null && p.score_percentage > 0);
+            if (scores.length > 0) {
+              avgScore = Math.round(scores.reduce((sum, p) => sum + p.score_percentage, 0) / scores.length);
+            }
+          }
+        }
+      } catch(e) {}
+
+      // Calculate streak from recently viewed (consecutive days)
+      let streak = 0;
+      if (recent.length > 0) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        let checkDate = new Date(today);
+        for (let i = 0; i < 30; i++) {
+          const dayStr = checkDate.toISOString().slice(0, 10);
+          const hasActivity = recent.some(r => {
+            const rDate = new Date(r.viewedAt);
+            return rDate.toISOString().slice(0, 10) === dayStr;
+          });
+          if (hasActivity) {
+            streak++;
+            checkDate.setDate(checkDate.getDate() - 1);
+          } else {
+            break;
+          }
+        }
+      }
+
+      // Get greeting based on time
+      const hour = new Date().getHours();
+      let greeting = "Good morning";
+      if (hour >= 12 && hour < 17) greeting = "Good afternoon";
+      else if (hour >= 17) greeting = "Good evening";
+
+      showStudentView(`
+        <div class="content" style="max-width:960px">
+          <!-- Welcome Banner -->
+          <div class="welcome-banner">
+            <small>${greeting}</small>
+            <h2>Welcome, ${escapeHtml(name)}${formLevel ? " — " + escapeHtml(formLevel) : ""}</h2>
+            <p>Ready to continue your learning journey?</p>
+          </div>
+
+          <!-- Stats -->
+          <div class="stat-grid">
+            <div class="stat-card">
+              <div class="stat-icon" style="background:#eff6ff;color:#2563eb">📚</div>
+              <div class="stat-value">${subjectList.length}</div>
+              <div class="stat-label">Subjects${totalCompleted > 0 ? " · " + totalCompleted + " completed" : ""}</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon" style="background:#f0fdf4;color:#16a34a">📈</div>
+              <div class="stat-value">${avgScore > 0 ? avgScore + "%" : "—"}</div>
+              <div class="stat-label">Average Score</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon" style="background:#fef3c7;color:#d97706">🔥</div>
+              <div class="stat-value">${streak > 0 ? streak : "—"}</div>
+              <div class="stat-label">Day Streak</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon" style="background:#fce7f3;color:#db2777">🔖</div>
+              <div class="stat-value">${recent.length}</div>
+              <div class="stat-label">Lessons Viewed</div>
+            </div>
+          </div>
+
+          <!-- Continue Learning -->
+          ${recent.length > 0 ? `
+            <div class="section-header">
+              <h3>Continue Learning</h3>
+              <button class="btn btn-sm" id="view-all-recent">View All</button>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:0.75rem;margin-bottom:1.25rem">
+              ${recent.slice(0, 3).map(r => `
+                <div class="recent-lesson-card" data-id="${escapeHtml(r.id)}">
+                  <h4>${escapeHtml(r.title)}</h4>
+                  <span class="recent-meta">${r.viewedAt ? timeAgo(r.viewedAt) : ""}</span>
+                </div>
+              `).join("")}
+            </div>
+          ` : ""}
+
+          <!-- My Subjects -->
+          <div class="section-header">
+            <h3>My Subjects</h3>
+            <button class="btn btn-sm" id="browse-all-subjects">Browse All</button>
+          </div>
+          ${subjectList.length === 0
+            ? '<div class="empty-state" style="padding:2rem"><p>No subjects available yet</p></div>'
+            : `<div class="subject-card-grid">
+                ${subjectList.map((s, i) => {
+                  const ic = iconColors[i % iconColors.length];
+                  // Calculate progress for this subject
+                  const subjProgress = progressData.filter(p => p.subject_name === s.name);
+                  const completedCount = subjProgress.filter(p => p.completion_percentage >= 100).length;
+                  const totalCount = subjProgress.length;
+                  const pct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+                  return `
+                    <div class="subject-card-enhanced" data-id="${escapeHtml(s.id)}">
+                      <div class="subject-icon" style="background:${ic.bg};color:${ic.color}">${ic.emoji}</div>
+                      <h4>${escapeHtml(s.name)}</h4>
+                      ${totalCount > 0 ? `
+                        <div class="subject-progress">
+                          <div class="subject-progress-label">
+                            <span>${completedCount}/${totalCount} lessons</span>
+                            <span>${pct}%</span>
+                          </div>
+                          <div class="progress-bar">
+                            <div class="progress-bar-fill" style="width:${pct}%"></div>
+                          </div>
+                        </div>
+                      ` : `<p style="font-size:0.8rem;color:var(--color-text-muted);margin:0">Start learning →</p>`}
+                    </div>
+                  `;
+                }).join("")}
+              </div>`
+          }
+        </div>
+      `);
+
+      // Wire up subject clicks
+      document.querySelectorAll(".subject-card-enhanced").forEach(card => {
+        card.addEventListener("click", () => loadSubjectTopics(card.dataset.id));
+      });
+
+      // Wire up recent lesson clicks
+      document.querySelectorAll(".recent-lesson-card").forEach(card => {
+        card.addEventListener("click", () => viewStudentLesson(card.dataset.id));
+      });
+
+      // Wire up "Browse All" to subjects view
+      document.getElementById("browse-all-subjects")?.addEventListener("click", () => {
+        setActiveNav("subjects");
+        loadStudentSubjects();
+      });
+
+      // Wire up "View All" to show more recent
+      document.getElementById("view-all-recent")?.addEventListener("click", () => {
+        setActiveNav("subjects");
+        loadStudentSubjects();
+      });
+
+    } catch(e) {
+      showStudentView('<div class="empty-state"><p>Error loading dashboard</p></div>');
+    }
+  }
 
   // Load subjects
   async function loadStudentSubjects() {
@@ -1678,18 +1213,102 @@ async function renderStudentDashboard() {
 
   // Games
   async function loadStudentGames() {
-    showStudentView(`
-      <h2>Games</h2>
-      <div class="empty-state" style="margin-top:1rem">
-        <p>Games are available within lessons.</p>
-        <p style="color:var(--color-text-muted);font-size:0.85rem">Open a lesson to access its interactive games.</p>
-        <button class="btn btn-primary" id="browse-lessons-btn" style="margin-top:1rem">Browse Lessons</button>
-      </div>
-    `);
-    document.getElementById("browse-lessons-btn")?.addEventListener("click", () => {
-      setActiveNav("subjects");
-      loadStudentSubjects();
-    });
+    showStudentView('<div class="loading-state"><div class="spinner"></div><p>Loading games...</p></div>');
+    try {
+      const games = await request("/games");
+      const gameList = Array.isArray(games) ? games : [];
+
+      // Recently viewed from localStorage
+      let recent = [];
+      try { recent = JSON.parse(localStorage.getItem("casuya_recently_viewed") || "[]"); } catch(e) {}
+
+      if (gameList.length === 0 && recent.length === 0) {
+        showStudentView(`
+          <h2>Games</h2>
+          <div class="empty-state" style="margin-top:1rem">
+            <p>No games available yet.</p>
+            <p style="color:var(--color-text-muted);font-size:0.85rem">Games are added by your teacher and appear inside lessons.</p>
+            <button class="btn btn-primary" id="browse-lessons-btn" style="margin-top:1rem">Browse Lessons</button>
+          </div>
+        `);
+        document.getElementById("browse-lessons-btn")?.addEventListener("click", () => {
+          setActiveNav("subjects");
+          loadStudentSubjects();
+        });
+        return;
+      }
+
+      showStudentView(`
+        <h2>Games</h2>
+        ${gameList.length > 0 ? `
+          <div class="card-grid" style="margin-top:1rem">
+            ${gameList.map(g => `
+              <div class="card game-card" data-id="${escapeHtml(g.id)}" style="cursor:pointer;position:relative">
+                <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem">
+                  <span style="font-size:1.5rem">🎮</span>
+                  <h3 style="margin:0">${escapeHtml(g.title || "Untitled Game")}</h3>
+                </div>
+                <p style="color:var(--color-text-muted);font-size:0.85rem">${escapeHtml(g.lesson_title || "Standalone game")}</p>
+                <span style="display:inline-block;margin-top:0.5rem;font-size:0.75rem;padding:0.2rem 0.6rem;background:var(--color-bg);border-radius:var(--radius);color:var(--color-text-muted)">${escapeHtml(g.status || "active")}</span>
+              </div>
+            `).join("")}
+          </div>
+        ` : `
+          <div class="empty-state" style="padding:2rem">
+            <p>No standalone games found.</p>
+          </div>
+        `}
+      `);
+
+      document.querySelectorAll(".game-card").forEach(card => {
+        card.addEventListener("click", () => viewStudentGame(card.dataset.id));
+      });
+    } catch(e) { showStudentView('<div class="empty-state"><p>Error loading games</p></div>'); }
+  }
+
+  // View a single game
+  async function viewStudentGame(gameId) {
+    showStudentView('<div class="loading-state"><div class="spinner"></div><p>Loading game...</p></div>');
+    try {
+      const game = await request(`/games/${gameId}`);
+      const contentResp = await fetch(`${API_BASE}/games/${gameId}/content`, {
+        headers: { "Authorization": `Bearer ${localStorage.getItem("casuya_token")}` },
+      }).then(r => r.ok ? r.text() : "").catch(() => "");
+
+      showStudentView(`
+        <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1rem">
+          <button class="btn" id="back-btn">← Back</button>
+          <h2 style="flex:1">${escapeHtml(game.title || "Game")}</h2>
+        </div>
+        <div style="width:100%">
+          <iframe class="lesson-iframe" style="width:100%;border:none;display:block"></iframe>
+        </div>
+      `);
+
+      const iframe = document.querySelector("#student-content .lesson-iframe");
+      if (iframe && contentResp) {
+        iframe.srcdoc = contentResp.replace("<head>", `<head><base href="${API_BASE}/">`);
+        let heightSet = false;
+        const setHeight = () => {
+          if (heightSet) return;
+          try {
+            const doc = iframe.contentWindow?.document;
+            if (doc) {
+              iframe.style.height = Math.max(doc.documentElement?.scrollHeight || 0, doc.body?.scrollHeight || 0, 300) + "px";
+              heightSet = true;
+            }
+          } catch(e) {}
+        };
+        iframe.addEventListener("load", setHeight);
+        const poll = setInterval(() => { setHeight(); if (heightSet) clearInterval(poll); }, 300);
+        setTimeout(() => { clearInterval(poll); if (!heightSet) iframe.style.height = "600px"; }, 8000);
+      } else if (iframe) {
+        iframe.style.height = "400px";
+        iframe.srcdoc = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#94a3b8;font-family:sans-serif"><p>Game content not available</p></div>';
+      }
+
+      document.getElementById("back-btn").addEventListener("click", goBack);
+    } catch(e) { showStudentView('<div class="empty-state"><p>Error loading game</p><button class="btn" id="back-btn">← Back</button></div>'); document.getElementById("back-btn")?.addEventListener("click", goBack); }
   }
 
   // Profile editor
@@ -1716,7 +1335,7 @@ async function renderStudentDashboard() {
         try {
           await request("/students/me", { method: "PATCH", body: JSON.stringify({ full_name: fd.get("full_name"), phone: fd.get("phone"), form_level: fd.get("form_level") }) });
           showToast("Profile updated");
-          loadStudentSubjects();
+          loadStudentOverview();
         } catch(err) { showToast("Error: " + err.message); }
       });
     } catch(e) { showStudentView('<div class="empty-state"><p>Error loading profile</p></div>'); }
@@ -1726,7 +1345,17 @@ async function renderStudentDashboard() {
   async function viewStudentLesson(lessonId) {
     showStudentView('<div class="loading-state"><div class="spinner"></div><p>Loading lesson...</p></div>');
     try {
-      const lesson = await request(`/lessons/${lessonId}`);
+      let lesson;
+      try {
+        lesson = await request(`/lessons/${lessonId}`);
+      } catch(e) {
+        const recent = JSON.parse(localStorage.getItem("casuya_recently_viewed") || "[]");
+        const filtered = recent.filter(r => r.id !== lessonId);
+        localStorage.setItem("casuya_recently_viewed", JSON.stringify(filtered));
+        showStudentView('<div class="empty-state"><p>This lesson is no longer available.</p><button class="btn btn-primary" id="back-to-overview">← Back to Overview</button></div>');
+        document.getElementById("back-to-overview")?.addEventListener("click", loadStudentOverview);
+        return;
+      }
       const [bookmarkStatus, noteData, contentResp, quizData, gamesData] = await Promise.all([
         request(`/bookmarks/${lessonId}/status`).catch(() => ({ bookmarked: false })),
         request(`/notes/${lessonId}`).catch(() => ({ content: "" })),
@@ -1827,24 +1456,42 @@ async function renderStudentDashboard() {
         setTimeout(() => { clearInterval(poll); if (!heightSet) iframe.style.height = "800px"; }, 10000);
 
         // Bridge for quiz scores and progress
+        const studentTokenPayload = decodeToken(localStorage.getItem("casuya_token"));
+        let studentId = null;
+        let sessionId = Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
+        try {
+          const students = await request("/students");
+          if (Array.isArray(students)) {
+            const my = students.find(s => s.user_id === studentTokenPayload.sub || s.id === studentTokenPayload.sub);
+            if (my) studentId = my.id || my.user_id;
+          }
+        } catch(e) {}
         const onMessage = (e) => {
           if (e.data?.type === "casuya-quiz" && e.data.score != null && e.data.total > 0) {
             const pct = Math.round((e.data.score / e.data.total) * 100);
             request("/progress/sync", {
               method: "POST",
-              body: JSON.stringify({ lesson_id: lessonId, completion_percentage: 100, score_percentage: pct }),
+              body: JSON.stringify({ student_id: studentId, lesson_id: lessonId, session_id: sessionId, completion_percentage: 100, score_percentage: pct }),
             }).catch(() => {});
           } else if (e.data?.type === "casuya-progress" && e.data.percent != null) {
             request("/progress/sync", {
               method: "POST",
-              body: JSON.stringify({ lesson_id: lessonId, completion_percentage: e.data.percent }),
+              body: JSON.stringify({ student_id: studentId, lesson_id: lessonId, session_id: sessionId, completion_percentage: e.data.percent }),
             }).catch(() => {});
           }
         };
         window.addEventListener("message", onMessage);
-      }
 
-      document.getElementById("back-btn").addEventListener("click", goBack);
+        // Cleanup function for navigation away
+        const cleanupLesson = () => {
+          window.removeEventListener("message", onMessage);
+          clearInterval(poll);
+          clearTimeout(poll);
+        };
+        document.getElementById("back-btn").addEventListener("click", () => { cleanupLesson(); goBack(); });
+      } else {
+        document.getElementById("back-btn").addEventListener("click", goBack);
+      }
 
       // Bookmark toggle
       document.getElementById("bookmark-btn").addEventListener("click", async () => {
@@ -1879,16 +1526,29 @@ async function renderStudentDashboard() {
       document.getElementById("quiz-form")?.addEventListener("submit", async (e) => {
         e.preventDefault();
         if (!quizData || !quizData.questions) return;
-        const fd = new FormData(e.target);
-        let score = 0;
-        quizData.questions.forEach(q => { if (fd.get(`q_${q.id}`)) score++; });
+        const answers = {};
+        quizData.questions.forEach(q => {
+          const sel = document.querySelector(`input[name="q_${q.id}"]:checked`);
+          if (sel) answers[q.id] = sel.value;
+        });
         try {
           const result = await request(`/quizzes/${quizData.id}/submit`, {
-            method: "POST", body: JSON.stringify({ score, total: quizData.questions.length }),
+            method: "POST", body: JSON.stringify({ answers }),
           });
           const el = document.getElementById("quiz-result");
-          el.innerHTML = `<p style="color:var(--color-success);font-weight:600">Score: ${score}/${quizData.questions.length}</p>`;
+          const passed = result.percentage >= 50;
+          el.innerHTML = `
+            <p style="color:${passed ? "var(--color-success)" : "var(--color-danger)"};font-weight:600">Score: ${result.score}/${result.total} (${Math.round(result.percentage)}%)</p>
+            ${passed ? '<p style="color:var(--color-success)">Passed!</p>' : '<p style="color:var(--color-danger)">Try again</p>'}
+            ${!passed ? '<button class="btn btn-sm btn-primary" id="retry-quiz-btn" style="margin-top:0.5rem">Retry Quiz</button>' : ''}
+          `;
           el.style.display = "block";
+          if (!passed) {
+            document.getElementById("retry-quiz-btn").addEventListener("click", () => {
+              document.querySelectorAll('#quiz-form input[type="radio"]').forEach(r => r.checked = false);
+              el.style.display = "none";
+            });
+          }
         } catch(err) {
           const el = document.getElementById("quiz-result");
           el.innerHTML = `<p style="color:var(--color-danger)">Error: ${escapeHtml(err.message)}</p>`;
@@ -1913,25 +1573,511 @@ async function renderStudentDashboard() {
         });
       });
 
-    } catch(e) { showStudentView('<div class="empty-state"><p>Error loading lesson</p></div>'); }
+    } catch(e) { showStudentView('<div class="empty-state"><p>Error loading lesson.</p><button class="btn btn-primary" id="back-to-overview">← Back to Overview</button></div>'); document.getElementById("back-to-overview")?.addEventListener("click", loadStudentOverview); }
   }
 
-  function renderQuiz(quiz, lessonId) {
-    if (!quiz || !quiz.questions) return "";
-    return quiz.questions.map((q, i) => `
-      <div style="margin-bottom:1rem">
-        <p><strong>${i+1}.</strong> ${escapeHtml(q.question)}</p>
-        ${q.options.map((opt, j) => `
-          <label style="display:block;padding:0.25rem 0">
-            <input type="radio" name="quiz-${quiz.id || lessonId}-${i}" value="${j}"> ${escapeHtml(opt)}
-          </label>
-        `).join("")}
-      </div>
-    `).join("") + `<button class="btn btn-primary" onclick="submitQuiz('${quiz.id || lessonId}')">Submit Quiz</button>`;
+  async function loadStudentDownloads() {
+    showStudentView('<div class="loading-state"><div class="spinner"></div><p>Loading downloads...</p></div>');
+    try {
+      const lessons = await request("/lessons");
+      const lessonList = Array.isArray(lessons) ? lessons : [];
+      let cachedIds = [];
+      try { cachedIds = JSON.parse(localStorage.getItem("casuya_downloaded_lessons") || "[]"); } catch(e) {}
+      const cachedLessons = lessonList.filter(l => cachedIds.includes(l.id));
+      const availableLessons = lessonList.filter(l => !cachedIds.includes(l.id));
+
+      showStudentView(`
+        <div class="content">
+          <h2>Downloads</h2>
+          <p style="color:var(--color-text-muted);font-size:0.85rem;margin-top:0.25rem">Save lessons for offline viewing. Cached lessons are stored locally in your browser.</p>
+          ${cachedLessons.length > 0 ? `
+            <h3 style="margin:1.5rem 0 0.75rem">Cached Lessons (${cachedLessons.length})</h3>
+            <div class="card-grid">
+              ${cachedLessons.map(l => `
+                <div class="card" style="padding:1rem">
+                  <div style="display:flex;justify-content:space-between;align-items:start">
+                    <div>
+                      <h4 style="margin:0">${escapeHtml(l.title)}</h4>
+                      <p style="color:var(--color-success);font-size:0.75rem;margin-top:0.25rem">Available offline</p>
+                    </div>
+                    <button class="btn btn-sm btn-danger" data-remove-download="${l.id}">Remove</button>
+                  </div>
+                </div>
+              `).join("")}
+            </div>
+          ` : ''}
+          <h3 style="margin:1.5rem 0 0.75rem">Available Lessons</h3>
+          <div class="card-grid">
+            ${availableLessons.length === 0 ? '<div class="empty-state"><p>All lessons are cached or none available.</p></div>' :
+              availableLessons.map(l => `
+                <div class="card" style="padding:1rem">
+                  <div style="display:flex;justify-content:space-between;align-items:start">
+                    <div>
+                      <h4 style="margin:0">${escapeHtml(l.title)}</h4>
+                      <p style="color:var(--color-text-muted);font-size:0.85rem;margin-top:0.25rem">${escapeHtml(l.status)}</p>
+                    </div>
+                    <button class="btn btn-sm btn-primary" data-download-lesson="${l.id}" data-title="${escapeHtml(l.title)}">Download</button>
+                  </div>
+                </div>
+              `).join("")}
+          </div>
+        </div>
+      `);
+      document.querySelectorAll("[data-download-lesson]").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const lessonId = btn.dataset.downloadLesson;
+          const title = btn.dataset.title;
+          btn.disabled = true;
+          btn.textContent = "Saving...";
+          try {
+            const contentResp = await fetch(`${API_BASE}/lessons/${lessonId}/content`, {
+              headers: { "Authorization": `Bearer ${localStorage.getItem("casuya_token")}` },
+            });
+            if (contentResp.ok) {
+              const html = await contentResp.text();
+              const contentCache = JSON.parse(localStorage.getItem("casuya_lesson_content_cache") || "{}");
+              contentCache[lessonId] = { html, title, savedAt: Date.now() };
+              localStorage.setItem("casuya_lesson_content_cache", JSON.stringify(contentCache));
+              if (!cachedIds.includes(lessonId)) {
+                cachedIds.push(lessonId);
+                localStorage.setItem("casuya_downloaded_lessons", JSON.stringify(cachedIds));
+              }
+              showToast("Lesson saved for offline viewing");
+              loadStudentDownloads();
+            }
+          } catch(e) {
+            showToast("Failed to save lesson");
+            btn.disabled = false;
+            btn.textContent = "Download";
+          }
+        });
+      });
+      document.querySelectorAll("[data-remove-download]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const lessonId = btn.dataset.removeDownload;
+          const contentCache = JSON.parse(localStorage.getItem("casuya_lesson_content_cache") || "{}");
+          delete contentCache[lessonId];
+          localStorage.setItem("casuya_lesson_content_cache", JSON.stringify(contentCache));
+          cachedIds = cachedIds.filter(id => id !== lessonId);
+          localStorage.setItem("casuya_downloaded_lessons", JSON.stringify(cachedIds));
+          loadStudentDownloads();
+        });
+      });
+    } catch(e) { showStudentView('<div class="empty-state"><p>Error loading downloads</p></div>'); }
+  }
+
+  async function loadStudentExams() {
+    showStudentView('<div class="loading-state"><div class="spinner"></div><p>Loading exams...</p></div>');
+    try {
+      const quizzes = await request("/quizzes");
+      const quizList = Array.isArray(quizzes) ? quizzes : [];
+      let examHistory = [];
+      try { examHistory = JSON.parse(localStorage.getItem("casuya_exam_history") || "[]"); } catch(e) {}
+
+      showStudentView(`
+        <div class="content">
+          <h2>Exams</h2>
+          <p style="color:var(--color-text-muted);font-size:0.85rem;margin-top:0.25rem">Take timed exams. Your progress is saved automatically.</p>
+          ${quizList.length === 0 ? '<div class="empty-state" style="margin-top:1rem"><p>No exams available yet.</p></div>' : `
+            <div class="card-grid" style="margin-top:1rem">
+              ${quizList.map(q => {
+                const history = examHistory.filter(h => h.quizId === q.id);
+                const bestScore = history.length > 0 ? Math.max(...history.map(h => h.percentage)) : null;
+                return `
+                  <div class="card" style="padding:1rem">
+                    <h3 style="margin:0">${escapeHtml(q.title || "Exam")}</h3>
+                    <p style="color:var(--color-text-muted);font-size:0.85rem;margin-top:0.25rem">${q.questions?.length || 0} questions</p>
+                    ${bestScore !== null ? `<p style="color:var(--color-success);font-size:0.85rem;margin-top:0.15rem">Best: ${bestScore}%</p>` : ''}
+                    <button class="btn btn-primary btn-sm start-exam-btn" data-quiz-id="${q.id}" style="margin-top:0.5rem">Start Exam</button>
+                  </div>
+                `;
+              }).join("")}
+            </div>
+          `}
+          ${examHistory.length > 0 ? `
+            <h3 style="margin:1.5rem 0 0.75rem">Exam History</h3>
+            <div class="card" style="padding:1rem">
+              <div style="overflow-x:auto">
+                <table style="width:100%;border-collapse:collapse;font-size:0.85rem">
+                  <tr style="border-bottom:1px solid var(--color-border)">
+                    <th style="padding:0.5rem;text-align:left">Quiz</th>
+                    <th style="padding:0.5rem;text-align:left">Score</th>
+                    <th style="padding:0.5rem;text-align:left">Date</th>
+                  </tr>
+                  ${examHistory.slice(-10).reverse().map(h => `
+                    <tr style="border-bottom:1px solid var(--color-border)">
+                      <td style="padding:0.5rem">${escapeHtml(h.quizTitle || "Quiz")}</td>
+                      <td style="padding:0.5rem;color:${h.percentage >= 50 ? 'var(--color-success)' : 'var(--color-danger)'}">${h.score}/${h.total} (${h.percentage}%)</td>
+                      <td style="padding:0.5rem;color:var(--color-text-muted)">${new Date(h.takenAt).toLocaleDateString()}</td>
+                    </tr>
+                  `).join("")}
+                </table>
+              </div>
+            </div>
+          ` : ''}
+        </div>
+      `);
+      document.querySelectorAll(".start-exam-btn").forEach(btn => {
+        btn.addEventListener("click", () => startExam(btn.dataset.quizId));
+      });
+    } catch(e) { showStudentView('<div class="empty-state"><p>Error loading exams</p></div>'); }
+  }
+
+  async function startExam(quizId) {
+    showStudentView('<div class="loading-state"><div class="spinner"></div><p>Loading exam...</p></div>');
+    try {
+      const quizData = await request(`/quizzes/${quizId}`);
+      if (!quizData || !quizData.questions || quizData.questions.length === 0) {
+        showStudentView('<div class="empty-state"><p>No questions in this exam.</p><button class="btn" id="back-btn">← Back</button></div>');
+        document.getElementById("back-btn")?.addEventListener("click", loadStudentExams);
+        return;
+      }
+
+      let timeLimit = quizData.time_limit || 30 * 60;
+      let timeLeft = timeLimit;
+      let examSubmitted = false;
+
+      const formatTime = (s) => `${Math.floor(s/60)}:${(s%60).toString().padStart(2,'0')}`;
+
+      showStudentView(`
+        <div class="content">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;padding:0.75rem 1rem;background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius)">
+            <h2 style="margin:0;font-size:1rem">${escapeHtml(quizData.title || "Exam")}</h2>
+            <div style="display:flex;align-items:center;gap:1rem">
+              <span id="exam-timer" style="font-size:1.1rem;font-weight:700;color:var(--color-primary);font-variant-numeric:tabular-nums">${formatTime(timeLeft)}</span>
+              <button class="btn btn-danger btn-sm" id="submit-exam-btn">Submit</button>
+            </div>
+          </div>
+          <form id="exam-form">
+            ${quizData.questions.map((q, qi) => `
+              <div class="card" style="padding:1rem;margin-bottom:0.75rem">
+                <p style="font-weight:600;margin:0 0 0.75rem">${qi + 1}. ${escapeHtml(q.prompt)}</p>
+                ${q.options.map(o => `
+                  <label style="display:block;padding:0.5rem 0.75rem;cursor:pointer;border:1px solid var(--color-border);border-radius:var(--radius);margin-bottom:0.35rem;transition:background 0.15s">
+                    <input type="radio" name="q_${escapeHtml(q.id)}" value="${escapeHtml(o.id)}" required style="margin-right:0.5rem"> ${escapeHtml(o.text)}
+                  </label>
+                `).join("")}
+              </div>
+            `).join("")}
+          </form>
+          <div id="exam-result" style="display:none;margin-top:1rem"></div>
+        </div>
+      `);
+
+      const timerEl = document.getElementById("exam-timer");
+      const timerInterval = setInterval(() => {
+        timeLeft--;
+        if (timerEl) timerEl.textContent = formatTime(timeLeft);
+        if (timeLeft <= 0 && !examSubmitted) {
+          clearInterval(timerInterval);
+          submitExam();
+        }
+        if (timeLeft <= 60 && timerEl) timerEl.style.color = "var(--color-danger)";
+      }, 1000);
+
+      async function submitExam() {
+        if (examSubmitted) return;
+        examSubmitted = true;
+        clearInterval(timerInterval);
+        const submitBtn = document.getElementById("submit-exam-btn");
+        if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = "Submitting..."; }
+        const answers = {};
+        quizData.questions.forEach(q => {
+          const sel = document.querySelector(`input[name="q_${q.id}"]:checked`);
+          if (sel) answers[q.id] = sel.value;
+        });
+        try {
+          const result = await request(`/quizzes/${quizId}/submit`, {
+            method: "POST", body: JSON.stringify({ answers }),
+          });
+          let examHistory = [];
+          try { examHistory = JSON.parse(localStorage.getItem("casuya_exam_history") || "[]"); } catch(e) {}
+          examHistory.push({
+            quizId,
+            quizTitle: quizData.title,
+            score: result.score,
+            total: result.total,
+            percentage: Math.round(result.percentage),
+            timeSpent: timeLimit - timeLeft,
+            takenAt: Date.now(),
+          });
+          localStorage.setItem("casuya_exam_history", JSON.stringify(examHistory));
+
+          const passed = result.percentage >= 50;
+          document.getElementById("exam-result").innerHTML = `
+            <div class="card" style="padding:1.5rem;text-align:center">
+              <h3 style="color:${passed ? 'var(--color-success)' : 'var(--color-danger)'};margin:0 0 0.5rem">Exam ${passed ? 'Passed!' : 'Not Passed'}</h3>
+              <p style="font-size:1.5rem;font-weight:700;margin:0.5rem 0">Score: ${result.score}/${result.total} (${Math.round(result.percentage)}%)</p>
+              <p style="color:var(--color-text-muted);font-size:0.85rem">Time: ${formatTime(timeLimit - timeLeft)}</p>
+              <button class="btn btn-primary" id="back-to-exams" style="margin-top:1rem">Back to Exams</button>
+            </div>
+          `;
+          document.getElementById("exam-result").style.display = "block";
+          document.getElementById("exam-form").style.display = "none";
+          document.getElementById("back-to-exams")?.addEventListener("click", loadStudentExams);
+        } catch(err) {
+          document.getElementById("exam-result").innerHTML = `<div class="card" style="padding:1rem"><p style="color:var(--color-danger)">Error: ${escapeHtml(err.message)}</p></div>`;
+          document.getElementById("exam-result").style.display = "block";
+        }
+      }
+
+      document.getElementById("submit-exam-btn")?.addEventListener("click", () => {
+        if (!examSubmitted && confirm("Submit exam?")) submitExam();
+      });
+    } catch(e) { showStudentView('<div class="empty-state"><p>Error loading exam</p></div>'); }
+  }
+
+  async function loadStudentFiles() {
+    showStudentView('<div class="loading-state"><div class="spinner"></div><p>Loading files...</p></div>');
+    try {
+      const files = await request("/uploads/public").catch(() => []);
+      const fileList = Array.isArray(files) ? files : [];
+      let activeFilter = "all";
+
+      function renderStudentFiles() {
+        let filtered = fileList;
+        if (activeFilter !== "all") {
+          const ext = { images: "image", documents: "doc", media: "media" }[activeFilter];
+          if (ext === "image") filtered = fileList.filter(f => /\.(png|jpg|jpeg|gif|svg|webp)$/i.test(f.filename || f.path || ""));
+          else if (ext === "doc") filtered = fileList.filter(f => /\.(pdf|doc|docx|txt)$/i.test(f.filename || f.path || ""));
+          else if (ext === "media") filtered = fileList.filter(f => /\.(mp4|webm|mp3|wav|ogg)$/i.test(f.filename || f.path || ""));
+        }
+        const grid = document.getElementById("student-files-grid");
+        if (!grid) return;
+        if (filtered.length === 0) {
+          grid.innerHTML = '<div class="empty-state" style="padding:2rem"><p>No files available</p></div>';
+          return;
+        }
+        grid.innerHTML = filtered.map(f => {
+          const name = f.filename || f.path || "unknown";
+          const isImage = /\.(png|jpg|jpeg|gif|svg|webp)$/i.test(name);
+          const isVideo = /\.(mp4|webm)$/i.test(name);
+          const isAudio = /\.(mp3|wav|ogg)$/i.test(name);
+          const icon = isImage ? "🖼️" : isVideo ? "🎬" : isAudio ? "🎵" : "📄";
+          return `
+            <div class="card" style="padding:0.75rem;cursor:pointer" onclick="window.open('${API_BASE}/uploads/${encodeURIComponent(name)}', '_blank')">
+              <div style="display:flex;align-items:center;gap:0.75rem">
+                <div style="font-size:1.5rem;flex-shrink:0">${icon}</div>
+                <div style="flex:1;min-width:0">
+                  <p style="margin:0;font-size:0.85rem;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(name)}</p>
+                  <p style="margin:0.15rem 0 0;font-size:0.7rem;color:var(--color-text-muted)">${f.size ? (f.size / 1024).toFixed(1) + " KB" : ""}</p>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join("");
+      }
+
+      showStudentView(`
+        <div class="content">
+          <h2>Files & Resources</h2>
+          <p style="color:var(--color-text-muted);font-size:0.85rem;margin-top:0.25rem">Browse and download files uploaded by your teachers.</p>
+          <div style="margin-top:1rem;display:flex;gap:0.5rem;flex-wrap:wrap">
+            <button class="btn btn-sm student-files-filter" data-filter="all" style="background:var(--color-bg);border:1px solid var(--color-border);font-weight:600">All</button>
+            <button class="btn btn-sm student-files-filter" data-filter="images" style="background:var(--color-bg);border:1px solid var(--color-border)">🖼️ Images</button>
+            <button class="btn btn-sm student-files-filter" data-filter="documents" style="background:var(--color-bg);border:1px solid var(--color-border)">📄 Documents</button>
+            <button class="btn btn-sm student-files-filter" data-filter="media" style="background:var(--color-bg);border:1px solid var(--color-border)">🎬 Media</button>
+          </div>
+          <div id="student-files-grid" style="margin-top:0.75rem;display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:0.5rem"></div>
+        </div>
+      `);
+      document.querySelectorAll(".student-files-filter").forEach(btn => {
+        btn.addEventListener("click", () => {
+          activeFilter = btn.dataset.filter;
+          document.querySelectorAll(".student-files-filter").forEach(b => b.style.fontWeight = b.dataset.filter === activeFilter ? "600" : "400");
+          renderStudentFiles();
+        });
+      });
+      renderStudentFiles();
+    } catch(e) { showStudentView('<div class="empty-state"><p>Error loading files</p></div>'); }
+  }
+
+  async function loadStudentNotifications() {
+    showStudentView('<div class="loading-state"><div class="spinner"></div><p>Loading notifications...</p></div>');
+    try {
+      const data = await request("/notifications");
+      const allNotifs = Array.isArray(data) ? data : [];
+      const unread = allNotifs.filter(n => !n.is_read);
+      const read = allNotifs.filter(n => n.is_read);
+      let showFilter = "all";
+
+      function render() {
+        let list = allNotifs;
+        if (showFilter === "unread") list = unread;
+        else if (showFilter === "read") list = read;
+        const el = document.getElementById("student-notif-list");
+        if (!el) return;
+        if (list.length === 0) {
+          el.innerHTML = '<div class="empty-state" style="padding:2rem"><p>No notifications</p></div>';
+          return;
+        }
+        el.innerHTML = list.map(n => `
+          <div class="card" style="padding:0.75rem 1rem;margin-bottom:0.5rem;${n.is_read ? "opacity:0.7" : "border-left:3px solid var(--color-primary)"}">
+            <div style="display:flex;justify-content:space-between;align-items:start;gap:0.5rem">
+              <div style="flex:1">
+                <p style="margin:0;font-size:0.875rem;${n.is_read ? "" : "font-weight:600"}">${escapeHtml(n.message)}</p>
+                <p style="margin:0.25rem 0 0;font-size:0.75rem;color:var(--color-text-muted)">${n.created_at ? new Date(n.created_at).toLocaleString() : ""}</p>
+              </div>
+              ${!n.is_read ? `<button class="btn btn-sm btn-primary student-notif-read" data-id="${n.id}" style="font-size:0.7rem;padding:0.2rem 0.5rem">Mark Read</button>` : ""}
+            </div>
+          </div>
+        `).join("");
+        document.querySelectorAll(".student-notif-read").forEach(btn => {
+          btn.addEventListener("click", async () => {
+            await request(`/notifications/${btn.dataset.id}/read`, { method: "POST" });
+            const n = allNotifs.find(x => x.id === btn.dataset.id);
+            if (n) n.is_read = true;
+            unread.length = 0; unread.push(...allNotifs.filter(x => !x.is_read));
+            read.length = 0; read.push(...allNotifs.filter(x => x.is_read));
+            const badge = document.getElementById("notif-badge");
+            if (badge) { const c = unread.length; badge.textContent = c; badge.style.display = c > 0 ? "inline" : "none"; }
+            render();
+          });
+        });
+      }
+
+      showStudentView(`
+        <div class="content">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <h2>Notifications</h2>
+            <button class="btn btn-sm" id="student-mark-all-read">Mark All Read</button>
+          </div>
+          <div style="margin-top:1rem;display:flex;gap:0.5rem">
+            <button class="btn btn-sm student-notif-filter" data-filter="all" style="background:var(--color-bg);border:1px solid var(--color-border);font-weight:600">All (${allNotifs.length})</button>
+            <button class="btn btn-sm student-notif-filter" data-filter="unread" style="background:var(--color-bg);border:1px solid var(--color-border)">Unread (${unread.length})</button>
+            <button class="btn btn-sm student-notif-filter" data-filter="read" style="background:var(--color-bg);border:1px solid var(--color-border)">Read (${read.length})</button>
+          </div>
+          <div id="student-notif-list" style="margin-top:0.75rem"></div>
+        </div>
+      `);
+      document.querySelectorAll(".student-notif-filter").forEach(btn => {
+        btn.addEventListener("click", () => {
+          showFilter = btn.dataset.filter;
+          document.querySelectorAll(".student-notif-filter").forEach(b => b.style.fontWeight = b.dataset.filter === showFilter ? "600" : "400");
+          render();
+        });
+      });
+      document.getElementById("student-mark-all-read")?.addEventListener("click", async () => {
+        for (const n of unread) {
+          try { await request(`/notifications/${n.id}/read`, { method: "POST" }); n.is_read = true; } catch(e) {}
+        }
+        unread.length = 0; read.length = 0; read.push(...allNotifs);
+        const badge = document.getElementById("notif-badge");
+        if (badge) badge.style.display = "none";
+        render();
+      });
+      render();
+    } catch(e) { showStudentView('<div class="empty-state"><p>Error loading notifications</p></div>'); }
+  }
+
+  async function loadStudentSettings() {
+    showStudentView('<div class="loading-state"><div class="spinner"></div><p>Loading settings...</p></div>');
+    try {
+      const [me, profile] = await Promise.all([
+        request("/users/me").catch(() => ({})),
+        request("/students/me").catch(() => ({})),
+      ]);
+      const activeTab = localStorage.getItem("student_settings_tab") || "profile";
+
+      function renderTab(tab) {
+        localStorage.setItem("student_settings_tab", tab);
+        document.querySelectorAll(".student-settings-tab").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
+        const panel = document.getElementById("student-settings-panel");
+        if (!panel) return;
+
+        if (tab === "profile") {
+          panel.innerHTML = `
+            <div class="card" style="padding:1.5rem">
+              <h3 style="margin-bottom:0.75rem">My Profile</h3>
+              <form id="student-profile-form" style="display:flex;flex-direction:column;gap:0.75rem">
+                <div>
+                  <label style="font-size:0.85rem;font-weight:500;display:block;margin-bottom:0.25rem">Full Name</label>
+                  <input class="input" name="full_name" value="${escapeHtml(profile.full_name || "")}" placeholder="Your name">
+                </div>
+                <div>
+                  <label style="font-size:0.85rem;font-weight:500;display:block;margin-bottom:0.25rem">Email</label>
+                  <input class="input" value="${escapeHtml(me.email || "")}" disabled style="opacity:0.6">
+                </div>
+                <div>
+                  <label style="font-size:0.85rem;font-weight:500;display:block;margin-bottom:0.25rem">Form Level</label>
+                  <select class="input" name="form_level">
+                    <option value="">Select...</option>
+                    ${["Form I","Form II","Form III","Form IV","Form V","Form VI"].map(f => `<option value="${f}" ${profile.form_level === f ? "selected" : ""}>${f}</option>`).join("")}
+                  </select>
+                </div>
+                <button class="btn btn-primary" type="submit" style="align-self:flex-start">Save Changes</button>
+              </form>
+              <p id="student-profile-msg" style="font-size:0.85rem;margin-top:0.5rem;display:none"></p>
+            </div>
+          `;
+          document.getElementById("student-profile-form")?.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const fd = new FormData(e.target);
+            const msg = document.getElementById("student-profile-msg");
+            try {
+              await request("/students/me", { method: "PATCH", body: JSON.stringify({ full_name: fd.get("full_name"), form_level: fd.get("form_level") }) });
+              msg.textContent = "Profile updated!"; msg.style.color = "var(--color-success)"; msg.style.display = "block";
+              setTimeout(() => msg.style.display = "none", 3000);
+            } catch(err) { msg.textContent = err.message; msg.style.color = "var(--color-danger)"; msg.style.display = "block"; }
+          });
+        } else if (tab === "password") {
+          panel.innerHTML = `
+            <div class="card" style="padding:1.5rem">
+              <h3 style="margin-bottom:0.75rem">Change Password</h3>
+              <form id="student-pw-form" style="display:flex;flex-direction:column;gap:0.75rem;max-width:400px">
+                <div>
+                  <label style="font-size:0.85rem;font-weight:500;display:block;margin-bottom:0.25rem">Current Password</label>
+                  <input class="input" name="current_password" type="password" required>
+                </div>
+                <div>
+                  <label style="font-size:0.85rem;font-weight:500;display:block;margin-bottom:0.25rem">New Password</label>
+                  <input class="input" name="new_password" type="password" required minlength="6">
+                </div>
+                <div>
+                  <label style="font-size:0.85rem;font-weight:500;display:block;margin-bottom:0.25rem">Confirm New Password</label>
+                  <input class="input" name="confirm_password" type="password" required>
+                </div>
+                <button class="btn btn-primary" type="submit" style="align-self:flex-start">Update Password</button>
+              </form>
+              <p id="student-pw-msg" style="font-size:0.85rem;margin-top:0.5rem;display:none"></p>
+            </div>
+          `;
+          document.getElementById("student-pw-form")?.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const fd = new FormData(e.target);
+            const msg = document.getElementById("student-pw-msg");
+            if (fd.get("new_password") !== fd.get("confirm_password")) {
+              msg.textContent = "Passwords do not match"; msg.style.color = "var(--color-danger)"; msg.style.display = "block";
+              return;
+            }
+            try {
+              await request("/auth/change-password", { method: "POST", body: JSON.stringify({ current_password: fd.get("current_password"), new_password: fd.get("new_password") }) });
+              msg.textContent = "Password updated!"; msg.style.color = "var(--color-success)"; msg.style.display = "block";
+              e.target.reset();
+            } catch(err) { msg.textContent = err.message; msg.style.color = "var(--color-danger)"; msg.style.display = "block"; }
+          });
+        }
+      }
+
+      showStudentView(`
+        <div class="content">
+          <h2>Settings</h2>
+          <div style="display:flex;gap:0;border-bottom:2px solid var(--color-border);margin-top:1rem;margin-bottom:1rem">
+            <button class="btn student-settings-tab" data-tab="profile" style="border-radius:0;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;${activeTab === "profile" ? "border-bottom-color:var(--color-primary);color:var(--color-primary);font-weight:600" : "color:var(--color-text-muted)"}">Profile</button>
+            <button class="btn student-settings-tab" data-tab="password" style="border-radius:0;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;${activeTab === "password" ? "border-bottom-color:var(--color-primary);color:var(--color-primary);font-weight:600" : "color:var(--color-text-muted)"}">Password</button>
+          </div>
+          <div id="student-settings-panel"></div>
+        </div>
+      `);
+      document.querySelectorAll(".student-settings-tab").forEach(btn => {
+        btn.addEventListener("click", () => renderTab(btn.dataset.tab));
+      });
+      renderTab(activeTab);
+    } catch(e) { showStudentView('<div class="empty-state"><p>Error loading settings</p></div>'); }
   }
 
   // Initial load
-  loadStudentSubjects();
+  loadStudentOverview();
 }
 
 // --- Admin Dashboard ---
@@ -1957,10 +2103,12 @@ async function renderAdminDashboard() {
           <div class="sidebar-nav-item" data-view="games">🎮 Games</div>
           <div class="sidebar-nav-item" data-view="users">👥 Users</div>
           <div class="sidebar-nav-item" data-view="progress">📈 Progress</div>
+          <div class="sidebar-nav-item" data-view="analytics">📉 Analytics</div>
           <div class="sidebar-nav-item" data-view="payments">💳 Payments</div>
           <div class="sidebar-nav-item" data-view="notifications">🔔 Notifications</div>
           <div class="sidebar-nav-item" data-view="uploads">📤 Uploads</div>
           <div class="sidebar-nav-item" data-view="branding">🎨 Branding</div>
+          <div class="sidebar-nav-item" data-view="settings">⚙️ Settings</div>
         </nav>
         <div class="sidebar-footer">
           <button id="admin-logout" class="btn btn-danger" style="width:100%;font-size:0.85rem">Sign Out</button>
@@ -2038,7 +2186,9 @@ async function renderAdminDashboard() {
   }
 
   function showAdminView(content) {
-    document.getElementById("admin-content").innerHTML = content;
+    const el = document.getElementById("admin-content");
+    if (!el) return;
+    el.innerHTML = content;
   }
 
   const navHandlers = {
@@ -2051,10 +2201,12 @@ async function renderAdminDashboard() {
     games: () => { setActiveNav("games"); loadAdminGames(); },
     users: () => { setActiveNav("users"); loadAdminUsers(); },
     progress: () => { setActiveNav("progress"); loadAdminProgress(); },
+    analytics: () => { setActiveNav("analytics"); loadAdminAnalytics(); },
     payments: () => { setActiveNav("payments"); loadAdminPayments(); },
     notifications: () => { setActiveNav("notifications"); loadAdminNotifications(); },
     uploads: () => { setActiveNav("uploads"); loadAdminUploads(); },
     branding: () => { setActiveNav("branding"); loadAdminBranding(); },
+    settings: () => { setActiveNav("settings"); loadAdminSettings(); },
   };
 
   document.querySelectorAll("#admin-nav .sidebar-nav-item").forEach(el => {
@@ -2070,17 +2222,78 @@ async function renderAdminDashboard() {
     try {
       const overview = await request("/analytics/overview");
       const name = payload.full_name || payload.email || "Admin";
+
+      // Greeting based on time
+      const hour = new Date().getHours();
+      let greeting = "Good morning";
+      if (hour >= 12 && hour < 17) greeting = "Good afternoon";
+      else if (hour >= 17) greeting = "Good evening";
+
       showAdminView(`
-        <div class="content">
-          <h2>Welcome, ${escapeHtml(name)}</h2>
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin:1rem 0">
-            <div class="card"><h3>Students</h3><p style="font-size:2rem;font-weight:700">${overview?.total_students ?? 0}</p></div>
-            <div class="card"><h3>Teachers</h3><p style="font-size:2rem;font-weight:700">${overview?.total_teachers ?? 0}</p></div>
-            <div class="card"><h3>Lessons</h3><p style="font-size:2rem;font-weight:700">${overview?.total_lessons ?? 0}</p></div>
-            <div class="card"><h3>Quizzes</h3><p style="font-size:2rem;font-weight:700">${overview?.total_quizzes ?? 0}</p></div>
+        <div class="content" style="max-width:960px">
+          <!-- Welcome Banner -->
+          <div class="welcome-banner">
+            <small>${greeting}</small>
+            <h2>Welcome, ${escapeHtml(name)}</h2>
+            <p>Here's your platform overview at a glance.</p>
+          </div>
+
+          <!-- Stats -->
+          <div class="stat-grid">
+            <div class="stat-card">
+              <div class="stat-icon" style="background:#eff6ff;color:#2563eb">👥</div>
+              <div class="stat-value">${overview?.total_students ?? 0}</div>
+              <div class="stat-label">Students</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon" style="background:#f0fdf4;color:#16a34a">👩‍🏫</div>
+              <div class="stat-value">${overview?.total_teachers ?? 0}</div>
+              <div class="stat-label">Teachers</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon" style="background:#fef3c7;color:#d97706">📝</div>
+              <div class="stat-value">${overview?.total_lessons ?? 0}</div>
+              <div class="stat-label">Lessons</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon" style="background:#fce7f3;color:#db2777">❓</div>
+              <div class="stat-value">${overview?.total_quizzes ?? 0}</div>
+              <div class="stat-label">Quizzes</div>
+            </div>
+          </div>
+
+          <!-- Quick Actions -->
+          <div class="section-header">
+            <h3>Quick Actions</h3>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:0.75rem">
+            <div class="recent-lesson-card" data-nav="subjects" style="text-align:center">
+              <div style="font-size:1.5rem;margin-bottom:0.25rem">📚</div>
+              <h4 style="margin:0">Manage Subjects</h4>
+            </div>
+            <div class="recent-lesson-card" data-nav="lessons" style="text-align:center">
+              <div style="font-size:1.5rem;margin-bottom:0.25rem">📝</div>
+              <h4 style="margin:0">Manage Lessons</h4>
+            </div>
+            <div class="recent-lesson-card" data-nav="users" style="text-align:center">
+              <div style="font-size:1.5rem;margin-bottom:0.25rem">👥</div>
+              <h4 style="margin:0">Manage Users</h4>
+            </div>
+            <div class="recent-lesson-card" data-nav="progress" style="text-align:center">
+              <div style="font-size:1.5rem;margin-bottom:0.25rem">📈</div>
+              <h4 style="margin:0">View Progress</h4>
+            </div>
           </div>
         </div>
       `);
+
+      // Wire up quick action clicks
+      document.querySelectorAll("#admin-content .recent-lesson-card[data-nav]").forEach(el => {
+        el.addEventListener("click", () => {
+          const view = el.dataset.nav;
+          if (navHandlers[view]) navHandlers[view]();
+        });
+      });
     } catch (err) {
       showAdminView(`<div class="empty-state"><h2>Error</h2><p>${escapeHtml(err.message)}</p></div>`);
     }
@@ -2414,9 +2627,13 @@ async function renderAdminDashboard() {
         <div class="content">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
             <h2>Lessons</h2>
-            <button class="btn btn-primary" id="add-lesson-btn">+ Add Lesson</button>
+            <div style="display:flex;gap:0.5rem">
+              <button class="btn btn-primary" id="ai-generate-questions-btn">🤖 AI Generate Questions</button>
+              <button class="btn btn-primary" id="add-lesson-btn">+ Add Lesson</button>
+            </div>
           </div>
           <div id="form-area"></div>
+          <div id="ai-form-area"></div>
           <div class="card-grid">
             ${list.length === 0 ? '<div class="empty-state"><p>No lessons</p></div>' :
               list.map(l => `
@@ -2469,6 +2686,51 @@ async function renderAdminDashboard() {
             await request("/lessons", { method: "POST", body: JSON.stringify({ title, slug, html_content: fd.get("content"), subtopic_id: fd.get("subtopic_id") }) });
             loadAdminLessons();
           } catch(err) { showToast("Error: " + err.message); }
+        });
+      });
+      document.getElementById("ai-generate-questions-btn")?.addEventListener("click", () => {
+        document.getElementById("ai-form-area").innerHTML = `
+          <div class="card" style="margin-bottom:1rem;padding:1.5rem">
+            <h3 style="margin-bottom:0.75rem">AI Generate Quiz Questions</h3>
+            <p style="color:var(--color-text-muted);font-size:0.85rem;margin-bottom:0.75rem">Paste lesson content to auto-generate quiz questions.</p>
+            <form id="ai-gen-form" style="display:flex;flex-direction:column;gap:0.5rem">
+              <textarea class="input" name="lesson_html" rows="8" placeholder="Paste lesson HTML content here..." required style="font-family:monospace;font-size:0.85rem"></textarea>
+              <div style="display:flex;gap:0.5rem;align-items:center">
+                <label style="font-size:0.85rem;color:var(--color-text-muted)">Questions:</label>
+                <input class="input" type="number" name="count" value="5" min="1" max="20" style="width:80px">
+                <button class="btn btn-primary" type="submit">Generate</button>
+                <button class="btn" type="button" id="cancel-ai-gen">Cancel</button>
+              </div>
+            </form>
+            <div id="ai-gen-result" style="margin-top:1rem;display:none">
+              <div class="card" style="background:var(--color-bg);padding:1rem">
+                <h4 style="margin:0 0 0.5rem">Generated Questions</h4>
+                <pre id="ai-gen-text" style="font-size:0.85rem;line-height:1.5;white-space:pre-wrap;overflow-x:auto"></pre>
+                <button class="btn btn-sm btn-primary" id="copy-ai-gen" style="margin-top:0.5rem">Copy to Clipboard</button>
+              </div>
+            </div>
+          </div>
+        `;
+        document.getElementById("cancel-ai-gen").addEventListener("click", () => document.getElementById("ai-form-area").innerHTML = "");
+        document.getElementById("ai-gen-form").addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const fd = new FormData(e.target);
+          const resultDiv = document.getElementById("ai-gen-result");
+          const textDiv = document.getElementById("ai-gen-text");
+          resultDiv.style.display = "block";
+          textDiv.textContent = "Generating...";
+          try {
+            const result = await request("/ai/questions/generate", {
+              method: "POST",
+              body: JSON.stringify({ lesson_html: fd.get("lesson_html"), count: parseInt(fd.get("count")) || 5 }),
+            });
+            const questions = result?.questions || result;
+            textDiv.textContent = typeof questions === "string" ? questions : JSON.stringify(questions, null, 2);
+          } catch(err) { textDiv.textContent = "Error: " + err.message; }
+        });
+        document.getElementById("copy-ai-gen")?.addEventListener("click", () => {
+          const text = document.getElementById("ai-gen-text").textContent;
+          navigator.clipboard?.writeText(text).then(() => showToast("Copied!")).catch(() => {});
         });
       });
     } catch(e) { showAdminView('<div class="empty-state"><p>Error loading lessons</p></div>'); }
@@ -2868,6 +3130,92 @@ async function renderAdminDashboard() {
           } catch(err) { showToast("Error: " + err.message); }
         });
       });
+      document.getElementById("add-game-btn")?.addEventListener("click", () => {
+        document.getElementById("form-area").innerHTML = `
+          <div class="card" style="margin-bottom:1rem">
+            <h3>New Builder Game</h3>
+            <form id="create-game-form" style="display:flex;flex-direction:column;gap:0.5rem;margin-top:0.5rem">
+              <select class="input" name="lesson_id"><option value="">Select lesson (optional)...</option></select>
+              <input class="input" name="title" placeholder="Game title" required>
+              <div id="builder-questions">
+                <p style="font-size:0.85rem;color:var(--color-text-muted);margin-bottom:0.5rem">Questions (add at least one)</p>
+                <div class="builder-question" style="border:1px solid var(--color-border);border-radius:var(--radius);padding:0.75rem;margin-bottom:0.5rem">
+                  <input class="input" name="q_prompt_0" placeholder="Question text" required style="margin-bottom:0.5rem">
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.35rem">
+                    <input class="input" name="q_opt0_0" placeholder="Option A" required>
+                    <input class="input" name="q_opt1_0" placeholder="Option B" required>
+                    <input class="input" name="q_opt2_0" placeholder="Option C" required>
+                    <input class="input" name="q_opt3_0" placeholder="Option D" required>
+                  </div>
+                  <select class="input" name="q_correct_0" style="margin-top:0.35rem">
+                    <option value="0">Correct: Option A</option>
+                    <option value="1">Correct: Option B</option>
+                    <option value="2">Correct: Option C</option>
+                    <option value="3">Correct: Option D</option>
+                  </select>
+                </div>
+              </div>
+              <button type="button" class="btn btn-sm" id="add-question-btn">+ Add Question</button>
+              <div style="display:flex;gap:0.5rem;margin-top:0.5rem">
+                <button class="btn btn-primary" type="submit">Save</button>
+                <button class="btn" type="button" id="cancel-btn">Cancel</button>
+              </div>
+            </form>
+          </div>
+        `;
+        request("/lessons/").then(ls => {
+          const sel = document.querySelector('[name="lesson_id"]');
+          if (sel && Array.isArray(ls)) ls.forEach(l => { const o = document.createElement("option"); o.value = l.id; o.textContent = l.title; sel.appendChild(o); });
+        });
+        let qIdx = 1;
+        document.getElementById("add-question-btn").addEventListener("click", () => {
+          const i = qIdx++;
+          const div = document.createElement("div");
+          div.className = "builder-question";
+          div.style.cssText = "border:1px solid var(--color-border);border-radius:var(--radius);padding:0.75rem;margin-bottom:0.5rem";
+          div.innerHTML = `
+            <input class="input" name="q_prompt_${i}" placeholder="Question text" required style="margin-bottom:0.5rem">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.35rem">
+              <input class="input" name="q_opt0_${i}" placeholder="Option A" required>
+              <input class="input" name="q_opt1_${i}" placeholder="Option B" required>
+              <input class="input" name="q_opt2_${i}" placeholder="Option C" required>
+              <input class="input" name="q_opt3_${i}" placeholder="Option D" required>
+            </div>
+            <select class="input" name="q_correct_${i}" style="margin-top:0.35rem">
+              <option value="0">Correct: Option A</option>
+              <option value="1">Correct: Option B</option>
+              <option value="2">Correct: Option C</option>
+              <option value="3">Correct: Option D</option>
+            </select>
+          `;
+          document.getElementById("builder-questions").appendChild(div);
+        });
+        document.getElementById("cancel-btn").addEventListener("click", () => document.getElementById("form-area").innerHTML = "");
+        document.getElementById("create-game-form").addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const fd = new FormData(e.target);
+          const title = fd.get("title");
+          if (!title) { showToast("Title is required"); return; }
+          const questions = [];
+          document.querySelectorAll(".builder-question").forEach((_, idx) => {
+            const prompt = fd.get(`q_prompt_${idx}`);
+            if (!prompt) return;
+            const options = [
+              { text: fd.get(`q_opt0_${idx}`), is_correct: parseInt(fd.get(`q_correct_${idx}`)) === 0 },
+              { text: fd.get(`q_opt1_${idx}`), is_correct: parseInt(fd.get(`q_correct_${idx}`)) === 1 },
+              { text: fd.get(`q_opt2_${idx}`), is_correct: parseInt(fd.get(`q_correct_${idx}`)) === 2 },
+              { text: fd.get(`q_opt3_${idx}`), is_correct: parseInt(fd.get(`q_correct_${idx}`)) === 3 },
+            ];
+            questions.push({ prompt, options });
+          });
+          if (questions.length === 0) { showToast("Add at least one question"); return; }
+          try {
+            await request("/games", { method: "POST", body: JSON.stringify({ lesson_id: fd.get("lesson_id") || null, title, questions }) });
+            showToast("Game created!");
+            loadAdminGames();
+          } catch(err) { showToast("Error: " + err.message); }
+        });
+      });
     } catch(e) { showAdminView('<div class="empty-state"><p>Error loading games</p></div>'); }
   }
 
@@ -2954,115 +3302,510 @@ async function renderAdminDashboard() {
       const sList = Array.isArray(students) ? students : [];
       const tList = Array.isArray(teachers) ? teachers : [];
       showAdminView(`
-        <h2>Users</h2>
-        <h3 style="margin-top:1rem">Students (${sList.length})</h3>
-        <div style="margin-top:0.5rem">
-          ${sList.length === 0 ? '<p style="color:var(--color-text-muted)">No students</p>' :
-            sList.map(s => `<div class="card" style="padding:0.5rem 0.75rem;margin-bottom:0.5rem;display:flex;justify-content:space-between"><span>${escapeHtml(s.full_name||"")}</span><span style="color:var(--color-text-muted);font-size:0.85rem">${escapeHtml(s.form_level||"")}</span></div>`).join("")}
-        </div>
-        <h3 style="margin-top:1.5rem">Teachers (${tList.length})</h3>
-        <div style="margin-top:0.5rem">
-          ${tList.length === 0 ? '<p style="color:var(--color-text-muted)">No teachers</p>' :
-            tList.map(t => `<div class="card" style="padding:0.5rem 0.75rem;margin-bottom:0.5rem;display:flex;justify-content:space-between"><span>${escapeHtml(t.full_name||"")}</span><span style="color:var(--color-text-muted);font-size:0.85rem">${escapeHtml(t.subjects||"")}</span></div>`).join("")}
+        <div class="content" style="max-width:960px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <h2>Users</h2>
+            <button class="btn btn-primary" id="register-user-btn">+ Register User</button>
+          </div>
+          <div id="user-form-area"></div>
+
+          <div class="section-header" style="margin-top:1.5rem">
+            <h3>Students (${sList.length})</h3>
+          </div>
+          <div class="card-grid">
+            ${sList.length === 0 ? '<div class="empty-state" style="padding:2rem"><p>No students registered</p></div>' :
+              sList.map(s => `
+                <div class="card user-card" data-id="${escapeHtml(s.id || s.user_id)}" data-type="student" data-name="${escapeHtml(s.full_name || '')}" style="cursor:pointer">
+                  <div style="display:flex;align-items:center;gap:0.75rem">
+                    <div style="width:36px;height:36px;border-radius:50%;background:#eff6ff;color:#2563eb;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.85rem;flex-shrink:0">${escapeHtml((s.full_name || "S").charAt(0).toUpperCase())}</div>
+                    <div style="flex:1;min-width:0">
+                      <h4 style="margin:0;font-size:0.9rem">${escapeHtml(s.full_name || "Unnamed")}</h4>
+                      <p style="margin:0.15rem 0 0;color:var(--color-text-muted);font-size:0.75rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(s.email || "")} ${s.form_level ? "· " + escapeHtml(s.form_level) : ""}</p>
+                    </div>
+                  </div>
+                </div>
+              `).join("")}
+          </div>
+
+          <div class="section-header" style="margin-top:1.5rem">
+            <h3>Teachers (${tList.length})</h3>
+          </div>
+          <div class="card-grid">
+            ${tList.length === 0 ? '<div class="empty-state" style="padding:2rem"><p>No teachers registered</p></div>' :
+              tList.map(t => `
+                <div class="card user-card" data-id="${escapeHtml(t.id || t.user_id)}" data-type="teacher" data-name="${escapeHtml(t.full_name || '')}" style="cursor:pointer">
+                  <div style="display:flex;align-items:center;gap:0.75rem">
+                    <div style="width:36px;height:36px;border-radius:50%;background:#f0fdf4;color:#16a34a;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.85rem;flex-shrink:0">${escapeHtml((t.full_name || "T").charAt(0).toUpperCase())}</div>
+                    <div style="flex:1;min-width:0">
+                      <h4 style="margin:0;font-size:0.9rem">${escapeHtml(t.full_name || "Unnamed")}</h4>
+                      <p style="margin:0.15rem 0 0;color:var(--color-text-muted);font-size:0.75rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(t.email || "")} ${t.subjects ? "· " + escapeHtml(t.subjects) : ""}</p>
+                    </div>
+                  </div>
+                </div>
+              `).join("")}
+          </div>
         </div>
       `);
+      document.querySelectorAll("#admin-content .user-card").forEach(card => {
+        card.addEventListener("click", () => viewAdminUser(card.dataset.id, card.dataset.type, card.dataset.name));
+      });
+      document.getElementById("register-user-btn")?.addEventListener("click", () => {
+        document.getElementById("user-form-area").innerHTML = `
+          <div class="card" style="margin-top:1rem;padding:1.5rem">
+            <h3 style="margin-bottom:0.75rem">Register New User</h3>
+            <form id="register-user-form" style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem">
+              <div>
+                <label style="font-size:0.8rem;color:var(--color-text-muted);display:block;margin-bottom:0.25rem">Full Name</label>
+                <input class="input" name="full_name" placeholder="John Doe" required>
+              </div>
+              <div>
+                <label style="font-size:0.8rem;color:var(--color-text-muted);display:block;margin-bottom:0.25rem">Email</label>
+                <input class="input" type="email" name="email" placeholder="john@example.com" required>
+              </div>
+              <div>
+                <label style="font-size:0.8rem;color:var(--color-text-muted);display:block;margin-bottom:0.25rem">Password</label>
+                <input class="input" type="password" name="password" placeholder="Min 6 characters" required minlength="6">
+              </div>
+              <div>
+                <label style="font-size:0.8rem;color:var(--color-text-muted);display:block;margin-bottom:0.25rem">Phone</label>
+                <input class="input" name="phone" placeholder="+255...">
+              </div>
+              <div>
+                <label style="font-size:0.8rem;color:var(--color-text-muted);display:block;margin-bottom:0.25rem">Role</label>
+                <select class="input" name="role" required>
+                  <option value="student">Student</option>
+                  <option value="teacher">Teacher</option>
+                </select>
+              </div>
+              <div>
+                <label style="font-size:0.8rem;color:var(--color-text-muted);display:block;margin-bottom:0.25rem">Form Level (Students)</label>
+                <select class="input" name="form_level">
+                  <option value="">N/A</option>
+                  <option value="Form I">Form I</option>
+                  <option value="Form II">Form II</option>
+                  <option value="Form III">Form III</option>
+                  <option value="Form IV">Form IV</option>
+                  <option value="Form V">Form V</option>
+                  <option value="Form VI">Form VI</option>
+                </select>
+              </div>
+              <div style="grid-column:1/-1;display:flex;gap:0.5rem">
+                <button class="btn btn-success" type="submit">Register</button>
+                <button class="btn" type="button" id="cancel-register">Cancel</button>
+              </div>
+            </form>
+            <div id="register-user-result" style="margin-top:0.75rem;font-size:0.85rem"></div>
+          </div>
+        `;
+        document.getElementById("cancel-register").addEventListener("click", () => document.getElementById("user-form-area").innerHTML = "");
+        document.getElementById("register-user-form").addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const fd = new FormData(e.target);
+          try {
+            await request("/auth/register", {
+              method: "POST",
+              body: JSON.stringify({
+                full_name: fd.get("full_name"),
+                email: fd.get("email"),
+                password: fd.get("password"),
+                phone: fd.get("phone") || null,
+                role: fd.get("role"),
+                form_level: fd.get("form_level") || null,
+              }),
+            });
+            document.getElementById("register-user-result").innerHTML = '<span style="color:var(--color-success)">User registered!</span>';
+            setTimeout(() => loadAdminUsers(), 1000);
+          } catch(err) {
+            document.getElementById("register-user-result").innerHTML = `<span style="color:var(--color-danger)">${escapeHtml(err.message)}</span>`;
+          }
+        });
+      });
     } catch(e) { showAdminView('<div class="empty-state"><p>Error loading users</p></div>'); }
   }
 
-  async function loadAdminPayments() {
-    showAdminView('<div class="loading-state"><div class="spinner"></div><p>Loading...</p></div>');
-    showAdminView(`
-      <h2>Payments</h2>
-      <p style="color:var(--color-text-muted);margin-bottom:1rem">AzamPay mobile money integration</p>
-      <div class="card" style="max-width:500px">
-        <h3>Initiate Checkout</h3>
-        <form id="payment-form" style="display:flex;flex-direction:column;gap:0.5rem;margin-top:0.5rem">
-          <input class="input" name="mobile_number" placeholder="Mobile number (e.g. 0712345678)" required />
-          <input class="input" name="amount_tzs" type="number" placeholder="Amount (TZS)" required />
-          <select class="input" name="provider" required>
-            <option value="">Select provider...</option>
-            <option value="azampay">AzamPay</option>
-            <option value="m-pesa">M-Pesa</option>
-            <option value="tigo-pesa">Tigo Pesa</option>
-            <option value="halopesa">HaloPesa</option>
-          </select>
-          <button class="btn btn-success" type="submit">Initiate Payment</button>
-        </form>
-        <div id="payment-result" style="margin-top:0.5rem"></div>
-      </div>
-    `);
-    document.getElementById("payment-form")?.addEventListener("submit", async (ev) => {
-      ev.preventDefault();
-      const fd = new FormData(ev.target);
-      try {
-        const data = await request("/payments/checkout", {
-          method: "POST",
-          body: JSON.stringify({
-            mobile_number: fd.get("mobile_number"),
-            amount_tzs: parseInt(fd.get("amount_tzs"), 10),
-            provider: fd.get("provider"),
-            idempotency_key: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(),
-          }),
-        });
-        if (data === null) return;
-        document.getElementById("payment-result").innerHTML = `<p style="color:var(--color-success)">Payment initiated: ${escapeHtml(JSON.stringify(data))}</p>`;
-      } catch (err) {
-        document.getElementById("payment-result").innerHTML = `<p style="color:var(--color-danger)">${escapeHtml(err.message)}</p>`;
+  async function viewAdminUser(userId, userType, userName) {
+    showAdminView('<div class="loading-state"><div class="spinner"></div><p>Loading user...</p></div>');
+    try {
+      let userData = null;
+      let progressData = [];
+      if (userType === "student") {
+        [userData, progressData] = await Promise.all([
+          request(`/students/${userId}`).catch(() => null),
+          request(`/progress/${userId}`).catch(() => []),
+        ]);
+      } else {
+        userData = await request(`/teachers/${userId}`).catch(() => null);
       }
-    });
+
+      const progressList = Array.isArray(progressData) ? progressData : [];
+      const totalCompleted = progressList.filter(p => p.completion_percentage >= 100).length;
+      const scores = progressList.filter(p => p.score_percentage != null && p.score_percentage > 0);
+      const avgScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+
+      showAdminView(`
+        <div class="content" style="max-width:960px">
+          <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1rem">
+            <button class="btn" id="back-btn">← Back</button>
+            <h2>${escapeHtml(userName)}</h2>
+            <span style="font-size:0.75rem;padding:0.2rem 0.6rem;background:${userType === "student" ? "#eff6ff" : "#f0fdf4"};color:${userType === "student" ? "#2563eb" : "#16a34a"};border-radius:var(--radius);font-weight:600">${userType === "student" ? "Student" : "Teacher"}</span>
+          </div>
+
+          <div class="card" style="margin-bottom:1rem">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem">
+              <div>
+                <div style="font-size:0.75rem;color:var(--color-text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.25rem">Name</div>
+                <div style="font-size:0.9rem">${escapeHtml(userData?.full_name || "N/A")}</div>
+              </div>
+              <div>
+                <div style="font-size:0.75rem;color:var(--color-text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.25rem">Email</div>
+                <div style="font-size:0.9rem">${escapeHtml(userData?.email || "N/A")}</div>
+              </div>
+              ${userData?.phone ? `<div>
+                <div style="font-size:0.75rem;color:var(--color-text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.25rem">Phone</div>
+                <div style="font-size:0.9rem">${escapeHtml(userData.phone)}</div>
+              </div>` : ""}
+              ${userData?.form_level ? `<div>
+                <div style="font-size:0.75rem;color:var(--color-text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.25rem">Form Level</div>
+                <div style="font-size:0.9rem">${escapeHtml(userData.form_level)}</div>
+              </div>` : ""}
+              ${userData?.subjects ? `<div>
+                <div style="font-size:0.75rem;color:var(--color-text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.25rem">Subjects</div>
+                <div style="font-size:0.9rem">${escapeHtml(userData.subjects)}</div>
+              </div>` : ""}
+            </div>
+          </div>
+
+          ${userType === "student" && progressList.length > 0 ? `
+            <div class="stat-grid">
+              <div class="stat-card">
+                <div class="stat-icon" style="background:#eff6ff;color:#2563eb">📚</div>
+                <div class="stat-value">${progressList.length}</div>
+                <div class="stat-label">Lessons Attempted</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-icon" style="background:#f0fdf4;color:#16a34a">✅</div>
+                <div class="stat-value">${totalCompleted}</div>
+                <div class="stat-label">Completed</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-icon" style="background:#fef3c7;color:#d97706">📈</div>
+                <div class="stat-value">${avgScore > 0 ? avgScore + "%" : "—"}</div>
+                <div class="stat-label">Avg Score</div>
+              </div>
+            </div>
+
+            <div class="section-header">
+              <h3>Progress by Subject</h3>
+            </div>
+            ${(() => {
+              const bySubject = {};
+              progressList.forEach(p => {
+                const subj = p.subject_name || "General";
+                if (!bySubject[subj]) bySubject[subj] = { total: 0, completed: 0 };
+                bySubject[subj].total++;
+                if (p.completion_percentage >= 100) bySubject[subj].completed++;
+              });
+              return Object.entries(bySubject).map(([name, data]) => {
+                const pct = data.total > 0 ? Math.round((data.completed / data.total) * 100) : 0;
+                return `
+                  <div class="card" style="margin-bottom:0.75rem">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:0.5rem">
+                      <strong>${escapeHtml(name)}</strong>
+                      <span style="font-size:0.85rem;color:var(--color-text-muted)">${data.completed}/${data.total} · ${pct}%</span>
+                    </div>
+                    <div class="progress-bar">
+                      <div class="progress-bar-fill" style="width:${pct}%"></div>
+                    </div>
+                  </div>
+                `;
+              }).join("");
+            })()}
+          ` : userType === "student" ? `
+            <div class="empty-state" style="padding:2rem"><p>No progress data yet</p></div>
+          ` : ""}
+
+          ${userType === "teacher" ? `
+            <div class="section-header" style="margin-top:1rem">
+              <h3>Teacher Actions</h3>
+            </div>
+            <div class="card" style="padding:1rem">
+              <p style="color:var(--color-text-muted);font-size:0.85rem">Teacher progress and class analytics are available in the teacher portal.</p>
+            </div>
+          ` : ""}
+        </div>
+      `);
+
+      document.getElementById("back-btn")?.addEventListener("click", loadAdminUsers);
+    } catch (err) {
+      showAdminView(`<div class="empty-state"><p>Error loading user details</p><button class="btn" id="back-btn">← Back</button></div>`);
+      document.getElementById("back-btn")?.addEventListener("click", loadAdminUsers);
+    }
+  }
+
+  async function loadAdminPayments() {
+    showAdminView('<div class="loading-state"><div class="spinner"></div><p>Loading payments...</p></div>');
+    try {
+      const transactions = await request("/payments/transactions").catch(() => []);
+      const txList = Array.isArray(transactions) ? transactions : [];
+      const totalRevenue = txList.filter(t => t.status === "completed").reduce((s, t) => s + (t.amount_tzs || 0), 0);
+      const completedCount = txList.filter(t => t.status === "completed").length;
+      const pendingCount = txList.filter(t => t.status === "pending").length;
+
+      showAdminView(`
+        <div class="content">
+          <h2>Payments</h2>
+          <p style="color:var(--color-text-muted);font-size:0.85rem;margin-top:0.25rem">AzamPay mobile money integration</p>
+
+          <div class="stat-grid" style="margin-top:1rem">
+            <div class="stat-card">
+              <div class="stat-icon" style="background:#f0fdf4;color:#16a34a">💰</div>
+              <div class="stat-value">${totalRevenue.toLocaleString()}</div>
+              <div class="stat-label">Total Revenue (TZS)</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon" style="background:#eff6ff;color:#2563eb">✅</div>
+              <div class="stat-value">${completedCount}</div>
+              <div class="stat-label">Completed</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon" style="background:#fef3c7;color:#d97706">⏳</div>
+              <div class="stat-value">${pendingCount}</div>
+              <div class="stat-label">Pending</div>
+            </div>
+          </div>
+
+          <div class="card" style="padding:1.5rem;max-width:560px;margin-top:1rem">
+              <h3 style="margin-bottom:0.75rem">Initiate Checkout</h3>
+              <form id="payment-form" style="display:flex;flex-direction:column;gap:0.5rem">
+                <div>
+                  <label style="font-size:0.85rem;font-weight:500;display:block;margin-bottom:0.25rem">Mobile Number</label>
+                  <input class="input" name="mobile_number" placeholder="e.g. 0712345678" required>
+                </div>
+                <div>
+                  <label style="font-size:0.85rem;font-weight:500;display:block;margin-bottom:0.25rem">Amount (TZS)</label>
+                  <input class="input" name="amount_tzs" type="number" placeholder="e.g. 5000" required min="100">
+                </div>
+                <div>
+                  <label style="font-size:0.85rem;font-weight:500;display:block;margin-bottom:0.25rem">Provider</label>
+                  <select class="input" name="provider" required>
+                    <option value="">Select provider...</option>
+                    <option value="azampay">AzamPay</option>
+                    <option value="m-pesa">M-Pesa</option>
+                    <option value="tigo-pesa">Tigo Pesa</option>
+                    <option value="halopesa">HaloPesa</option>
+                  </select>
+                </div>
+                <button class="btn btn-success" type="submit" id="payment-submit-btn" style="width:100%;margin-top:0.25rem">Initiate Payment</button>
+              </form>
+              <div id="payment-result" style="margin-top:0.75rem"></div>
+            </div>
+
+          <div class="card" style="padding:1.5rem;margin-top:1rem">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem">
+              <h3>Transaction History</h3>
+              <button class="btn btn-sm" id="refresh-tx-btn">Refresh</button>
+            </div>
+            ${txList.length === 0
+              ? '<div class="empty-state" style="padding:2rem"><p>No transactions yet</p></div>'
+              : `<div style="overflow-x:auto">
+                  <table style="width:100%;border-collapse:collapse;font-size:0.85rem">
+                    <thead>
+                      <tr style="border-bottom:2px solid var(--color-border)">
+                        <th style="padding:0.6rem;text-align:left;font-weight:600">Date</th>
+                        <th style="padding:0.6rem;text-align:left;font-weight:600">Phone</th>
+                        <th style="padding:0.6rem;text-align:left;font-weight:600">Provider</th>
+                        <th style="padding:0.6rem;text-align:right;font-weight:600">Amount</th>
+                        <th style="padding:0.6rem;text-align:center;font-weight:600">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${txList.map(t => `
+                        <tr style="border-bottom:1px solid var(--color-border)">
+                          <td style="padding:0.5rem;color:var(--color-text-muted)">${t.created_at ? new Date(t.created_at).toLocaleDateString() : "—"}</td>
+                          <td style="padding:0.5rem">${escapeHtml(t.mobile_number || "—")}</td>
+                          <td style="padding:0.5rem">${escapeHtml(t.provider || "—")}</td>
+                          <td style="padding:0.5rem;text-align:right;font-weight:500">${(t.amount_tzs || 0).toLocaleString()} TZS</td>
+                          <td style="padding:0.5rem;text-align:center">
+                            <span style="font-size:0.75rem;padding:0.15rem 0.5rem;border-radius:var(--radius);${t.status === "completed" ? "background:#dcfce7;color:#16a34a" : t.status === "pending" ? "background:#fef3c7;color:#d97706" : "background:#fee2e2;color:#dc2626"}">${escapeHtml(t.status || "unknown")}</span>
+                          </td>
+                        </tr>
+                      `).join("")}
+                    </tbody>
+                  </table>
+                </div>`
+            }
+          </div>
+        </div>
+      `);
+
+      let paymentInProgress = false;
+      document.getElementById("payment-form")?.addEventListener("submit", async (ev) => {
+        ev.preventDefault();
+        const btn = document.getElementById("payment-submit-btn");
+        if (paymentInProgress) return;
+        paymentInProgress = true;
+        btn.textContent = "Processing..."; btn.disabled = true; btn.style.opacity = "0.7";
+        const fd = new FormData(ev.target);
+        try {
+          const data = await request("/payments/checkout", {
+            method: "POST",
+            body: JSON.stringify({
+              mobile_number: fd.get("mobile_number"),
+              amount_tzs: parseInt(fd.get("amount_tzs"), 10),
+              provider: fd.get("provider"),
+              idempotency_key: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(),
+            }),
+          });
+          if (data === null) return;
+          document.getElementById("payment-result").innerHTML = `<div style="padding:0.75rem;background:#dcfce7;border-radius:var(--radius);font-size:0.85rem"><strong>Payment initiated!</strong><br>${escapeHtml(data.external_transaction_id || data.id || "")}</div>`;
+          loadAdminPayments();
+        } catch (err) {
+          document.getElementById("payment-result").innerHTML = `<div style="padding:0.75rem;background:#fee2e2;border-radius:var(--radius);font-size:0.85rem;color:var(--color-danger)">${escapeHtml(err.message)}</div>`;
+        }
+        paymentInProgress = false;
+        btn.textContent = "Initiate Payment"; btn.disabled = false; btn.style.opacity = "1";
+      });
+
+      document.getElementById("refresh-tx-btn")?.addEventListener("click", loadAdminPayments);
+    } catch(e) { showAdminView('<div class="empty-state"><p>Error loading payments: ' + escapeHtml(e.message) + '</p></div>'); }
   }
 
   async function loadAdminNotifications() {
-    showAdminView('<div class="loading-state"><div class="spinner"></div><p>Loading...</p></div>');
+    showAdminView('<div class="loading-state"><div class="spinner"></div><p>Loading notifications...</p></div>');
     try {
       const [data, users] = await Promise.all([
         request("/notifications"),
         request("/users"),
       ]);
-      const list = Array.isArray(data) ? data : [];
+      const allNotifs = Array.isArray(data) ? data : [];
       const userList = Array.isArray(users) ? users : [];
-      showAdminView(`
-        <h2>Notifications</h2>
-        <div class="card" style="margin-top:1rem;margin-bottom:1rem">
-          <h3>Send Notification</h3>
-          <form id="send-notif-form" style="display:flex;flex-direction:column;gap:0.5rem;margin-top:0.75rem">
-            <label style="font-size:0.85rem;font-weight:500">Recipient</label>
-            <select class="input" name="recipient_type" id="notif-recipient-type" required>
-              <option value="role_student">All Students</option>
-              <option value="role_teacher">All Teachers</option>
-              <option value="specific">Specific User...</option>
-            </select>
-            <div id="notif-specific-user" style="display:none">
-              <select class="input" name="user_id" id="notif-user-select">
-                <option value="">Select user...</option>
-                ${userList.map(u => `<option value="${escapeHtml(u.id)}">${escapeHtml(u.email)} (${escapeHtml(u.role)})</option>`).join("")}
-              </select>
-            </div>
-            <label style="font-size:0.85rem;font-weight:500">Message</label>
-            <textarea class="input" name="message" rows="3" placeholder="Write your notification message..." required></textarea>
-            <button class="btn btn-primary" type="submit">Send Notification</button>
-            <p id="notif-send-status" style="font-size:0.85rem;display:none"></p>
-          </form>
-        </div>
-        <h3>Notification History</h3>
-        <div style="margin-top:0.5rem">
-          ${list.length === 0 ? '<div class="empty-state"><p>No notifications yet</p></div>' :
-            list.map(n => `
-              <div class="card" style="padding:0.75rem;margin-bottom:0.5rem">
-                <p style="margin:0;font-size:0.85rem">${escapeHtml(n.message)}</p>
-                <p style="margin:0.25rem 0 0;font-size:0.75rem;color:var(--color-text-muted)">${n.is_read ? "Read" : "Unread"}</p>
+      let currentFilter = "all";
+      let searchQuery = "";
+      const PAGE_SIZE = 15;
+      let currentPage = 1;
+
+      function getFiltered() {
+        let list = allNotifs;
+        if (currentFilter === "unread") list = list.filter(n => !n.is_read);
+        else if (currentFilter === "read") list = list.filter(n => n.is_read);
+        if (searchQuery) {
+          const q = searchQuery.toLowerCase();
+          list = list.filter(n => (n.message || "").toLowerCase().includes(q));
+        }
+        return list;
+      }
+
+      function renderNotifHistory() {
+        const filtered = getFiltered();
+        const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+        if (currentPage > totalPages) currentPage = totalPages;
+        const start = (currentPage - 1) * PAGE_SIZE;
+        const page = filtered.slice(start, start + PAGE_SIZE);
+        const unreadCount = allNotifs.filter(n => !n.is_read).length;
+
+        document.getElementById("notif-stats").innerHTML = `
+          <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+            <span style="font-size:0.8rem;padding:0.25rem 0.6rem;border-radius:var(--radius);background:var(--color-bg);border:1px solid var(--color-border)">Total: ${allNotifs.length}</span>
+            <span style="font-size:0.8rem;padding:0.25rem 0.6rem;border-radius:var(--radius);background:#fef3c7;border:1px solid #fde68a">Unread: ${unreadCount}</span>
+            <span style="font-size:0.8rem;padding:0.25rem 0.6rem;border-radius:var(--radius);background:var(--color-bg);border:1px solid var(--color-border)">Showing: ${filtered.length}</span>
+          </div>
+        `;
+
+        const notifList = document.getElementById("notif-list");
+        if (page.length === 0) {
+          notifList.innerHTML = '<div class="empty-state" style="padding:2rem"><p>No notifications match your filter</p></div>';
+        } else {
+          notifList.innerHTML = page.map(n => `
+            <div class="card" style="padding:0.75rem 1rem;margin-bottom:0.5rem;${n.is_read ? "opacity:0.7" : "border-left:3px solid var(--color-primary)"}">
+              <div style="display:flex;justify-content:space-between;align-items:start;gap:0.5rem">
+                <div style="flex:1;min-width:0">
+                  <p style="margin:0;font-size:0.875rem;${n.is_read ? "" : "font-weight:600"}">${escapeHtml(n.message)}</p>
+                  <p style="margin:0.25rem 0 0;font-size:0.75rem;color:var(--color-text-muted)">${n.created_at ? new Date(n.created_at).toLocaleString() : ""} · ${n.is_read ? "Read" : "Unread"}</p>
+                </div>
+                <div style="display:flex;gap:0.25rem;flex-shrink:0">
+                  ${!n.is_read ? `<button class="btn btn-sm btn-primary notif-mark-read" data-id="${n.id}" style="font-size:0.7rem;padding:0.2rem 0.5rem">Mark Read</button>` : ""}
+                </div>
               </div>
-            `).join("")}
+            </div>
+          `).join("");
+        }
+
+        const pag = document.getElementById("notif-pagination");
+        if (totalPages <= 1) { pag.innerHTML = ""; return; }
+        pag.innerHTML = `
+          <div style="display:flex;align-items:center;gap:0.5rem;justify-content:center;margin-top:1rem">
+            <button class="btn btn-sm notif-page-btn" data-page="${currentPage - 1}" ${currentPage <= 1 ? "disabled style='opacity:0.4;pointer-events:none'" : ""}>&larr; Prev</button>
+            <span style="font-size:0.85rem;color:var(--color-text-muted)">Page ${currentPage} of ${totalPages}</span>
+            <button class="btn btn-sm notif-page-btn" data-page="${currentPage + 1}" ${currentPage >= totalPages ? "disabled style='opacity:0.4;pointer-events:none'" : ""}>Next &rarr;</button>
+          </div>
+        `;
+        document.querySelectorAll(".notif-page-btn").forEach(btn => {
+          btn.addEventListener("click", () => { currentPage = parseInt(btn.dataset.page); renderNotifHistory(); });
+        });
+        document.querySelectorAll(".notif-mark-read").forEach(btn => {
+          btn.addEventListener("click", async () => {
+            await request(`/notifications/${btn.dataset.id}/read`, { method: "POST" });
+            const n = allNotifs.find(x => x.id === btn.dataset.id);
+            if (n) n.is_read = true;
+            renderNotifHistory();
+          });
+        });
+      }
+
+      showAdminView(`
+        <div class="content">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem">
+            <h2>Notifications</h2>
+            <button class="btn btn-primary" id="notif-send-btn">+ Send Notification</button>
+          </div>
+          <div class="card" style="margin-top:1rem;display:none" id="notif-send-form-area">
+            <h3 style="margin-bottom:0.75rem">Send Notification</h3>
+            <form id="send-notif-form" style="display:flex;flex-direction:column;gap:0.5rem">
+              <label style="font-size:0.85rem;font-weight:500">Recipient</label>
+              <select class="input" name="recipient_type" id="notif-recipient-type" required>
+                <option value="role_student">All Students</option>
+                <option value="role_teacher">All Teachers</option>
+                <option value="specific">Specific User...</option>
+              </select>
+              <div id="notif-specific-user" style="display:none">
+                <select class="input" name="user_id" id="notif-user-select">
+                  <option value="">Select user...</option>
+                  ${userList.map(u => `<option value="${escapeHtml(u.id)}">${escapeHtml(u.email)} (${escapeHtml(u.role)})</option>`).join("")}
+                </select>
+              </div>
+              <label style="font-size:0.85rem;font-weight:500">Message</label>
+              <textarea class="input" name="message" rows="3" placeholder="Write your notification message..." required></textarea>
+              <div style="display:flex;gap:0.5rem;align-items:center">
+                <button class="btn btn-success" type="submit">Send Notification</button>
+                <button class="btn" type="button" id="notif-cancel-send">Cancel</button>
+                <p id="notif-send-status" style="font-size:0.85rem;display:none;margin:0"></p>
+              </div>
+            </form>
+          </div>
+          <div style="margin-top:1rem;display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center">
+            <button class="btn btn-sm notif-filter-btn" data-filter="all" style="background:var(--color-bg);border:1px solid var(--color-border)">All</button>
+            <button class="btn btn-sm notif-filter-btn" data-filter="unread" style="background:var(--color-bg);border:1px solid var(--color-border)">Unread</button>
+            <button class="btn btn-sm notif-filter-btn" data-filter="read" style="background:var(--color-bg);border:1px solid var(--color-border)">Read</button>
+            <input type="search" class="input" id="notif-search" placeholder="Search notifications..." style="max-width:240px;padding:0.35rem 0.6rem;font-size:0.85rem">
+            <button class="btn btn-sm" id="notif-mark-all" style="margin-left:auto">Mark All Read</button>
+          </div>
+          <div id="notif-stats" style="margin-top:0.75rem"></div>
+          <div style="margin-top:0.5rem" id="notif-list"></div>
+          <div id="notif-pagination"></div>
         </div>
       `);
 
-      // Toggle specific user select
-      document.getElementById("notif-recipient-type").addEventListener("change", (e) => {
+      document.getElementById("notif-send-btn")?.addEventListener("click", () => {
+        const area = document.getElementById("notif-send-form-area");
+        area.style.display = area.style.display === "none" ? "block" : "none";
+      });
+      document.getElementById("notif-cancel-send")?.addEventListener("click", () => {
+        document.getElementById("notif-send-form-area").style.display = "none";
+      });
+      document.getElementById("notif-recipient-type")?.addEventListener("change", (e) => {
         document.getElementById("notif-specific-user").style.display = e.target.value === "specific" ? "block" : "none";
       });
-
-      // Send form
-      document.getElementById("send-notif-form").addEventListener("submit", async (e) => {
+      document.getElementById("send-notif-form")?.addEventListener("submit", async (e) => {
         e.preventDefault();
         const fd = new FormData(e.target);
         const type = fd.get("recipient_type");
@@ -3074,68 +3817,178 @@ async function renderAdminDashboard() {
           else if (type === "role_teacher") body.role = "teacher";
           else body.user_id = fd.get("user_id");
           if (!body.role && !body.user_id) {
-            statusEl.textContent = "Please select a user";
-            statusEl.style.color = "var(--color-danger)";
-            statusEl.style.display = "block";
+            statusEl.textContent = "Please select a user"; statusEl.style.color = "var(--color-danger)"; statusEl.style.display = "inline";
             return;
           }
           const result = await request("/notifications", { method: "POST", body: JSON.stringify(body) });
-          statusEl.textContent = `Sent to ${result.sent} user(s)`;
-          statusEl.style.color = "var(--color-success)";
-          statusEl.style.display = "block";
+          statusEl.textContent = `Sent to ${result.sent} user(s)`; statusEl.style.color = "var(--color-success)"; statusEl.style.display = "inline";
           e.target.reset();
           document.getElementById("notif-specific-user").style.display = "none";
           loadAdminNotifications();
         } catch(err) {
-          statusEl.textContent = "Error: " + err.message;
-          statusEl.style.color = "var(--color-danger)";
-          statusEl.style.display = "block";
+          statusEl.textContent = "Error: " + err.message; statusEl.style.color = "var(--color-danger)"; statusEl.style.display = "inline";
         }
       });
+
+      document.querySelectorAll(".notif-filter-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          currentFilter = btn.dataset.filter; currentPage = 1;
+          document.querySelectorAll(".notif-filter-btn").forEach(b => b.style.fontWeight = b.dataset.filter === currentFilter ? "600" : "400");
+          renderNotifHistory();
+        });
+      });
+      document.getElementById("notif-search")?.addEventListener("input", (e) => {
+        searchQuery = e.target.value; currentPage = 1; renderNotifHistory();
+      });
+      document.getElementById("notif-mark-all")?.addEventListener("click", async () => {
+        const unread = allNotifs.filter(n => !n.is_read);
+        if (unread.length === 0) return;
+        for (const n of unread) {
+          try { await request(`/notifications/${n.id}/read`, { method: "POST" }); n.is_read = true; } catch(e) {}
+        }
+        renderNotifHistory();
+      });
+
+      renderNotifHistory();
     } catch(e) { showAdminView('<div class="empty-state"><p>Error loading notifications</p></div>'); }
   }
 
   async function loadAdminUploads() {
-    showAdminView(`
-      <h2>Uploads</h2>
-      <div class="card" style="margin-top:1rem">
-        <h3>Upload File</h3>
-        <p style="color:var(--color-text-muted);font-size:0.85rem;margin-bottom:0.5rem">Supports images (png, jpg, gif, svg), videos (mp4, webm), audio (mp3, wav, ogg)</p>
-        <form id="upload-form" style="display:flex;flex-direction:column;gap:0.5rem">
-          <input class="input" type="file" id="upload-file" required />
-          <button class="btn btn-success" type="submit">Upload</button>
-        </form>
-        <div id="upload-result" style="margin-top:0.5rem"></div>
-      </div>
-    `);
-    document.getElementById("upload-form")?.addEventListener("submit", async (ev) => {
-      ev.preventDefault();
-      const fileInput = document.getElementById("upload-file");
-      const file = fileInput?.files?.[0];
-      if (!file) return;
-      const token = localStorage.getItem("casuya_token");
-      const formData = new FormData();
-      formData.append("file", file);
-      try {
-        const resp = await fetch("http://localhost:8000/uploads/", {
-          method: "POST",
-          headers: token ? { "Authorization": `Bearer ${token}` } : {},
-          body: formData,
-        });
-        const data = await resp.json();
-        if (resp.ok) {
-          document.getElementById("upload-result").innerHTML = `<p style="color:var(--color-success)">Uploaded: ${escapeHtml(data.filename)} → ${escapeHtml(data.path)}</p>`;
-        } else {
-          document.getElementById("upload-result").innerHTML = `<p style="color:var(--color-danger)">Error: ${escapeHtml(data.detail || "Upload failed")}</p>`;
+    showAdminView('<div class="loading-state"><div class="spinner"></div><p>Loading uploads...</p></div>');
+    try {
+      const files = await request("/uploads/public").catch(() => []);
+      const fileList = Array.isArray(files) ? files : [];
+      const imageFiles = fileList.filter(f => /\.(png|jpg|jpeg|gif|svg|webp)$/i.test(f.filename || f.path || ""));
+      const docFiles = fileList.filter(f => /\.(pdf|doc|docx|txt)$/i.test(f.filename || f.path || ""));
+      const mediaFiles = fileList.filter(f => /\.(mp4|webm|mp3|wav|ogg)$/i.test(f.filename || f.path || ""));
+      let activeFilter = "all";
+
+      function renderFiles() {
+        let filtered = fileList;
+        if (activeFilter === "images") filtered = imageFiles;
+        else if (activeFilter === "documents") filtered = docFiles;
+        else if (activeFilter === "media") filtered = mediaFiles;
+
+        const grid = document.getElementById("uploads-grid");
+        if (!grid) return;
+        if (filtered.length === 0) {
+          grid.innerHTML = '<div class="empty-state" style="padding:2rem"><p>No files uploaded yet</p></div>';
+          return;
         }
-      } catch (err) {
-        document.getElementById("upload-result").innerHTML = `<p style="color:var(--color-danger)">${escapeHtml(err.message)}</p>`;
+        grid.innerHTML = filtered.map(f => {
+          const name = f.filename || f.path || "unknown";
+          const isImage = /\.(png|jpg|jpeg|gif|svg|webp)$/i.test(name);
+          const isVideo = /\.(mp4|webm)$/i.test(name);
+          const isAudio = /\.(mp3|wav|ogg)$/i.test(name);
+          const icon = isImage ? "🖼️" : isVideo ? "🎬" : isAudio ? "🎵" : "📄";
+          return `
+            <div class="card" style="padding:0.75rem;cursor:pointer" data-filename="${escapeHtml(name)}">
+              <div style="display:flex;align-items:center;gap:0.75rem">
+                <div style="font-size:1.5rem;flex-shrink:0">${icon}</div>
+                <div style="flex:1;min-width:0">
+                  <p style="margin:0;font-size:0.85rem;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(name)}</p>
+                  <p style="margin:0.15rem 0 0;font-size:0.7rem;color:var(--color-text-muted)">${f.size ? (f.size / 1024).toFixed(1) + " KB" : ""} · ${f.uploaded_at ? new Date(f.uploaded_at).toLocaleDateString() : ""}</p>
+                </div>
+                <button class="btn btn-danger btn-sm upload-delete-btn" data-filename="${escapeHtml(name)}" style="font-size:0.65rem;padding:0.15rem 0.4rem;flex-shrink:0">✕</button>
+              </div>
+            </div>
+          `;
+        }).join("");
+
+        document.querySelectorAll(".upload-delete-btn").forEach(btn => {
+          btn.addEventListener("click", async (e) => {
+            e.stopPropagation();
+            if (!confirmDelete(btn.dataset.filename)) return;
+            try {
+              await request(`/uploads/${encodeURIComponent(btn.dataset.filename)}`, { method: "DELETE" });
+              showToast("File deleted");
+              loadAdminUploads();
+            } catch(err) { showToast(err.message || "Delete failed"); }
+          });
+        });
+        document.querySelectorAll("#uploads-grid .card[data-filename]").forEach(card => {
+          if (card.querySelector(".upload-delete-btn")) {
+            card.addEventListener("click", (e) => {
+              if (e.target.closest(".upload-delete-btn")) return;
+              window.open(`${API_BASE}/uploads/${encodeURIComponent(card.dataset.filename)}`, "_blank");
+            });
+          }
+        });
       }
-    });
+
+      showAdminView(`
+        <div class="content">
+          <h2>Uploads</h2>
+          <p style="color:var(--color-text-muted);font-size:0.85rem;margin-top:0.25rem">Manage uploaded files. These files are accessible to students and teachers.</p>
+
+          <div class="card" style="margin-top:1rem;padding:1.5rem">
+            <h3 style="margin-bottom:0.75rem">Upload New File</h3>
+            <form id="upload-form" style="display:flex;flex-direction:column;gap:0.5rem">
+              <p style="font-size:0.8rem;color:var(--color-text-muted);margin:0">Supports images (png, jpg, gif, svg, webp), documents (pdf, doc), videos (mp4, webm), audio (mp3, wav, ogg)</p>
+              <input class="input" type="file" id="upload-file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt" required>
+              <div style="display:flex;gap:0.5rem;align-items:center">
+                <button class="btn btn-success" type="submit" id="upload-submit-btn" style="width:100%">Upload File</button>
+              </div>
+            </form>
+            <div id="upload-result" style="margin-top:0.5rem"></div>
+          </div>
+
+          <div style="margin-top:1rem;display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center">
+            <button class="btn btn-sm upload-filter-btn" data-filter="all" style="background:var(--color-bg);border:1px solid var(--color-border);font-weight:600">All (${fileList.length})</button>
+            <button class="btn btn-sm upload-filter-btn" data-filter="images" style="background:var(--color-bg);border:1px solid var(--color-border)">🖼️ Images (${imageFiles.length})</button>
+            <button class="btn btn-sm upload-filter-btn" data-filter="documents" style="background:var(--color-bg);border:1px solid var(--color-border)">📄 Documents (${docFiles.length})</button>
+            <button class="btn btn-sm upload-filter-btn" data-filter="media" style="background:var(--color-bg);border:1px solid var(--color-border)">🎬 Media (${mediaFiles.length})</button>
+          </div>
+          <div id="uploads-grid" style="margin-top:0.75rem;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:0.5rem"></div>
+        </div>
+      `);
+
+      document.querySelectorAll(".upload-filter-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          activeFilter = btn.dataset.filter;
+          document.querySelectorAll(".upload-filter-btn").forEach(b => b.style.fontWeight = b.dataset.filter === activeFilter ? "600" : "400");
+          renderFiles();
+        });
+      });
+
+      let uploading = false;
+      document.getElementById("upload-form")?.addEventListener("submit", async (ev) => {
+        ev.preventDefault();
+        const fileInput = document.getElementById("upload-file");
+        const file = fileInput?.files?.[0];
+        if (!file || uploading) return;
+        const btn = document.getElementById("upload-submit-btn");
+        uploading = true;
+        btn.textContent = "Uploading..."; btn.disabled = true; btn.style.opacity = "0.7";
+        const token = localStorage.getItem("casuya_token");
+        const formData = new FormData();
+        formData.append("file", file);
+        try {
+          const resp = await fetch(`${API_BASE}/uploads/`, {
+            method: "POST",
+            headers: token ? { "Authorization": `Bearer ${token}` } : {},
+            body: formData,
+          });
+          const data = await resp.json();
+          if (resp.ok) {
+            document.getElementById("upload-result").innerHTML = `<div style="padding:0.5rem;background:#dcfce7;border-radius:var(--radius);font-size:0.85rem;color:var(--color-success)">Uploaded: ${escapeHtml(data.filename || file.name)}</div>`;
+            loadAdminUploads();
+          } else {
+            document.getElementById("upload-result").innerHTML = `<div style="padding:0.5rem;background:#fee2e2;border-radius:var(--radius);font-size:0.85rem;color:var(--color-danger)">${escapeHtml(data.detail || "Upload failed")}</div>`;
+          }
+        } catch (err) {
+          document.getElementById("upload-result").innerHTML = `<div style="padding:0.5rem;background:#fee2e2;border-radius:var(--radius);font-size:0.85rem;color:var(--color-danger)">${escapeHtml(err.message)}</div>`;
+        }
+        uploading = false;
+        btn.textContent = "Upload File"; btn.disabled = false; btn.style.opacity = "1";
+      });
+
+      renderFiles();
+    } catch(e) { showAdminView('<div class="empty-state"><p>Error loading uploads</p></div>'); }
   }
 
   async function loadAdminBranding() {
-    const API = window.location.port === "8000" ? window.location.origin : `${window.location.protocol}//${window.location.hostname}:8000`;
+    const API = window.location.port === "8765" ? window.location.origin : `${window.location.protocol}//${window.location.hostname}:8765`;
     const token = localStorage.getItem("casuya_token");
     const headers = token ? { "Authorization": `Bearer ${token}` } : {};
 
@@ -3258,6 +4111,286 @@ async function renderAdminDashboard() {
     });
   }
 
+  async function loadAdminAnalytics() {
+    showAdminView('<div class="loading-state"><div class="spinner"></div><p>Loading analytics...</p></div>');
+    try {
+      const [overview, distribution] = await Promise.all([
+        request("/analytics/overview"),
+        request("/analytics/lesson-distribution").catch(() => []),
+      ]);
+      const lessons = await request("/lessons").catch(() => []);
+      const lessonList = Array.isArray(lessons) ? lessons : [];
+      const lessonAnalytics = [];
+      for (const l of lessonList.slice(0, 10)) {
+        try {
+          const a = await request(`/analytics/lessons/${l.id}`);
+          if (a) lessonAnalytics.push({ ...a, title: l.title });
+        } catch(e) {}
+      }
+      showAdminView(`
+        <div class="content">
+          <h2>Analytics</h2>
+          <div class="stat-grid" style="margin:1rem 0">
+            <div class="stat-card"><div class="stat-value">${overview?.total_students ?? 0}</div><div class="stat-label">Students</div></div>
+            <div class="stat-card"><div class="stat-value">${overview?.total_lessons ?? 0}</div><div class="stat-label">Lessons</div></div>
+            <div class="stat-card"><div class="stat-value">${overview?.total_sessions ?? 0}</div><div class="stat-label">Sessions</div></div>
+            <div class="stat-card"><div class="stat-value">${overview?.avg_completion_rate ?? 0}%</div><div class="stat-label">Avg Completion</div></div>
+          </div>
+          ${Array.isArray(distribution) && distribution.length > 0 ? `
+            <h3 style="margin:1.5rem 0 0.75rem">Lesson Distribution</h3>
+            <div class="card-grid">
+              ${distribution.map(d => `
+                <div class="card" style="padding:1rem">
+                  <h4 style="margin:0 0 0.25rem">${escapeHtml(d.subject || d.topic || "Unknown")}</h4>
+                  <p style="color:var(--color-text-muted);font-size:0.85rem">${d.count ?? 0} lessons</p>
+                </div>
+              `).join("")}
+            </div>
+          ` : ''}
+          ${lessonAnalytics.length > 0 ? `
+            <h3 style="margin:1.5rem 0 0.75rem">Per-Lesson Analytics</h3>
+            <div class="card-grid">
+              ${lessonAnalytics.map(a => `
+                <div class="card" style="padding:1rem">
+                  <h4 style="margin:0 0 0.25rem">${escapeHtml(a.title)}</h4>
+                  <p style="color:var(--color-text-muted);font-size:0.85rem">Views: ${a.views ?? 0} | Completions: ${a.completions ?? 0} | Avg Score: ${a.avg_score ?? 0}%</p>
+                </div>
+              `).join("")}
+            </div>
+          ` : ''}
+        </div>
+      `);
+    } catch(e) { showAdminView('<div class="empty-state"><p>Error loading analytics</p></div>'); }
+  }
+
+  async function loadAdminSettings() {
+    showAdminView('<div class="loading-state"><div class="spinner"></div><p>Loading settings...</p></div>');
+    try {
+      const [profile, branding] = await Promise.all([
+        request("/users/me").catch(() => ({})),
+        request("/branding/logo").catch(() => null),
+      ]);
+      const activeTab = localStorage.getItem("admin_settings_tab") || "profile";
+
+      function renderTab(tab) {
+        localStorage.setItem("admin_settings_tab", tab);
+        document.querySelectorAll(".settings-tab-btn").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
+        const panel = document.getElementById("settings-panel");
+        if (!panel) return;
+
+        if (tab === "profile") {
+          panel.innerHTML = `
+            <div class="card" style="padding:1.5rem">
+              <h3 style="margin-bottom:0.75rem">Admin Profile</h3>
+              <form id="admin-profile-form" style="display:flex;flex-direction:column;gap:0.75rem">
+                <div>
+                  <label style="font-size:0.85rem;font-weight:500;display:block;margin-bottom:0.25rem">Full Name</label>
+                  <input class="input" name="full_name" value="${escapeHtml(profile.full_name || "")}" placeholder="Your name">
+                </div>
+                <div>
+                  <label style="font-size:0.85rem;font-weight:500;display:block;margin-bottom:0.25rem">Email</label>
+                  <input class="input" value="${escapeHtml(profile.email || "")}" disabled style="opacity:0.6">
+                  <p style="font-size:0.75rem;color:var(--color-text-muted);margin-top:0.25rem">Email cannot be changed here</p>
+                </div>
+                <div>
+                  <label style="font-size:0.85rem;font-weight:500;display:block;margin-bottom:0.25rem">Phone</label>
+                  <input class="input" name="phone" value="${escapeHtml(profile.phone || "")}" placeholder="Phone number">
+                </div>
+                <div style="display:flex;gap:0.5rem">
+                  <button class="btn btn-primary" type="submit">Save Profile</button>
+                  <span id="admin-profile-msg" style="font-size:0.85rem;display:none"></span>
+                </div>
+              </form>
+            </div>
+          `;
+          document.getElementById("admin-profile-form")?.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const fd = new FormData(e.target);
+            const msg = document.getElementById("admin-profile-msg");
+            try {
+              await request("/users/me", { method: "PATCH", body: JSON.stringify({ full_name: fd.get("full_name"), phone: fd.get("phone") }) });
+              msg.textContent = "Profile updated!"; msg.style.color = "var(--color-success)"; msg.style.display = "inline";
+              setTimeout(() => msg.style.display = "none", 3000);
+            } catch(err) { msg.textContent = err.message; msg.style.color = "var(--color-danger)"; msg.style.display = "inline"; }
+          });
+        } else if (tab === "security") {
+          panel.innerHTML = `
+            <div class="card" style="padding:1.5rem">
+              <h3 style="margin-bottom:0.75rem">Change Password</h3>
+              <form id="admin-pw-form" style="display:flex;flex-direction:column;gap:0.75rem;max-width:400px">
+                <div>
+                  <label style="font-size:0.85rem;font-weight:500;display:block;margin-bottom:0.25rem">Current Password</label>
+                  <input class="input" name="current_password" type="password" required>
+                </div>
+                <div>
+                  <label style="font-size:0.85rem;font-weight:500;display:block;margin-bottom:0.25rem">New Password</label>
+                  <input class="input" name="new_password" type="password" required minlength="8">
+                </div>
+                <div>
+                  <label style="font-size:0.85rem;font-weight:500;display:block;margin-bottom:0.25rem">Confirm New Password</label>
+                  <input class="input" name="confirm_password" type="password" required>
+                </div>
+                <div style="display:flex;gap:0.5rem;align-items:center">
+                  <button class="btn btn-primary" type="submit">Update Password</button>
+                  <span id="admin-pw-msg" style="font-size:0.85rem;display:none"></span>
+                </div>
+              </form>
+            </div>
+            <div class="card" style="padding:1.5rem;margin-top:1rem">
+              <h3 style="margin-bottom:0.75rem">Active Sessions</h3>
+              <p style="font-size:0.85rem;color:var(--color-text-muted);margin-bottom:0.75rem">Manage your login sessions</p>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:0.75rem;border:1px solid var(--color-border);border-radius:var(--radius)">
+                <div>
+                  <p style="font-weight:500;margin:0;font-size:0.9rem">Current Session</p>
+                  <p style="font-size:0.75rem;color:var(--color-text-muted);margin:0.15rem 0 0">Now · ${navigator.userAgent.slice(0, 60)}...</p>
+                </div>
+                <span style="color:var(--color-success);font-size:0.8rem;font-weight:500">Active</span>
+              </div>
+            </div>
+          `;
+          document.getElementById("admin-pw-form")?.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const fd = new FormData(e.target);
+            const msg = document.getElementById("admin-pw-msg");
+            if (fd.get("new_password") !== fd.get("confirm_password")) {
+              msg.textContent = "Passwords do not match"; msg.style.color = "var(--color-danger)"; msg.style.display = "inline";
+              return;
+            }
+            try {
+              await request("/auth/change-password", { method: "POST", body: JSON.stringify({ current_password: fd.get("current_password"), new_password: fd.get("new_password") }) });
+              msg.textContent = "Password updated!"; msg.style.color = "var(--color-success)"; msg.style.display = "inline";
+              e.target.reset();
+              setTimeout(() => msg.style.display = "none", 3000);
+            } catch(err) { msg.textContent = err.message; msg.style.color = "var(--color-danger)"; msg.style.display = "inline"; }
+          });
+        } else if (tab === "notifications") {
+          panel.innerHTML = `
+            <div class="card" style="padding:1.5rem">
+              <h3 style="margin-bottom:0.75rem">Notification Preferences</h3>
+              <form id="admin-notif-prefs-form" style="display:flex;flex-direction:column;gap:0.75rem">
+                <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.9rem;cursor:pointer">
+                  <input type="checkbox" name="email_notifs" checked> Email notifications for new users
+                </label>
+                <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.9rem;cursor:pointer">
+                  <input type="checkbox" name="payment_notifs" checked> Payment confirmations
+                </label>
+                <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.9rem;cursor:pointer">
+                  <input type="checkbox" name="system_notifs" checked> System alerts and errors
+                </label>
+                <button class="btn btn-primary" type="submit" style="align-self:flex-start">Save Preferences</button>
+              </form>
+            </div>
+            <div class="card" style="padding:1.5rem;margin-top:1rem">
+              <h3 style="margin-bottom:0.75rem">Send Bulk Notification</h3>
+              <form id="settings-notify-form" style="display:flex;flex-direction:column;gap:0.5rem">
+                <select class="input" name="target" required>
+                  <option value="all">All Users</option>
+                  <option value="students">All Students</option>
+                  <option value="teachers">All Teachers</option>
+                </select>
+                <textarea class="input" name="message" rows="3" placeholder="Notification message..." required></textarea>
+                <button class="btn btn-primary" type="submit">Send</button>
+              </form>
+              <div id="settings-notify-result" style="margin-top:0.5rem;font-size:0.85rem"></div>
+            </div>
+          `;
+          document.getElementById("settings-notify-form")?.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const fd = new FormData(e.target);
+            const target = fd.get("target");
+            const message = fd.get("message");
+            try {
+              if (target === "all") {
+                await request("/notifications/bulk", { method: "POST", body: JSON.stringify({ role: "student", message }) });
+                await request("/notifications/bulk", { method: "POST", body: JSON.stringify({ role: "teacher", message }) });
+              } else {
+                await request("/notifications/bulk", { method: "POST", body: JSON.stringify({ role: target === "students" ? "student" : "teacher", message }) });
+              }
+              document.getElementById("settings-notify-result").innerHTML = '<span style="color:var(--color-success)">Notification sent!</span>';
+              e.target.reset();
+            } catch(err) {
+              document.getElementById("settings-notify-result").innerHTML = `<span style="color:var(--color-danger)">${escapeHtml(err.message)}</span>`;
+            }
+          });
+        } else if (tab === "platform") {
+          panel.innerHTML = `
+            <div class="card" style="padding:1.5rem">
+              <h3 style="margin-bottom:0.75rem">Platform Information</h3>
+              <div style="display:grid;gap:0">
+                <div style="display:flex;justify-content:space-between;padding:0.6rem 0;border-bottom:1px solid var(--color-border)">
+                  <span style="color:var(--color-text-muted);font-size:0.9rem">Platform Name</span>
+                  <strong style="font-size:0.9rem">Casuya Ecosystem</strong>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding:0.6rem 0;border-bottom:1px solid var(--color-border)">
+                  <span style="color:var(--color-text-muted);font-size:0.9rem">API Base</span>
+                  <strong style="font-size:0.9rem">${escapeHtml(API_BASE)}</strong>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding:0.6rem 0;border-bottom:1px solid var(--color-border)">
+                  <span style="color:var(--color-text-muted);font-size:0.9rem">Logo</span>
+                  <strong style="font-size:0.9rem">${branding ? "Custom" : "Default"}</strong>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding:0.6rem 0;border-bottom:1px solid var(--color-border)">
+                  <span style="color:var(--color-text-muted);font-size:0.9rem">Version</span>
+                  <strong style="font-size:0.9rem">1.0.0</strong>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding:0.6rem 0">
+                  <span style="color:var(--color-text-muted);font-size:0.9rem">Status</span>
+                  <span style="font-size:0.9rem;color:var(--color-success);font-weight:600">● Online</span>
+                </div>
+              </div>
+            </div>
+            <div class="card" style="padding:1.5rem;margin-top:1rem">
+              <h3 style="margin-bottom:0.75rem">Danger Zone</h3>
+              <p style="font-size:0.85rem;color:var(--color-text-muted);margin-bottom:0.75rem">Irreversible actions</p>
+              <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+                <button class="btn btn-danger btn-sm" id="clear-cache-btn">Clear Cache</button>
+                <button class="btn btn-danger btn-sm" id="export-data-btn">Export All Data</button>
+              </div>
+              <div id="danger-msg" style="font-size:0.85rem;margin-top:0.5rem"></div>
+            </div>
+          `;
+          document.getElementById("clear-cache-btn")?.addEventListener("click", () => {
+            requestCache.clear();
+            const msg = document.getElementById("danger-msg");
+            msg.textContent = "In-memory cache cleared"; msg.style.color = "var(--color-success)";
+          });
+          document.getElementById("export-data-btn")?.addEventListener("click", async () => {
+            const msg = document.getElementById("danger-msg");
+            try {
+              const [students, teachers, subjects, lessons] = await Promise.all([
+                request("/students"), request("/teachers"), request("/subjects"), request("/lessons"),
+              ]);
+              const data = { students, teachers, subjects, lessons, exported_at: new Date().toISOString() };
+              const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a"); a.href = url; a.download = "casuya-export.json"; a.click();
+              URL.revokeObjectURL(url);
+              msg.textContent = "Data exported"; msg.style.color = "var(--color-success)";
+            } catch(err) { msg.textContent = err.message; msg.style.color = "var(--color-danger)"; }
+          });
+        }
+      }
+
+      showAdminView(`
+        <div class="content">
+          <h2>Settings</h2>
+          <div style="display:flex;gap:0;border-bottom:2px solid var(--color-border);margin-top:1rem;margin-bottom:1rem">
+            <button class="btn settings-tab-btn" data-tab="profile" style="border-radius:0;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;${activeTab === "profile" ? "border-bottom-color:var(--color-primary);color:var(--color-primary);font-weight:600" : "color:var(--color-text-muted)"}">Profile</button>
+            <button class="btn settings-tab-btn" data-tab="security" style="border-radius:0;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;${activeTab === "security" ? "border-bottom-color:var(--color-primary);color:var(--color-primary);font-weight:600" : "color:var(--color-text-muted)"}">Security</button>
+            <button class="btn settings-tab-btn" data-tab="notifications" style="border-radius:0;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;${activeTab === "notifications" ? "border-bottom-color:var(--color-primary);color:var(--color-primary);font-weight:600" : "color:var(--color-text-muted)"}">Notifications</button>
+            <button class="btn settings-tab-btn" data-tab="platform" style="border-radius:0;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;${activeTab === "platform" ? "border-bottom-color:var(--color-primary);color:var(--color-primary);font-weight:600" : "color:var(--color-text-muted)"}">Platform</button>
+          </div>
+          <div id="settings-panel"></div>
+        </div>
+      `);
+
+      document.querySelectorAll(".settings-tab-btn").forEach(btn => {
+        btn.addEventListener("click", () => renderTab(btn.dataset.tab));
+      });
+      renderTab(activeTab);
+    } catch(e) { showAdminView('<div class="empty-state"><p>Error loading settings</p></div>'); }
+  }
+
   loadAdminOverview();
 }
 
@@ -3272,13 +4405,19 @@ async function renderTeacherDashboard() {
       <aside id="teacher-sidebar" class="sidebar">
         <div class="sidebar-header">
           <h2>Casuya</h2>
-          <p>Teacher Portal</p>
+          <p>${escapeHtml(payload.full_name || payload.email || "Teacher")}</p>
         </div>
         <nav class="sidebar-nav" id="teacher-nav">
           <div class="sidebar-nav-item active" data-view="overview">📊 Overview</div>
           <div class="sidebar-nav-item" data-view="students">👥 Students</div>
           <div class="sidebar-nav-item" data-view="lessons">📝 Lessons</div>
+          <div class="sidebar-nav-item" data-view="assignments">📋 Assignments</div>
+          <div class="sidebar-nav-item" data-view="reports">📈 Reports</div>
+          <div class="sidebar-nav-item" data-view="ai-assistant">🤖 AI Assistant</div>
           <div class="sidebar-nav-item" data-view="bookmarks">🔖 Bookmarks</div>
+          <div class="sidebar-nav-item" data-view="files">📁 Files</div>
+          <div class="sidebar-nav-item" data-view="notifications">🔔 Notifications</div>
+          <div class="sidebar-nav-item" data-view="settings">⚙️ Settings</div>
         </nav>
         <div class="sidebar-footer">
           <div class="sidebar-footer-row">
@@ -3343,6 +4482,15 @@ async function renderTeacherDashboard() {
             el.addEventListener("click", () => {
               teacherSearchResults.style.display = "none";
               teacherSearchInput.value = "";
+              const type = el.dataset.type;
+              const id = el.dataset.id;
+              if (type === "lesson") {
+                viewLessonContent("#teacher-content", id, loadTeacherLessons);
+              } else if (type === "student") {
+                viewTeacherStudent(id, el.querySelector("span")?.textContent || "Student");
+              } else {
+                navHandlers.overview();
+              }
             });
           });
         }
@@ -3424,7 +4572,13 @@ async function renderTeacherDashboard() {
     overview: () => { setActiveNav("overview"); loadTeacherOverview(); },
     students: () => { setActiveNav("students"); loadTeacherStudents(); },
     lessons: () => { setActiveNav("lessons"); loadTeacherLessons(); },
+    assignments: () => { setActiveNav("assignments"); loadTeacherAssignments(); },
+    reports: () => { setActiveNav("reports"); loadTeacherReports(); },
+    "ai-assistant": () => { setActiveNav("ai-assistant"); loadTeacherAIAssistant(); },
     bookmarks: () => { setActiveNav("bookmarks"); loadTeacherBookmarks(); },
+    files: () => { setActiveNav("files"); loadTeacherFiles(); },
+    notifications: () => { setActiveNav("notifications"); loadTeacherNotifications(); },
+    settings: () => { setActiveNav("settings"); loadTeacherSettings(); },
   };
 
   document.querySelectorAll("#teacher-nav .sidebar-nav-item").forEach(el => {
@@ -3494,37 +4648,72 @@ async function renderTeacherDashboard() {
       ]);
       const name = payload.full_name || payload.email || "Teacher";
 
+      // Greeting based on time
+      const hour = new Date().getHours();
+      let greeting = "Good morning";
+      if (hour >= 12 && hour < 17) greeting = "Good afternoon";
+      else if (hour >= 17) greeting = "Good evening";
+
       // Recently viewed from localStorage
       let recent = [];
-      try { recent = JSON.parse(localStorage.getItem("casuya_recent") || "[]"); } catch(e) {}
+      try { recent = JSON.parse(localStorage.getItem("casuya_recently_viewed") || "[]"); } catch(e) {}
 
       // Bookmarks
       let bookmarks = [];
       try { bookmarks = await request("/bookmarks"); } catch(e) {}
 
       showTeacherView(`
-        <div class="content">
-          <h2>Welcome, ${escapeHtml(name)}</h2>
-          <div class="stat-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:0.75rem;margin:1rem 0">
-            <div class="card"><h3>Students</h3><p style="font-size:1.6rem;font-weight:700">${overview?.total_students ?? 0}</p></div>
-            <div class="card"><h3>Lessons</h3><p style="font-size:1.6rem;font-weight:700">${Array.isArray(lessons) ? lessons.length : 0}</p></div>
-            <div class="card"><h3>Completion</h3><p style="font-size:1.6rem;font-weight:700">${overview?.avg_completion_rate ? Math.round(overview.avg_completion_rate) + "%" : "0%"}</p></div>
-            <div class="card"><h3>Bookmarked</h3><p style="font-size:1.6rem;font-weight:700">${Array.isArray(bookmarks) ? bookmarks.length : 0}</p></div>
+        <div class="content" style="max-width:960px">
+          <!-- Welcome Banner -->
+          <div class="welcome-banner">
+            <small>${greeting}</small>
+            <h2>Welcome, ${escapeHtml(name)}</h2>
+            <p>Here's what's happening in your classes today.</p>
           </div>
+
+          <!-- Stats -->
+          <div class="stat-grid">
+            <div class="stat-card">
+              <div class="stat-icon" style="background:#eff6ff;color:#2563eb">👥</div>
+              <div class="stat-value">${overview?.total_students ?? 0}</div>
+              <div class="stat-label">Students</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon" style="background:#f0fdf4;color:#16a34a">📝</div>
+              <div class="stat-value">${Array.isArray(lessons) ? lessons.length : 0}</div>
+              <div class="stat-label">Lessons</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon" style="background:#fef3c7;color:#d97706">📈</div>
+              <div class="stat-value">${overview?.avg_completion_rate ? Math.round(overview.avg_completion_rate) + "%" : "0%"}</div>
+              <div class="stat-label">Completion Rate</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon" style="background:#fce7f3;color:#db2777">🔖</div>
+              <div class="stat-value">${Array.isArray(bookmarks) ? bookmarks.length : 0}</div>
+              <div class="stat-label">Bookmarked</div>
+            </div>
+          </div>
+
           ${recent.length > 0 ? `
-            <h3>Continue Editing</h3>
-            <div class="card-grid" style="margin-top:0.5rem">
-              ${recent.slice(0, 4).map(r => `
-                <div class="card lesson-card clickable" data-id="${escapeHtml(r.id)}" style="padding:0.75rem">
-                  <h4 style="margin:0 0 0.25rem;font-size:0.9rem">${escapeHtml(r.title)}</h4>
-                  <span style="font-size:0.75rem;color:var(--color-text-muted)">${r.time ? new Date(r.time).toLocaleDateString() : ""}</span>
+            <div class="section-header">
+              <h3>Continue Editing</h3>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:0.75rem;margin-bottom:1.25rem">
+              ${recent.slice(0, 3).map(r => `
+                <div class="recent-lesson-card" data-id="${escapeHtml(r.id)}">
+                  <h4>${escapeHtml(r.title)}</h4>
+                  <span class="recent-meta">${r.time ? new Date(r.time).toLocaleDateString() : ""}</span>
                 </div>
               `).join("")}
             </div>
           ` : ""}
-          <h3>${bookmarks.length > 0 ? "Bookmarked Lessons" : "Published Lessons"}</h3>
-          <div class="card-grid" style="margin-top:0.5rem">
-            ${!Array.isArray(lessons) || lessons.length === 0 ? '<div class="empty-state"><p>No lessons available yet</p></div>' :
+
+          <div class="section-header">
+            <h3>${bookmarks.length > 0 ? "Bookmarked Lessons" : "Published Lessons"}</h3>
+          </div>
+          <div class="card-grid">
+            ${!Array.isArray(lessons) || lessons.length === 0 ? '<div class="empty-state" style="padding:2rem"><p>No lessons available yet</p></div>' :
               (bookmarks.length > 0 ? bookmarks : lessons).map(l => `
                 <div class="card lesson-card clickable" data-id="${escapeHtml(l.lesson_id || l.id)}" style="position:relative">
                   <h3>${escapeHtml(l.lesson_title || l.title)}</h3>
@@ -3538,6 +4727,9 @@ async function renderTeacherDashboard() {
       document.querySelectorAll("#teacher-content .lesson-card.clickable").forEach(el => {
         el.addEventListener("click", () => viewLessonContent("#teacher-content", el.dataset.id, loadTeacherLessons));
       });
+      document.querySelectorAll("#teacher-content .recent-lesson-card").forEach(el => {
+        el.addEventListener("click", () => viewLessonContent("#teacher-content", el.dataset.id, loadTeacherOverview));
+      });
     } catch (err) {
       showTeacherView(`<div class="empty-state"><h2>Error</h2><p>${escapeHtml(err.message)}</p></div>`);
     }
@@ -3547,22 +4739,120 @@ async function renderTeacherDashboard() {
     showTeacherView('<div class="loading-state"><div class="spinner"></div><p>Loading...</p></div>');
     try {
       const students = await request("/students");
+      const sList = Array.isArray(students) ? students : [];
       showTeacherView(`
-        <div class="content">
+        <div class="content" style="max-width:960px">
           <h2>Students</h2>
           <div class="card-grid" style="margin-top:1rem">
-            ${!Array.isArray(students) || students.length === 0 ? '<div class="empty-state"><p>No students enrolled</p></div>' :
-              students.map(s => `
-                <div class="card">
-                  <h3>${escapeHtml(s.full_name || s.user_id)}</h3>
-                  <p style="color:var(--color-text-muted)">${escapeHtml(s.email || "")} ${s.form_level ? "— Form " + escapeHtml(s.form_level) : ""}</p>
+            ${sList.length === 0 ? '<div class="empty-state"><p>No students enrolled</p></div>' :
+              sList.map(s => `
+                <div class="card student-card" data-id="${escapeHtml(s.id || s.user_id)}" data-name="${escapeHtml(s.full_name || s.user_id)}" style="cursor:pointer">
+                  <div style="display:flex;align-items:center;gap:0.75rem">
+                    <div style="width:40px;height:40px;border-radius:50%;background:var(--color-primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.9rem;flex-shrink:0">${escapeHtml((s.full_name || "S").charAt(0).toUpperCase())}</div>
+                    <div style="flex:1;min-width:0">
+                      <h3 style="margin:0;font-size:0.95rem">${escapeHtml(s.full_name || s.user_id)}</h3>
+                      <p style="margin:0.15rem 0 0;color:var(--color-text-muted);font-size:0.8rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(s.email || "")} ${s.form_level ? "— Form " + escapeHtml(s.form_level) : ""}</p>
+                    </div>
+                    <span style="color:var(--color-text-muted);font-size:0.8rem">→</span>
+                  </div>
                 </div>
               `).join("")}
           </div>
         </div>
       `);
+      document.querySelectorAll("#teacher-content .student-card").forEach(card => {
+        card.addEventListener("click", () => viewTeacherStudent(card.dataset.id, card.dataset.name));
+      });
     } catch (err) {
       showTeacherView(`<div class="empty-state"><h2>Error</h2><p>${escapeHtml(err.message)}</p></div>`);
+    }
+  }
+
+  async function viewTeacherStudent(studentId, studentName) {
+    showTeacherView('<div class="loading-state"><div class="spinner"></div><p>Loading student progress...</p></div>');
+    try {
+      const [progress, profile] = await Promise.all([
+        request(`/progress/${studentId}`).catch(() => []),
+        request(`/students/${studentId}`).catch(() => null),
+      ]);
+
+      const progressList = Array.isArray(progress) ? progress : [];
+      const bySubject = {};
+      let totalCompleted = 0;
+      let avgScore = 0;
+      const scores = [];
+      progressList.forEach(p => {
+        const subj = p.subject_name || "General";
+        if (!bySubject[subj]) bySubject[subj] = { total: 0, completed: 0, scores: [] };
+        bySubject[subj].total++;
+        if (p.completion_percentage >= 100) { bySubject[subj].completed++; totalCompleted++; }
+        if (p.score_percentage != null && p.score_percentage > 0) {
+          bySubject[subj].scores.push(p.score_percentage);
+          scores.push(p.score_percentage);
+        }
+      });
+      if (scores.length > 0) avgScore = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+
+      showTeacherView(`
+        <div class="content" style="max-width:960px">
+          <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1rem">
+            <button class="btn" id="back-btn">← Back</button>
+            <h2>${escapeHtml(studentName)}</h2>
+          </div>
+
+          ${profile ? `
+            <div style="display:flex;gap:2rem;flex-wrap:wrap;margin-bottom:1.5rem;font-size:0.85rem;color:var(--color-text-muted)">
+              ${profile.email ? `<span>📧 ${escapeHtml(profile.email)}</span>` : ""}
+              ${profile.form_level ? `<span>📋 ${escapeHtml(profile.form_level)}</span>` : ""}
+              ${profile.phone ? `<span>📱 ${escapeHtml(profile.phone)}</span>` : ""}
+            </div>
+          ` : ""}
+
+          <div class="stat-grid">
+            <div class="stat-card">
+              <div class="stat-icon" style="background:#eff6ff;color:#2563eb">📚</div>
+              <div class="stat-value">${progressList.length}</div>
+              <div class="stat-label">Lessons Attempted</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon" style="background:#f0fdf4;color:#16a34a">✅</div>
+              <div class="stat-value">${totalCompleted}</div>
+              <div class="stat-label">Completed</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon" style="background:#fef3c7;color:#d97706">📈</div>
+              <div class="stat-value">${avgScore > 0 ? avgScore + "%" : "—"}</div>
+              <div class="stat-label">Avg Score</div>
+            </div>
+          </div>
+
+          <div class="section-header">
+            <h3>Progress by Subject</h3>
+          </div>
+          ${Object.keys(bySubject).length === 0
+            ? '<div class="empty-state" style="padding:2rem"><p>No progress data yet</p></div>'
+            : Object.entries(bySubject).map(([name, data]) => {
+                const pct = data.total > 0 ? Math.round((data.completed / data.total) * 100) : 0;
+                const subjAvg = data.scores.length > 0 ? Math.round(data.scores.reduce((a, b) => a + b, 0) / data.scores.length) : 0;
+                return `
+                  <div class="card" style="margin-bottom:0.75rem">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
+                      <strong>${escapeHtml(name)}</strong>
+                      <span style="font-size:0.85rem;color:var(--color-text-muted)">${data.completed}/${data.total} lessons${subjAvg > 0 ? " · " + subjAvg + "% avg" : ""}</span>
+                    </div>
+                    <div class="progress-bar">
+                      <div class="progress-bar-fill" style="width:${pct}%"></div>
+                    </div>
+                  </div>
+                `;
+              }).join("")}
+        </div>
+      `);
+
+      document.getElementById("back-btn")?.addEventListener("click", loadTeacherStudents);
+    } catch (err) {
+      showTeacherView(`<div class="empty-state"><p>Error loading student data</p><button class="btn" id="back-btn">← Back</button></div>`);
+      document.getElementById("back-btn")?.addEventListener("click", loadTeacherStudents);
     }
   }
 
@@ -3570,10 +4860,37 @@ async function renderTeacherDashboard() {
     showTeacherView('<div class="loading-state"><div class="spinner"></div><p>Loading...</p></div>');
     try {
       const lessons = await request("/lessons");
+      let drafts = [];
+      try { drafts = JSON.parse(localStorage.getItem("casuya_teacher_drafts") || "[]"); } catch(e) {}
       showTeacherView(`
         <div class="content">
-          <h2>Lessons</h2>
-          <div class="card-grid" style="margin-top:1rem">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <h2>Lessons</h2>
+            <button class="btn btn-primary" id="create-draft-btn">+ Create Draft</button>
+          </div>
+          <div id="draft-form-area"></div>
+          ${drafts.length > 0 ? `
+            <h3 style="margin:1.5rem 0 0.75rem">Your Drafts (${drafts.length})</h3>
+            <div class="card-grid">
+              ${drafts.map((d, i) => `
+                <div class="card" style="padding:1rem">
+                  <div style="display:flex;justify-content:space-between;align-items:start">
+                    <div>
+                      <h4 style="margin:0">${escapeHtml(d.title)}</h4>
+                      <p style="color:var(--color-text-muted);font-size:0.85rem;margin-top:0.25rem">Created: ${new Date(d.createdAt).toLocaleDateString()}</p>
+                      <p style="color:var(--color-text-muted);font-size:0.75rem;margin-top:0.15rem">Content: ${d.html_content.length} chars</p>
+                    </div>
+                    <div style="display:flex;gap:0.25rem">
+                      <button class="btn btn-sm" data-view-draft="${i}">View</button>
+                      <button class="btn btn-sm btn-danger" data-delete-draft="${i}">Delete</button>
+                    </div>
+                  </div>
+                </div>
+              `).join("")}
+            </div>
+          ` : ''}
+          <h3 style="margin:1.5rem 0 0.75rem">Published Lessons</h3>
+          <div class="card-grid">
             ${!Array.isArray(lessons) || lessons.length === 0 ? '<div class="empty-state"><p>No lessons yet</p></div>' :
               lessons.map(l => `
                 <div class="card lesson-card clickable" data-id="${escapeHtml(l.id)}">
@@ -3586,6 +4903,64 @@ async function renderTeacherDashboard() {
       `);
       document.querySelectorAll("#teacher-content .lesson-card.clickable").forEach(el => {
         el.addEventListener("click", () => viewLessonContent("#teacher-content", el.dataset.id, loadTeacherLessons));
+      });
+      document.getElementById("create-draft-btn")?.addEventListener("click", () => {
+        document.getElementById("draft-form-area").innerHTML = `
+          <div class="card" style="margin-top:1rem;padding:1.5rem">
+            <h3 style="margin-bottom:0.75rem">Create Lesson Draft</h3>
+            <form id="draft-form" style="display:flex;flex-direction:column;gap:0.75rem">
+              <div>
+                <label style="font-size:0.8rem;color:var(--color-text-muted);display:block;margin-bottom:0.25rem">Title</label>
+                <input class="input" name="title" placeholder="Lesson title" required>
+              </div>
+              <div>
+                <label style="font-size:0.8rem;color:var(--color-text-muted);display:block;margin-bottom:0.25rem">HTML Content</label>
+                <textarea class="input" name="html_content" rows="12" placeholder="Write lesson content in HTML..." required style="font-family:monospace;font-size:0.85rem"></textarea>
+              </div>
+              <div style="display:flex;gap:0.5rem">
+                <button class="btn btn-success" type="submit">Save Draft</button>
+                <button class="btn" type="button" id="cancel-draft">Cancel</button>
+              </div>
+            </form>
+          </div>
+        `;
+        document.getElementById("cancel-draft").addEventListener("click", () => document.getElementById("draft-form-area").innerHTML = "");
+        document.getElementById("draft-form").addEventListener("submit", (e) => {
+          e.preventDefault();
+          const fd = new FormData(e.target);
+          drafts.unshift({
+            title: fd.get("title"),
+            html_content: fd.get("html_content"),
+            createdAt: Date.now(),
+          });
+          localStorage.setItem("casuya_teacher_drafts", JSON.stringify(drafts));
+          loadTeacherLessons();
+        });
+      });
+      document.querySelectorAll("[data-view-draft]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const idx = parseInt(btn.dataset.viewDraft);
+          const draft = drafts[idx];
+          showTeacherView(`
+            <div class="content">
+              <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1rem">
+                <button class="btn" id="back-btn">← Back</button>
+                <h2>${escapeHtml(draft.title)}</h2>
+                <span style="font-size:0.75rem;padding:0.2rem 0.6rem;background:#fef3c7;color:#d97706;border-radius:var(--radius);font-weight:600">Draft</span>
+              </div>
+              <div class="lesson-viewer">${draft.html_content}</div>
+            </div>
+          `);
+          document.getElementById("back-btn").addEventListener("click", loadTeacherLessons);
+        });
+      });
+      document.querySelectorAll("[data-delete-draft]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const idx = parseInt(btn.dataset.deleteDraft);
+          drafts.splice(idx, 1);
+          localStorage.setItem("casuya_teacher_drafts", JSON.stringify(drafts));
+          loadTeacherLessons();
+        });
       });
     } catch (err) {
       showTeacherView(`<div class="empty-state"><h2>Error</h2><p>${escapeHtml(err.message)}</p></div>`);
@@ -3620,6 +4995,553 @@ async function renderTeacherDashboard() {
     } catch(e) {
       showTeacherView('<div class="content"><h2>Bookmarks</h2><div class="empty-state"><p>Error loading bookmarks</p></div></div>');
     }
+  }
+
+  async function loadTeacherAssignments() {
+    showTeacherView('<div class="loading-state"><div class="spinner"></div><p>Loading assignments...</p></div>');
+    try {
+      const [lessons, students] = await Promise.all([
+        request("/lessons"),
+        request("/students"),
+      ]);
+      const lessonList = Array.isArray(lessons) ? lessons : [];
+      const studentList = Array.isArray(students) ? students : [];
+      let assignments = [];
+      try { assignments = JSON.parse(localStorage.getItem("casuya_teacher_assignments") || "[]"); } catch(e) {}
+
+      showTeacherView(`
+        <div class="content">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <h2>Assignments</h2>
+            <button class="btn btn-primary" id="new-assignment-btn">+ New Assignment</button>
+          </div>
+          <div id="assignment-form-area"></div>
+          <div style="margin-top:1rem">
+            ${assignments.length === 0 ? '<div class="empty-state"><p>No assignments yet. Create one to assign lessons to students.</p></div>' :
+              assignments.map((a, i) => `
+                <div class="card" style="padding:1rem;margin-bottom:0.5rem">
+                  <div style="display:flex;justify-content:space-between;align-items:start">
+                    <div>
+                      <h4 style="margin:0">${escapeHtml(a.title)}</h4>
+                      <p style="color:var(--color-text-muted);font-size:0.85rem;margin-top:0.25rem">${escapeHtml(a.lessonTitle || "Unknown lesson")} → ${escapeHtml(a.studentName || "All students")}</p>
+                      <p style="color:var(--color-text-muted);font-size:0.75rem;margin-top:0.15rem">Due: ${a.dueDate ? new Date(a.dueDate).toLocaleDateString() : "No due date"} | ${a.status}</p>
+                    </div>
+                    <button class="btn btn-sm btn-danger" data-delete-assignment="${i}">Remove</button>
+                  </div>
+                </div>
+              `).join("")}
+          </div>
+        </div>
+      `);
+      document.getElementById("new-assignment-btn")?.addEventListener("click", () => {
+        document.getElementById("assignment-form-area").innerHTML = `
+          <div class="card" style="margin-top:1rem;padding:1.5rem">
+            <h3 style="margin-bottom:0.75rem">New Assignment</h3>
+            <form id="assignment-form" style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem">
+              <div style="grid-column:1/-1">
+                <label style="font-size:0.8rem;color:var(--color-text-muted);display:block;margin-bottom:0.25rem">Title</label>
+                <input class="input" name="title" placeholder="Assignment title" required>
+              </div>
+              <div>
+                <label style="font-size:0.8rem;color:var(--color-text-muted);display:block;margin-bottom:0.25rem">Lesson</label>
+                <select class="input" name="lesson_id" required>
+                  <option value="">Select lesson...</option>
+                  ${lessonList.map(l => `<option value="${l.id}">${escapeHtml(l.title)}</option>`).join("")}
+                </select>
+              </div>
+              <div>
+                <label style="font-size:0.8rem;color:var(--color-text-muted);display:block;margin-bottom:0.25rem">Student</label>
+                <select class="input" name="student_id">
+                  <option value="">All students</option>
+                  ${studentList.map(s => `<option value="${s.id || s.user_id}">${escapeHtml(s.full_name || "Student")}</option>`).join("")}
+                </select>
+              </div>
+              <div>
+                <label style="font-size:0.8rem;color:var(--color-text-muted);display:block;margin-bottom:0.25rem">Due Date</label>
+                <input class="input" type="date" name="due_date">
+              </div>
+              <div>
+                <label style="font-size:0.8rem;color:var(--color-text-muted);display:block;margin-bottom:0.25rem">Notes</label>
+                <input class="input" name="notes" placeholder="Optional instructions">
+              </div>
+              <div style="grid-column:1/-1;display:flex;gap:0.5rem">
+                <button class="btn btn-success" type="submit">Create</button>
+                <button class="btn" type="button" id="cancel-assignment">Cancel</button>
+              </div>
+            </form>
+          </div>
+        `;
+        document.getElementById("cancel-assignment").addEventListener("click", () => document.getElementById("assignment-form-area").innerHTML = "");
+        document.getElementById("assignment-form").addEventListener("submit", (e) => {
+          e.preventDefault();
+          const fd = new FormData(e.target);
+          const lessonId = fd.get("lesson_id");
+          const lesson = lessonList.find(l => l.id === lessonId);
+          const studentId = fd.get("student_id");
+          const student = studentList.find(s => (s.id || s.user_id) === studentId);
+          assignments.push({
+            title: fd.get("title"),
+            lessonId,
+            lessonTitle: lesson?.title || "",
+            studentId: studentId || null,
+            studentName: student?.full_name || "All students",
+            dueDate: fd.get("due_date") || null,
+            notes: fd.get("notes") || "",
+            status: "pending",
+            createdAt: Date.now(),
+          });
+          localStorage.setItem("casuya_teacher_assignments", JSON.stringify(assignments));
+          loadTeacherAssignments();
+        });
+      });
+      document.querySelectorAll("[data-delete-assignment]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const idx = parseInt(btn.dataset.deleteAssignment);
+          assignments.splice(idx, 1);
+          localStorage.setItem("casuya_teacher_assignments", JSON.stringify(assignments));
+          loadTeacherAssignments();
+        });
+      });
+    } catch(e) {
+      showTeacherView('<div class="content"><h2>Assignments</h2><div class="empty-state"><p>Error loading assignments</p></div></div>');
+    }
+  }
+
+  async function loadTeacherReports() {
+    showTeacherView('<div class="loading-state"><div class="spinner"></div><p>Loading reports...</p></div>');
+    try {
+      const [students, lessons] = await Promise.all([
+        request("/students"),
+        request("/lessons"),
+      ]);
+      const studentList = Array.isArray(students) ? students : [];
+      const lessonList = Array.isArray(lessons) ? lessons : [];
+
+      const studentProgress = [];
+      for (const s of studentList.slice(0, 20)) {
+        try {
+          const progress = await request(`/progress/${s.id || s.user_id}`);
+          if (Array.isArray(progress)) {
+            const completed = progress.filter(p => p.completion_percentage >= 100).length;
+            const scores = progress.filter(p => p.score_percentage != null && p.score_percentage > 0);
+            const avgScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b.score_percentage, 0) / scores.length) : 0;
+            studentProgress.push({
+              name: s.full_name || "Unknown",
+              id: s.id || s.user_id,
+              total: progress.length,
+              completed,
+              avgScore,
+            });
+          }
+        } catch(e) {}
+      }
+
+      const topStudents = [...studentProgress].sort((a, b) => b.avgScore - a.avgScore).slice(0, 5);
+      const mostActive = [...studentProgress].sort((a, b) => b.completed - a.completed).slice(0, 5);
+
+      showTeacherView(`
+        <div class="content">
+          <h2>Class Reports</h2>
+          <div class="stat-grid" style="margin:1rem 0">
+            <div class="stat-card"><div class="stat-value">${studentList.length}</div><div class="stat-label">Total Students</div></div>
+            <div class="stat-card"><div class="stat-value">${lessonList.length}</div><div class="stat-label">Total Lessons</div></div>
+            <div class="stat-card"><div class="stat-value">${studentProgress.reduce((a, s) => a + s.completed, 0)}</div><div class="stat-label">Lessons Completed</div></div>
+            <div class="stat-card"><div class="stat-value">${studentProgress.length > 0 ? Math.round(studentProgress.reduce((a, s) => a + s.avgScore, 0) / studentProgress.length) : 0}%</div><div class="stat-label">Class Average</div></div>
+          </div>
+          ${topStudents.length > 0 ? `
+            <h3 style="margin:1.5rem 0 0.75rem">Top Performers</h3>
+            <div class="card-grid">
+              ${topStudents.map((s, i) => `
+                <div class="card" style="padding:1rem">
+                  <div style="display:flex;align-items:center;gap:0.5rem">
+                    <span style="font-size:1.2rem;font-weight:700;color:var(--color-primary)">#${i + 1}</span>
+                    <div>
+                      <h4 style="margin:0">${escapeHtml(s.name)}</h4>
+                      <p style="color:var(--color-text-muted);font-size:0.85rem;margin:0.15rem 0 0">Avg: ${s.avgScore}% | ${s.completed} completed</p>
+                    </div>
+                  </div>
+                </div>
+              `).join("")}
+            </div>
+          ` : ''}
+          ${mostActive.length > 0 ? `
+            <h3 style="margin:1.5rem 0 0.75rem">Most Active Students</h3>
+            <div class="card-grid">
+              ${mostActive.map(s => `
+                <div class="card" style="padding:1rem">
+                  <h4 style="margin:0">${escapeHtml(s.name)}</h4>
+                  <p style="color:var(--color-text-muted);font-size:0.85rem;margin:0.25rem 0 0">${s.completed}/${s.total} lessons completed | Avg: ${s.avgScore}%</p>
+                </div>
+              `).join("")}
+            </div>
+          ` : ''}
+          ${studentProgress.length === 0 ? '<div class="empty-state"><p>No student progress data available yet.</p></div>' : ''}
+        </div>
+      `);
+    } catch(e) {
+      showTeacherView('<div class="content"><h2>Reports</h2><div class="empty-state"><p>Error loading reports</p></div></div>');
+    }
+  }
+
+  async function loadTeacherAIAssistant() {
+    showTeacherView(`
+      <div class="content">
+        <h2>AI Assistant</h2>
+        <p style="color:var(--color-text-muted);font-size:0.85rem;margin-top:0.25rem">Use AI to help with teaching tasks.</p>
+        <div style="display:grid;gap:1rem;margin-top:1.5rem">
+          <div class="card" style="padding:1.5rem">
+            <h3 style="margin-bottom:0.75rem">Tutoring Explanation</h3>
+            <p style="color:var(--color-text-muted);font-size:0.85rem;margin-bottom:0.75rem">Get an AI explanation for a student question.</p>
+            <form id="ai-tutor-form" style="display:flex;flex-direction:column;gap:0.5rem">
+              <textarea class="input" name="question" rows="3" placeholder="Enter the student's question..." required></textarea>
+              <input class="input" name="context" placeholder="Optional lesson context...">
+              <button class="btn btn-primary" type="submit">Get Explanation</button>
+            </form>
+            <div id="ai-tutor-result" style="margin-top:1rem;display:none">
+              <div class="card" style="background:var(--color-bg);padding:1rem">
+                <h4 style="margin:0 0 0.5rem">AI Response</h4>
+                <div id="ai-tutor-text" style="font-size:0.9rem;line-height:1.6;white-space:pre-wrap"></div>
+              </div>
+            </div>
+          </div>
+          <div class="card" style="padding:1.5rem">
+            <h3 style="margin-bottom:0.75rem">Generate Quiz Questions</h3>
+            <p style="color:var(--color-text-muted);font-size:0.85rem;margin-bottom:0.75rem">Auto-generate quiz questions from lesson content.</p>
+            <form id="ai-questions-form" style="display:flex;flex-direction:column;gap:0.5rem">
+              <textarea class="input" name="lesson_html" rows="5" placeholder="Paste lesson HTML content..." required></textarea>
+              <div style="display:flex;gap:0.5rem;align-items:center">
+                <label style="font-size:0.85rem;color:var(--color-text-muted)">Number of questions:</label>
+                <input class="input" type="number" name="count" value="5" min="1" max="20" style="width:80px">
+              </div>
+              <button class="btn btn-primary" type="submit">Generate Questions</button>
+            </form>
+            <div id="ai-questions-result" style="margin-top:1rem;display:none">
+              <div class="card" style="background:var(--color-bg);padding:1rem">
+                <h4 style="margin:0 0 0.5rem">Generated Questions</h4>
+                <div id="ai-questions-text" style="font-size:0.9rem;line-height:1.6;white-space:pre-wrap"></div>
+              </div>
+            </div>
+          </div>
+          <div class="card" style="padding:1.5rem">
+            <h3 style="margin-bottom:0.75rem">Translate Text</h3>
+            <p style="color:var(--color-text-muted);font-size:0.85rem;margin-bottom:0.75rem">Translate text to another language.</p>
+            <form id="ai-translate-form" style="display:flex;flex-direction:column;gap:0.5rem">
+              <textarea class="input" name="text" rows="3" placeholder="Text to translate..." required></textarea>
+              <select class="input" name="target_language">
+                <option value="Swahili">Swahili</option>
+                <option value="English">English</option>
+                <option value="French">French</option>
+                <option value="Arabic">Arabic</option>
+                <option value="Spanish">Spanish</option>
+              </select>
+              <button class="btn btn-primary" type="submit">Translate</button>
+            </form>
+            <div id="ai-translate-result" style="margin-top:1rem;display:none">
+              <div class="card" style="background:var(--color-bg);padding:1rem">
+                <h4 style="margin:0 0 0.5rem">Translation</h4>
+                <div id="ai-translate-text" style="font-size:0.9rem;line-height:1.6;white-space:pre-wrap"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `);
+    document.getElementById("ai-tutor-form")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      const resultDiv = document.getElementById("ai-tutor-result");
+      const textDiv = document.getElementById("ai-tutor-text");
+      resultDiv.style.display = "block";
+      textDiv.textContent = "Thinking...";
+      try {
+        const result = await request("/ai/tutoring/explain", {
+          method: "POST",
+          body: JSON.stringify({ question: fd.get("question"), lesson_context: fd.get("context") || undefined }),
+        });
+        textDiv.textContent = result?.explanation || result?.answer || JSON.stringify(result);
+      } catch(err) { textDiv.textContent = "Error: " + err.message; }
+    });
+    document.getElementById("ai-questions-form")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      const resultDiv = document.getElementById("ai-questions-result");
+      const textDiv = document.getElementById("ai-questions-text");
+      resultDiv.style.display = "block";
+      textDiv.textContent = "Generating...";
+      try {
+        const result = await request("/ai/questions/generate", {
+          method: "POST",
+          body: JSON.stringify({ lesson_html: fd.get("lesson_html"), count: parseInt(fd.get("count")) || 5 }),
+        });
+        const questions = result?.questions || result;
+        textDiv.textContent = typeof questions === "string" ? questions : JSON.stringify(questions, null, 2);
+      } catch(err) { textDiv.textContent = "Error: " + err.message; }
+    });
+    document.getElementById("ai-translate-form")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      const resultDiv = document.getElementById("ai-translate-result");
+      const textDiv = document.getElementById("ai-translate-text");
+      resultDiv.style.display = "block";
+      textDiv.textContent = "Translating...";
+      try {
+        const result = await request("/ai/content/translate", {
+          method: "POST",
+          body: JSON.stringify({ text: fd.get("text"), target_language: fd.get("target_language") }),
+        });
+        textDiv.textContent = result?.translated || result?.text || JSON.stringify(result);
+      } catch(err) { textDiv.textContent = "Error: " + err.message; }
+    });
+  }
+
+  async function loadTeacherFiles() {
+    showTeacherView('<div class="loading-state"><div class="spinner"></div><p>Loading files...</p></div>');
+    try {
+      const files = await request("/uploads/public").catch(() => []);
+      const fileList = Array.isArray(files) ? files : [];
+      let activeFilter = "all";
+
+      function renderTeacherFiles() {
+        let filtered = fileList;
+        if (activeFilter !== "all") {
+          if (activeFilter === "images") filtered = fileList.filter(f => /\.(png|jpg|jpeg|gif|svg|webp)$/i.test(f.filename || f.path || ""));
+          else if (activeFilter === "documents") filtered = fileList.filter(f => /\.(pdf|doc|docx|txt)$/i.test(f.filename || f.path || ""));
+          else if (activeFilter === "media") filtered = fileList.filter(f => /\.(mp4|webm|mp3|wav|ogg)$/i.test(f.filename || f.path || ""));
+        }
+        const grid = document.getElementById("teacher-files-grid");
+        if (!grid) return;
+        if (filtered.length === 0) {
+          grid.innerHTML = '<div class="empty-state" style="padding:2rem"><p>No files available</p></div>';
+          return;
+        }
+        grid.innerHTML = filtered.map(f => {
+          const name = f.filename || f.path || "unknown";
+          const isImage = /\.(png|jpg|jpeg|gif|svg|webp)$/i.test(name);
+          const isVideo = /\.(mp4|webm)$/i.test(name);
+          const isAudio = /\.(mp3|wav|ogg)$/i.test(name);
+          const icon = isImage ? "🖼️" : isVideo ? "🎬" : isAudio ? "🎵" : "📄";
+          return `
+            <div class="card" style="padding:0.75rem;cursor:pointer" onclick="window.open('${API_BASE}/uploads/${encodeURIComponent(name)}', '_blank')">
+              <div style="display:flex;align-items:center;gap:0.75rem">
+                <div style="font-size:1.5rem;flex-shrink:0">${icon}</div>
+                <div style="flex:1;min-width:0">
+                  <p style="margin:0;font-size:0.85rem;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(name)}</p>
+                  <p style="margin:0.15rem 0 0;font-size:0.7rem;color:var(--color-text-muted)">${f.size ? (f.size / 1024).toFixed(1) + " KB" : ""}</p>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join("");
+      }
+
+      showTeacherView(`
+        <div class="content">
+          <h2>Files & Resources</h2>
+          <p style="color:var(--color-text-muted);font-size:0.85rem;margin-top:0.25rem">Browse uploaded teaching materials and resources.</p>
+          <div style="margin-top:1rem;display:flex;gap:0.5rem;flex-wrap:wrap">
+            <button class="btn btn-sm teacher-files-filter" data-filter="all" style="background:var(--color-bg);border:1px solid var(--color-border);font-weight:600">All</button>
+            <button class="btn btn-sm teacher-files-filter" data-filter="images" style="background:var(--color-bg);border:1px solid var(--color-border)">🖼️ Images</button>
+            <button class="btn btn-sm teacher-files-filter" data-filter="documents" style="background:var(--color-bg);border:1px solid var(--color-border)">📄 Documents</button>
+            <button class="btn btn-sm teacher-files-filter" data-filter="media" style="background:var(--color-bg);border:1px solid var(--color-border)">🎬 Media</button>
+          </div>
+          <div id="teacher-files-grid" style="margin-top:0.75rem;display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:0.5rem"></div>
+        </div>
+      `);
+      document.querySelectorAll(".teacher-files-filter").forEach(btn => {
+        btn.addEventListener("click", () => {
+          activeFilter = btn.dataset.filter;
+          document.querySelectorAll(".teacher-files-filter").forEach(b => b.style.fontWeight = b.dataset.filter === activeFilter ? "600" : "400");
+          renderTeacherFiles();
+        });
+      });
+      renderTeacherFiles();
+    } catch(e) { showTeacherView('<div class="empty-state"><p>Error loading files</p></div>'); }
+  }
+
+  async function loadTeacherNotifications() {
+    showTeacherView('<div class="loading-state"><div class="spinner"></div><p>Loading notifications...</p></div>');
+    try {
+      const data = await request("/notifications");
+      const allNotifs = Array.isArray(data) ? data : [];
+      const unread = allNotifs.filter(n => !n.is_read);
+      const read = allNotifs.filter(n => n.is_read);
+      let showFilter = "all";
+
+      function render() {
+        let list = allNotifs;
+        if (showFilter === "unread") list = unread;
+        else if (showFilter === "read") list = read;
+        const el = document.getElementById("teacher-notif-list");
+        if (!el) return;
+        if (list.length === 0) {
+          el.innerHTML = '<div class="empty-state" style="padding:2rem"><p>No notifications</p></div>';
+          return;
+        }
+        el.innerHTML = list.map(n => `
+          <div class="card" style="padding:0.75rem 1rem;margin-bottom:0.5rem;${n.is_read ? "opacity:0.7" : "border-left:3px solid var(--color-primary)"}">
+            <div style="display:flex;justify-content:space-between;align-items:start;gap:0.5rem">
+              <div style="flex:1">
+                <p style="margin:0;font-size:0.875rem;${n.is_read ? "" : "font-weight:600"}">${escapeHtml(n.message)}</p>
+                <p style="margin:0.25rem 0 0;font-size:0.75rem;color:var(--color-text-muted)">${n.created_at ? new Date(n.created_at).toLocaleString() : ""}</p>
+              </div>
+              ${!n.is_read ? `<button class="btn btn-sm btn-primary teacher-notif-read" data-id="${n.id}" style="font-size:0.7rem;padding:0.2rem 0.5rem">Mark Read</button>` : ""}
+            </div>
+          </div>
+        `).join("");
+        document.querySelectorAll(".teacher-notif-read").forEach(btn => {
+          btn.addEventListener("click", async () => {
+            await request(`/notifications/${btn.dataset.id}/read`, { method: "POST" });
+            const n = allNotifs.find(x => x.id === btn.dataset.id);
+            if (n) n.is_read = true;
+            unread.length = 0; unread.push(...allNotifs.filter(x => !x.is_read));
+            read.length = 0; read.push(...allNotifs.filter(x => x.is_read));
+            const badge = document.getElementById("notif-badge");
+            if (badge) { const c = unread.length; badge.textContent = c; badge.style.display = c > 0 ? "inline" : "none"; }
+            render();
+          });
+        });
+      }
+
+      showTeacherView(`
+        <div class="content">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <h2>Notifications</h2>
+            <button class="btn btn-sm" id="teacher-mark-all-read">Mark All Read</button>
+          </div>
+          <div style="margin-top:1rem;display:flex;gap:0.5rem">
+            <button class="btn btn-sm teacher-notif-filter" data-filter="all" style="background:var(--color-bg);border:1px solid var(--color-border);font-weight:600">All (${allNotifs.length})</button>
+            <button class="btn btn-sm teacher-notif-filter" data-filter="unread" style="background:var(--color-bg);border:1px solid var(--color-border)">Unread (${unread.length})</button>
+            <button class="btn btn-sm teacher-notif-filter" data-filter="read" style="background:var(--color-bg);border:1px solid var(--color-border)">Read (${read.length})</button>
+          </div>
+          <div id="teacher-notif-list" style="margin-top:0.75rem"></div>
+        </div>
+      `);
+      document.querySelectorAll(".teacher-notif-filter").forEach(btn => {
+        btn.addEventListener("click", () => {
+          showFilter = btn.dataset.filter;
+          document.querySelectorAll(".teacher-notif-filter").forEach(b => b.style.fontWeight = b.dataset.filter === showFilter ? "600" : "400");
+          render();
+        });
+      });
+      document.getElementById("teacher-mark-all-read")?.addEventListener("click", async () => {
+        for (const n of unread) {
+          try { await request(`/notifications/${n.id}/read`, { method: "POST" }); n.is_read = true; } catch(e) {}
+        }
+        unread.length = 0; read.length = 0; read.push(...allNotifs);
+        const badge = document.getElementById("notif-badge");
+        if (badge) badge.style.display = "none";
+        render();
+      });
+      render();
+    } catch(e) { showTeacherView('<div class="empty-state"><p>Error loading notifications</p></div>'); }
+  }
+
+  async function loadTeacherSettings() {
+    showTeacherView('<div class="loading-state"><div class="spinner"></div><p>Loading settings...</p></div>');
+    try {
+      const [me, profile] = await Promise.all([
+        request("/users/me").catch(() => ({})),
+        request("/teachers/me").catch(() => ({})),
+      ]);
+      const activeTab = localStorage.getItem("teacher_settings_tab") || "profile";
+
+      function renderTab(tab) {
+        localStorage.setItem("teacher_settings_tab", tab);
+        document.querySelectorAll(".teacher-settings-tab").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
+        const panel = document.getElementById("teacher-settings-panel");
+        if (!panel) return;
+
+        if (tab === "profile") {
+          panel.innerHTML = `
+            <div class="card" style="padding:1.5rem">
+              <h3 style="margin-bottom:0.75rem">My Profile</h3>
+              <form id="teacher-profile-form" style="display:flex;flex-direction:column;gap:0.75rem">
+                <div>
+                  <label style="font-size:0.85rem;font-weight:500;display:block;margin-bottom:0.25rem">Full Name</label>
+                  <input class="input" name="full_name" value="${escapeHtml(profile.full_name || "")}" placeholder="Your name">
+                </div>
+                <div>
+                  <label style="font-size:0.85rem;font-weight:500;display:block;margin-bottom:0.25rem">Email</label>
+                  <input class="input" value="${escapeHtml(me.email || "")}" disabled style="opacity:0.6">
+                </div>
+                <div>
+                  <label style="font-size:0.85rem;font-weight:500;display:block;margin-bottom:0.25rem">Phone</label>
+                  <input class="input" name="phone" value="${escapeHtml(me.phone || "")}" placeholder="Phone number">
+                </div>
+                <div>
+                  <label style="font-size:0.85rem;font-weight:500;display:block;margin-bottom:0.25rem">Subjects</label>
+                  <input class="input" name="subjects" value="${escapeHtml(profile.subjects || "")}" placeholder="e.g. Mathematics, Physics">
+                </div>
+                <button class="btn btn-primary" type="submit" style="align-self:flex-start">Save Changes</button>
+              </form>
+              <p id="teacher-profile-msg" style="font-size:0.85rem;margin-top:0.5rem;display:none"></p>
+            </div>
+          `;
+          document.getElementById("teacher-profile-form")?.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const fd = new FormData(e.target);
+            const msg = document.getElementById("teacher-profile-msg");
+            try {
+              await request("/users/me", { method: "PATCH", body: JSON.stringify({ phone: fd.get("phone") }) });
+              await request("/teachers/me", { method: "PATCH", body: JSON.stringify({ full_name: fd.get("full_name"), subjects: fd.get("subjects") }) });
+              msg.textContent = "Profile updated!"; msg.style.color = "var(--color-success)"; msg.style.display = "block";
+              setTimeout(() => msg.style.display = "none", 3000);
+            } catch(err) { msg.textContent = err.message; msg.style.color = "var(--color-danger)"; msg.style.display = "block"; }
+          });
+        } else if (tab === "password") {
+          panel.innerHTML = `
+            <div class="card" style="padding:1.5rem">
+              <h3 style="margin-bottom:0.75rem">Change Password</h3>
+              <form id="teacher-pw-form" style="display:flex;flex-direction:column;gap:0.75rem;max-width:400px">
+                <div>
+                  <label style="font-size:0.85rem;font-weight:500;display:block;margin-bottom:0.25rem">Current Password</label>
+                  <input class="input" name="current_password" type="password" required>
+                </div>
+                <div>
+                  <label style="font-size:0.85rem;font-weight:500;display:block;margin-bottom:0.25rem">New Password</label>
+                  <input class="input" name="new_password" type="password" required minlength="6">
+                </div>
+                <div>
+                  <label style="font-size:0.85rem;font-weight:500;display:block;margin-bottom:0.25rem">Confirm New Password</label>
+                  <input class="input" name="confirm_password" type="password" required>
+                </div>
+                <button class="btn btn-primary" type="submit" style="align-self:flex-start">Update Password</button>
+              </form>
+              <p id="teacher-pw-msg" style="font-size:0.85rem;margin-top:0.5rem;display:none"></p>
+            </div>
+          `;
+          document.getElementById("teacher-pw-form")?.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const fd = new FormData(e.target);
+            const msg = document.getElementById("teacher-pw-msg");
+            if (fd.get("new_password") !== fd.get("confirm_password")) {
+              msg.textContent = "Passwords do not match"; msg.style.color = "var(--color-danger)"; msg.style.display = "block";
+              return;
+            }
+            try {
+              await request("/auth/change-password", { method: "POST", body: JSON.stringify({ current_password: fd.get("current_password"), new_password: fd.get("new_password") }) });
+              msg.textContent = "Password updated!"; msg.style.color = "var(--color-success)"; msg.style.display = "block";
+              e.target.reset();
+            } catch(err) { msg.textContent = err.message; msg.style.color = "var(--color-danger)"; msg.style.display = "block"; }
+          });
+        }
+      }
+
+      showTeacherView(`
+        <div class="content">
+          <h2>Settings</h2>
+          <div style="display:flex;gap:0;border-bottom:2px solid var(--color-border);margin-top:1rem;margin-bottom:1rem">
+            <button class="btn teacher-settings-tab" data-tab="profile" style="border-radius:0;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;${activeTab === "profile" ? "border-bottom-color:var(--color-primary);color:var(--color-primary);font-weight:600" : "color:var(--color-text-muted)"}">Profile</button>
+            <button class="btn teacher-settings-tab" data-tab="password" style="border-radius:0;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;${activeTab === "password" ? "border-bottom-color:var(--color-primary);color:var(--color-primary);font-weight:600" : "color:var(--color-text-muted)"}">Password</button>
+          </div>
+          <div id="teacher-settings-panel"></div>
+        </div>
+      `);
+      document.querySelectorAll(".teacher-settings-tab").forEach(btn => {
+        btn.addEventListener("click", () => renderTab(btn.dataset.tab));
+      });
+      renderTab(activeTab);
+    } catch(e) { showTeacherView('<div class="empty-state"><p>Error loading settings</p></div>'); }
   }
 
   loadNotifs();

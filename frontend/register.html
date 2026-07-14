@@ -76,6 +76,7 @@
                 type="tel"
                 id="phone"
                 name="phone"
+                pattern="[\+]?[0-9]{10,15}"
                 class="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm font-medium placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 placeholder="+255..."
               >
@@ -282,6 +283,17 @@
     document.getElementById('confirm_password').addEventListener('input', function () {
       const password = document.getElementById('password').value;
       if (this.value && this.value !== password) {
+        this.classList.add('border-red-300');
+        this.classList.remove('border-slate-200');
+      } else {
+        this.classList.remove('border-red-300');
+        this.classList.add('border-slate-200');
+      }
+    });
+
+    document.getElementById('phone').addEventListener('input', function () {
+      const phonePattern = /^[\+]?[0-9]{10,15}$/;
+      if (this.value && !phonePattern.test(this.value)) {
         this.classList.add('border-red-300');
         this.classList.remove('border-slate-200');
       } else {

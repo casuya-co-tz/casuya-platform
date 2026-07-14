@@ -303,6 +303,14 @@
 
       try {
         const data = await login({ email, password });
+        // Remember Me: persist or clear email
+        try {
+          if (document.getElementById("remember").checked) {
+            localStorage.setItem("casuya_remember_email", email);
+          } else {
+            localStorage.removeItem("casuya_remember_email");
+          }
+        } catch (e) {}
         showSuccess('Login successful! Redirecting...');
         setTimeout(() => { window.location.href = getPortalPath(data.role); }, 800);
       } catch (error) {
@@ -315,6 +323,17 @@
 
     // ── Already signed in? Skip form setup ──────────────────────────────
     if (!redirectIfAuthed()) {
+      // ── Remember Me: restore saved email ──────────────────────────
+      const rememberCheck = document.getElementById("remember");
+      const emailInput = document.getElementById("email");
+      try {
+        const savedEmail = localStorage.getItem("casuya_remember_email");
+        if (savedEmail) {
+          emailInput.value = savedEmail;
+          rememberCheck.checked = true;
+        }
+      } catch (e) {}
+
       document.getElementById('email').addEventListener('input', function onEmailInput() {
         this.classList.toggle('border-red-300', this.value && !isValidEmail(this.value));
         this.classList.toggle('border-slate-200', !this.value || isValidEmail(this.value));

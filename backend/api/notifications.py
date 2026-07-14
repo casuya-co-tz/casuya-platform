@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 
 from backend.middleware.auth import get_current_user
 from backend.middleware.permissions import require_role
@@ -28,28 +29,36 @@ def send_notification_route(body: SendNotificationRequest):
     if body.user_id:
         result = send_notification(user_id=body.user_id, message=body.message)
         return {"sent": 1, "notifications": [result]}
-    db = next(get_db())
-    users = db.query(User).filter(User.role == body.role, User.is_active == True).all()
-    if not users:
-        raise HTTPException(status_code=404, detail=f"No active {body.role}s found")
-    results = []
-    for u in users:
-        results.append(send_notification(user_id=u.id, message=body.message))
-    return {"sent": len(results), "notifications": results}
+    _gen = get_db()
+    db: Session = next(_gen)
+    try:
+        users = db.query(User).filter(User.role == body.role, User.is_active == True).all()
+        if not users:
+            raise HTTPException(status_code=404, detail=f"No active {body.role}s found")
+        results = []
+        for u in users:
+            results.append(send_notification(user_id=u.id, message=body.message))
+        return {"sent": len(results), "notifications": results}
+    finally:
+        _gen.close()
 
 
 @router.post("/bulk", dependencies=[Depends(require_role("admin"))])
 def send_bulk_notification_route(body: SendNotificationRequest):
     if not body.role:
         raise HTTPException(status_code=400, detail="Provide role (student|teacher)")
-    db = next(get_db())
-    users = db.query(User).filter(User.role == body.role, User.is_active == True).all()
-    if not users:
-        raise HTTPException(status_code=404, detail=f"No active {body.role}s found")
-    results = []
-    for u in users:
-        results.append(send_notification(user_id=u.id, message=body.message))
-    return {"sent": len(results)}
+    _gen = get_db()
+    db: Session = next(_gen)
+    try:
+        users = db.query(User).filter(User.role == body.role, User.is_active == True).all()
+        if not users:
+            raise HTTPException(status_code=404, detail=f"No active {body.role}s found")
+        results = []
+        for u in users:
+            results.append(send_notification(user_id=u.id, message=body.message))
+        return {"sent": len(results)}
+    finally:
+        _gen.close()
 
 
 @router.post("/{notification_id}/read", response_model=dict)

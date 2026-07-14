@@ -14,71 +14,78 @@ def initiate_checkout(
     settings = get_settings()
     sandbox = getattr(settings, "azampay_sandbox", True)
 
-    db: Session = next(get_db())
+    _gen = get_db()
+    db: Session = next(_gen)
+    try:
+        if idempotency_key:
+            existing = db.query(Payment).filter(Payment.idempotency_key == idempotency_key).first()
+            if existing:
+                return {
+                    "id": existing.id,
+                    "amount_tzs": existing.amount_tzs,
+                    "provider": existing.provider,
+                    "provider_reference": existing.provider_reference,
+                    "status": existing.status,
+                    "idempotent": True,
+                }
 
-    if idempotency_key:
-        existing = db.query(Payment).filter(Payment.idempotency_key == idempotency_key).first()
-        if existing:
+        payment = Payment(
+            user_id=user_id,
+            amount_tzs=amount_tzs,
+            provider=provider,
+            idempotency_key=idempotency_key,
+            status="pending",
+        )
+        db.add(payment)
+        db.commit()
+
+        if sandbox:
             return {
-                "id": existing.id,
-                "amount_tzs": existing.amount_tzs,
-                "provider": existing.provider,
-                "provider_reference": existing.provider_reference,
-                "status": existing.status,
-                "idempotent": True,
+                "id": payment.id,
+                "amount_tzs": amount_tzs,
+                "provider": provider,
+                "status": "pending",
+                "sandbox": True,
+                "note": "Sandbox mode — no real charge will be made",
             }
 
-    payment = Payment(
-        user_id=user_id,
-        amount_tzs=amount_tzs,
-        provider=provider,
-        idempotency_key=idempotency_key,
-        status="pending",
-    )
-    db.add(payment)
-    db.commit()
+        enqueue_job("high", "backend.tasks.payments.process_checkout", payment.id, mobile_number)
 
-    if sandbox:
         return {
             "id": payment.id,
             "amount_tzs": amount_tzs,
             "provider": provider,
             "status": "pending",
-            "sandbox": True,
-            "note": "Sandbox mode — no real charge will be made",
+            "sandbox": False,
         }
-
-    enqueue_job("high", "backend.tasks.payments.process_checkout", payment.id, mobile_number)
-
-    return {
-        "id": payment.id,
-        "amount_tzs": amount_tzs,
-        "provider": provider,
-        "status": "pending",
-        "sandbox": False,
-    }
+    finally:
+        _gen.close()
 
 
 def handle_webhook_payload(payload: dict) -> dict:
-    db: Session = next(get_db())
-    payment_id = payload.get("external_id")
-    status = payload.get("status", "failed")
-    reference = payload.get("reference")
-    idempotency_key = payload.get("idempotency_key")
+    _gen = get_db()
+    db: Session = next(_gen)
+    try:
+        payment_id = payload.get("external_id")
+        status = payload.get("status", "failed")
+        reference = payload.get("reference")
+        idempotency_key = payload.get("idempotency_key")
 
-    payment = db.query(Payment).filter(Payment.id == payment_id).first()
-    if not payment:
-        raise ValueError("Payment not found")
+        payment = db.query(Payment).filter(Payment.id == payment_id).first()
+        if not payment:
+            raise ValueError("Payment not found")
 
-    if payment.status == "success":
-        return {"id": payment.id, "status": payment.status, "idempotent": True}
+        if payment.status == "success":
+            return {"id": payment.id, "status": payment.status, "idempotent": True}
 
-    payment.status = "success" if status == "success" else "failed"
-    payment.provider_reference = reference
-    if idempotency_key:
-        payment.idempotency_key = idempotency_key
-    db.commit()
+        payment.status = "success" if status == "success" else "failed"
+        payment.provider_reference = reference
+        if idempotency_key:
+            payment.idempotency_key = idempotency_key
+        db.commit()
 
-    enqueue_job("default", "backend.tasks.payments.handle_payment_completion", payment.id)
+        enqueue_job("default", "backend.tasks.payments.handle_payment_completion", payment.id)
 
-    return {"id": payment.id, "status": payment.status}
+        return {"id": payment.id, "status": payment.status}
+    finally:
+        _gen.close()

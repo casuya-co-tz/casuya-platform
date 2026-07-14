@@ -1,10 +1,8 @@
+import json
 import time
 
-from fastapi import Request, status
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import JSONResponse
+from starlette.types import ASGIApp, Receive, Scope, Send
 
-from backend.config.settings import get_settings
 
 ENDPOINT_LIMITS = {
     "/auth/register": 5,
@@ -17,14 +15,27 @@ ENDPOINT_LIMITS = {
 EXEMPT_PATHS = {"/health", "/readyz"}
 
 
-class RateLimitMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
-        if request.method in {"OPTIONS", "HEAD"} or request.url.path in EXEMPT_PATHS:
-            return await call_next(request)
+class RateLimitMiddleware:
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        method = scope.get("method", "")
+        path = scope.get("path", "")
+
+        if method in {"OPTIONS", "HEAD"} or path in EXEMPT_PATHS:
+            await self.app(scope, receive, send)
+            return
+
+        from backend.config.settings import get_settings
 
         settings = get_settings()
-        client_ip = request.client.host if request.client else "unknown"
-        path = request.url.path
+        client = scope.get("client")
+        client_ip = client[0] if client else "unknown"
         limit = ENDPOINT_LIMITS.get(path, settings.rate_limit_per_minute)
         redis_key = f"rate_limit:{client_ip}:{path}"
         now = time.time()
@@ -38,14 +49,21 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
             if hits >= limit:
                 ttl = int(redis_client.ttl(redis_key))
-                return JSONResponse(
-                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                    content={"detail": f"Rate limit exceeded. Try again in {ttl} seconds."},
-                )
+                body = json.dumps({"detail": f"Rate limit exceeded. Try again in {ttl} seconds."}).encode()
+                await send({
+                    "type": "http.response.start",
+                    "status": 429,
+                    "headers": [
+                        [b"content-type", b"application/json"],
+                        [b"content-length", str(len(body)).encode()],
+                    ],
+                })
+                await send({"type": "http.response.body", "body": body})
+                return
 
             redis_client.zadd(redis_key, {str(now): now})
             redis_client.expire(redis_key, 60)
         except Exception:
             pass
 
-        return await call_next(request)
+        await self.app(scope, receive, send)

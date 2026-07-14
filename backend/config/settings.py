@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     ]
 
     casuya_core_signing_key: str | None = None
+    casuya_ai_url: str = "http://localhost:3001"
     casuya_bridge_shared_key: str | None = None
     supabase_url: str | None = None
     supabase_key: str | None = None

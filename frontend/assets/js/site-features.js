@@ -3,8 +3,7 @@
 // system genuinely provides it — no marketing claims for un-wired features.
 //
 // `enabled: true` means a corresponding backend router/endpoint exists.
-// `aiAssistant` is intentionally disabled: ai_service.py exists but is not
-// mounted as an API router, so the feature is not actually available yet.
+// `aiAssistant` is enabled — the AI service is available and mounted.
 
 export const FEATURES = {
   interactiveLessons: {
@@ -24,7 +23,7 @@ export const FEATURES = {
     trusted: true,
   },
   aiAssistant: {
-    enabled: false, // not wired to an API router yet
+    enabled: true,
     icon: "🤖",
     title: "AI Teacher Assistant",
     blurb: "Instantly generate balanced grading frameworks, structural lesson descriptions, and sample interactive workflows.",
@@ -59,13 +58,15 @@ export const FEATURES = {
     enabled: true,
     icon: "🧪",
     title: "Digital Examinations",
+    blurb: "Conduct secure, browser-based examinations with automatic grading, anti-cheat measures, and instant result analytics.",
     hero: false,
     trusted: true,
   },
   aiLessonCreation: {
-    enabled: false, // depends on the un-wired AI assistant
+    enabled: true,
     icon: "✨",
     title: "AI Lesson Creation",
+    blurb: "Generate lesson outlines, quizzes, and study materials using AI-powered content creation tools.",
     hero: false,
     trusted: true,
   },

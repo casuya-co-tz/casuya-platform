@@ -13,12 +13,14 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from backend.api import (
+    ai,
     analytics,
     auth,
     bookmarks,
     branding,
     games,
     lessons,
+    math,
     note,
     notifications,
     oauth,
@@ -70,10 +72,10 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-add_cors(app)
 register_error_handlers(app)
 app.add_middleware(RateLimitMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
+add_cors(app)
 
 for router_module in (
     auth,
@@ -96,6 +98,8 @@ for router_module in (
     uploads,
     bookmarks,
     note,
+    ai,
+    math,
 ):
     app.include_router(router_module.router)
 

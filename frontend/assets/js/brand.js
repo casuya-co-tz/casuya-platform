@@ -1,9 +1,9 @@
 (function(){
 // brand.js — Dynamic site branding (favicon + logo).
 
-var API_BASE = window.location.port === "8000"
+var API_BASE = window.location.port === "8765"
   ? window.location.origin
-  : window.location.protocol + "//" + window.location.hostname + ":8000";
+  : window.location.protocol + "//" + window.location.hostname + ":8765";
 
 var DEFAULT_LOGO_SVG = "/assets/images/casuya-logo.svg";
 

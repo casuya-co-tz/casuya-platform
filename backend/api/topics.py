@@ -11,34 +11,46 @@ router = APIRouter(prefix="/topics", tags=["topics"])
 
 @router.get("", response_model=list[TopicResponse])
 def list_topics(subject_id: str | None = None):
-    db: Session = next(get_db())
-    query = db.query(Topic)
-    if subject_id:
-        query = query.filter(Topic.subject_id == subject_id)
-    topics = query.all()
-    return [TopicResponse(id=t.id, subject_id=t.subject_id, title=t.title, form_level=t.form_level) for t in topics]
+    _gen = get_db()
+    db: Session = next(_gen)
+    try:
+        query = db.query(Topic)
+        if subject_id:
+            query = query.filter(Topic.subject_id == subject_id)
+        topics = query.all()
+        return [TopicResponse(id=t.id, subject_id=t.subject_id, title=t.title, form_level=t.form_level) for t in topics]
+    finally:
+        _gen.close()
 
 
 @router.post("", response_model=TopicResponse, dependencies=[Depends(require_role("admin"))])
 def create_topic(body: TopicCreate):
-    db: Session = next(get_db())
-    topic = Topic(subject_id=body.subject_id, title=body.title, form_level=body.form_level)
-    db.add(topic)
-    db.commit()
-    return TopicResponse(id=topic.id, subject_id=topic.subject_id, title=topic.title, form_level=topic.form_level)
+    _gen = get_db()
+    db: Session = next(_gen)
+    try:
+        topic = Topic(subject_id=body.subject_id, title=body.title, form_level=body.form_level)
+        db.add(topic)
+        db.commit()
+        return TopicResponse(id=topic.id, subject_id=topic.subject_id, title=topic.title, form_level=topic.form_level)
+    finally:
+        _gen.close()
 
 
 @router.delete("/{topic_id}", dependencies=[Depends(require_role("admin"))])
 def delete_topic(topic_id: str):
     from fastapi import HTTPException
-    db: Session = next(get_db())
-    topic = db.query(Topic).filter(Topic.id == topic_id).first()
-    if not topic:
-        raise HTTPException(status_code=404, detail="Topic not found")
+    _gen = get_db()
+    db: Session = next(_gen)
     try:
-        db.delete(topic)
-        db.commit()
-    except Exception:
-        db.rollback()
-        raise HTTPException(status_code=409, detail="Cannot delete: topic has related subtopics. Delete subtopics first.")
-    return {"detail": "Topic deleted"}
+        topic = db.query(Topic).filter(Topic.id == topic_id).first()
+        if not topic:
+            raise HTTPException(status_code=404, detail="Topic not found")
+        try:
+            db.delete(topic)
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise HTTPException(status_code=409, detail="Cannot delete: topic has related subtopics. Delete subtopics first.")
+        return {"detail": "Topic deleted"}
+    finally:
+        _gen.close()

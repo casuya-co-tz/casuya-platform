@@ -12,27 +12,39 @@ router = APIRouter(prefix="/users", tags=["users"])
 
 @router.get("", response_model=list[dict], dependencies=[Depends(require_role("admin"))])
 def list_users_route():
-    db: Session = next(get_db())
-    users = db.query(User).filter(User.is_active == True).all()
-    return [{"id": u.id, "email": u.email, "phone": u.phone, "role": u.role} for u in users]
+    _gen = get_db()
+    db: Session = next(_gen)
+    try:
+        users = db.query(User).filter(User.is_active == True).all()
+        return [{"id": u.id, "email": u.email, "phone": u.phone, "role": u.role} for u in users]
+    finally:
+        _gen.close()
 
 
 @router.get("/me", response_model=UserResponse)
 def get_current_user_route(current_user=Depends(get_current_user)):
-    db: Session = next(get_db())
-    user = db.query(User).filter(User.id == current_user["sub"]).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    return UserResponse(id=user.id, email=user.email, phone=user.phone, role=user.role, is_active=user.is_active)
+    _gen = get_db()
+    db: Session = next(_gen)
+    try:
+        user = db.query(User).filter(User.id == current_user["sub"]).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        return UserResponse(id=user.id, email=user.email, phone=user.phone, role=user.role, is_active=user.is_active)
+    finally:
+        _gen.close()
 
 
 @router.patch("/me", response_model=UserResponse)
 def update_current_user_route(body: UserUpdateRequest, current_user=Depends(get_current_user)):
-    db: Session = next(get_db())
-    user = db.query(User).filter(User.id == current_user["sub"]).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    if body.phone is not None:
-        user.phone = body.phone
-    db.commit()
-    return UserResponse(id=user.id, email=user.email, phone=user.phone, role=user.role, is_active=user.is_active)
+    _gen = get_db()
+    db: Session = next(_gen)
+    try:
+        user = db.query(User).filter(User.id == current_user["sub"]).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        if body.phone is not None:
+            user.phone = body.phone
+        db.commit()
+        return UserResponse(id=user.id, email=user.email, phone=user.phone, role=user.role, is_active=user.is_active)
+    finally:
+        _gen.close()

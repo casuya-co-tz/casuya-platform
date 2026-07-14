@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse
+from sqlalchemy.exc import IntegrityError
 
 from backend.middleware.auth import get_current_user
 from backend.middleware.permissions import require_role
@@ -44,10 +45,6 @@ def get_lesson_content_route(lesson_id: str, request: Request, current_user=Depe
         raise HTTPException(status_code=404, detail="Lesson not found")
 
     slug = lesson["slug"]
-    pkg_path = get_package_path(slug)
-    if pkg_path.exists():
-        return FileResponse(str(pkg_path), media_type="text/html", headers={"X-Content-Hash": lesson.get("content_hash", "")})
-
     html = read_lesson_content(slug)
     if html is None:
         raise HTTPException(status_code=404, detail="Lesson content not found")
@@ -78,6 +75,8 @@ def publish_lesson_route(lesson_id: str):
 def delete_lesson_route(lesson_id: str):
     try:
         return delete_lesson(lesson_id)
+    except IntegrityError:
+        raise HTTPException(status_code=409, detail="Lesson cannot be deleted due to database constraints")
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 

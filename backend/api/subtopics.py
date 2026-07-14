@@ -11,33 +11,45 @@ router = APIRouter(prefix="/subtopics", tags=["subtopics"])
 
 @router.get("", response_model=list[SubtopicResponse])
 def list_subtopics(topic_id: str | None = None):
-    db: Session = next(get_db())
-    query = db.query(Subtopic)
-    if topic_id:
-        query = query.filter(Subtopic.topic_id == topic_id)
-    subtopics = query.all()
-    return [SubtopicResponse(id=s.id, topic_id=s.topic_id, title=s.title) for s in subtopics]
+    _gen = get_db()
+    db: Session = next(_gen)
+    try:
+        query = db.query(Subtopic)
+        if topic_id:
+            query = query.filter(Subtopic.topic_id == topic_id)
+        subtopics = query.all()
+        return [SubtopicResponse(id=s.id, topic_id=s.topic_id, title=s.title) for s in subtopics]
+    finally:
+        _gen.close()
 
 
 @router.post("", response_model=SubtopicResponse, dependencies=[Depends(require_role("admin"))])
 def create_subtopic(body: SubtopicCreate):
-    db: Session = next(get_db())
-    subtopic = Subtopic(topic_id=body.topic_id, title=body.title)
-    db.add(subtopic)
-    db.commit()
-    return SubtopicResponse(id=subtopic.id, topic_id=subtopic.topic_id, title=subtopic.title)
+    _gen = get_db()
+    db: Session = next(_gen)
+    try:
+        subtopic = Subtopic(topic_id=body.topic_id, title=body.title)
+        db.add(subtopic)
+        db.commit()
+        return SubtopicResponse(id=subtopic.id, topic_id=subtopic.topic_id, title=subtopic.title)
+    finally:
+        _gen.close()
 
 
 @router.delete("/{subtopic_id}", dependencies=[Depends(require_role("admin"))])
 def delete_subtopic(subtopic_id: str):
-    db: Session = next(get_db())
-    subtopic = db.query(Subtopic).filter(Subtopic.id == subtopic_id).first()
-    if not subtopic:
-        raise HTTPException(status_code=404, detail="Subtopic not found")
+    _gen = get_db()
+    db: Session = next(_gen)
     try:
-        db.delete(subtopic)
-        db.commit()
-    except Exception:
-        db.rollback()
-        raise HTTPException(status_code=409, detail="Cannot delete: subtopic has related lessons. Delete lessons first.")
-    return {"detail": "Subtopic deleted"}
+        subtopic = db.query(Subtopic).filter(Subtopic.id == subtopic_id).first()
+        if not subtopic:
+            raise HTTPException(status_code=404, detail="Subtopic not found")
+        try:
+            db.delete(subtopic)
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise HTTPException(status_code=409, detail="Cannot delete: subtopic has related lessons. Delete lessons first.")
+        return {"detail": "Subtopic deleted"}
+    finally:
+        _gen.close()

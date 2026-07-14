@@ -2,9 +2,9 @@ const API_HOST = window.location.hostname || "localhost";
 const API_PROTOCOL = window.location.protocol === "http:" || window.location.protocol === "https:"
   ? window.location.protocol
   : "http:";
-const API_BASE = window.location.port === "8000"
+const API_BASE = window.location.port === "8765"
   ? window.location.origin
-  : `${API_PROTOCOL}//${API_HOST}:8000`;
+  : `${API_PROTOCOL}//${API_HOST}:8765`;
 
 const STORAGE_KEYS = {
   accessToken: "casuya_token",

@@ -36,7 +36,10 @@ def sanitize_dict(data: dict) -> dict:
 class InputSanitizerMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         if request.method in {"POST", "PUT", "PATCH"}:
-            body = await request.json()
+            try:
+                body = await request.json()
+            except Exception:
+                return await call_next(request)
             sanitized = sanitize_dict(body)
             request._body = json.dumps(sanitized).encode()
         return await call_next(request)
