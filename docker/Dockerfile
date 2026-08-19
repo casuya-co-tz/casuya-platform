@@ -23,7 +23,7 @@ USER casuya
 
 EXPOSE 8000
 
-HEALTHCHECK --interval=30s --timeout=5s --start_period=15s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
   CMD python -c "import os,urllib.request; urllib.request.urlopen('http://localhost:'+os.environ.get('PORT','8000')+'/health')" || exit 1
 
 # Honour Koyeb's injected PORT (defaults to 8000 for local/Docker runs).
