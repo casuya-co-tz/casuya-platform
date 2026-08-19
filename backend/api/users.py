@@ -11,6 +11,7 @@ router = APIRouter(prefix="/users", tags=["users"])
 
 
 @router.get("", response_model=list[dict], dependencies=[Depends(require_role("admin"))])
+@router.get("/", response_model=list[dict], dependencies=[Depends(require_role("admin"))])
 def list_users_route():
     _gen = get_db()
     db: Session = next(_gen)
@@ -24,6 +25,7 @@ def list_users_route():
 
 
 @router.get("/me", response_model=UserResponse)
+@router.get("/me/", response_model=UserResponse)
 def get_current_user_route(current_user=Depends(get_current_user)):
     _gen = get_db()
     db: Session = next(_gen)
@@ -44,6 +46,7 @@ def get_current_user_route(current_user=Depends(get_current_user)):
 
 
 @router.patch("/me", response_model=UserResponse)
+@router.patch("/me/", response_model=UserResponse)
 def update_current_user_route(body: UserUpdateRequest, current_user=Depends(get_current_user)):
     _gen = get_db()
     db: Session = next(_gen)

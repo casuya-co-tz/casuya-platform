@@ -25,6 +25,7 @@ class ActivityPayload(BaseModel):
 
 
 @router.post("/activity")
+@router.post("/activity/")
 def record_activity(body: ActivityPayload, _current_user=Depends(get_current_user)):
     """Record that a student viewed a lesson (server-side, replaces localStorage)."""
     db: Session = next(get_db())

@@ -79,6 +79,7 @@ def _callback_url(provider: str) -> str:
 
 
 @router.get("/oauth/{provider}")
+@router.get("/oauth/{provider}/")
 def oauth_initiate(provider: str):
     if provider not in PROVIDERS:
         raise HTTPException(status_code=400, detail=f"Unsupported provider: {provider}")
@@ -109,6 +110,7 @@ def oauth_initiate(provider: str):
 
 
 @router.get("/callback/{provider}")
+@router.get("/callback/{provider}/")
 def oauth_callback(provider: str, request: Request):
     if provider not in PROVIDERS:
         raise HTTPException(status_code=400, detail=f"Unsupported provider: {provider}")

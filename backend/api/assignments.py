@@ -22,11 +22,13 @@ router = APIRouter(prefix="/assignments", tags=["assignments"])
 
 
 @router.get("", response_model=list[dict])
+@router.get("/", response_model=list[dict])
 def list_assignments_route(current_user=Depends(get_current_user)):
     return list_assignments()
 
 
 @router.get("/{assignment_id}", response_model=dict)
+@router.get("/{assignment_id}/", response_model=dict)
 def get_assignment_route(assignment_id: str, current_user=Depends(get_current_user)):
     assignment = get_assignment(assignment_id)
     if not assignment:
@@ -35,6 +37,7 @@ def get_assignment_route(assignment_id: str, current_user=Depends(get_current_us
 
 
 @router.post("", response_model=dict, dependencies=[Depends(require_role("teacher"))])
+@router.post("/", response_model=dict, dependencies=[Depends(require_role("teacher"))])
 def create_assignment_route(
     lesson_id: str,
     title: str,
@@ -54,6 +57,7 @@ def create_assignment_route(
 
 
 @router.delete("/{assignment_id}", dependencies=[Depends(require_role("teacher"))])
+@router.delete("/{assignment_id}/", dependencies=[Depends(require_role("teacher"))])
 def delete_assignment_route(assignment_id: str, current_user=Depends(get_current_user)):
     if not delete_assignment(assignment_id):
         raise HTTPException(status_code=404, detail="Assignment not found")
@@ -61,6 +65,7 @@ def delete_assignment_route(assignment_id: str, current_user=Depends(get_current
 
 
 @router.post("/{assignment_id}/submit", response_model=dict)
+@router.post("/{assignment_id}/submit/", response_model=dict)
 def submit_assignment_route(
     assignment_id: str,
     body: SubmitAssignmentRequest,
@@ -74,5 +79,6 @@ def submit_assignment_route(
 
 
 @router.get("/{assignment_id}/submissions", response_model=list[dict])
+@router.get("/{assignment_id}/submissions/", response_model=list[dict])
 def list_submissions_route(assignment_id: str, current_user=Depends(get_current_user)):
     return list_submissions(assignment_id)

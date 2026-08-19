@@ -20,6 +20,7 @@ router = APIRouter(prefix="/lessons", tags=["lessons"])
 
 
 @router.get("")
+@router.get("/")
 def list_lessons_route(
     subtopic_id: str | None = None,
     status: str | None = None,
@@ -31,6 +32,7 @@ def list_lessons_route(
 
 
 @router.get("/{lesson_id}")
+@router.get("/{lesson_id}/")
 def get_lesson_route(lesson_id: str, current_user=Depends(get_current_user)):
     lesson = get_lesson(lesson_id)
     if not lesson:
@@ -39,6 +41,7 @@ def get_lesson_route(lesson_id: str, current_user=Depends(get_current_user)):
 
 
 @router.get("/{lesson_id}/content")
+@router.get("/{lesson_id}/content/")
 def get_lesson_content_route(lesson_id: str, request: Request, current_user=Depends(get_current_user)):
     lesson = get_lesson(lesson_id)
     if not lesson:
@@ -52,6 +55,7 @@ def get_lesson_content_route(lesson_id: str, request: Request, current_user=Depe
 
 
 @router.post("", response_model=dict, dependencies=[Depends(require_role("admin"))])
+@router.post("/", response_model=dict, dependencies=[Depends(require_role("admin"))])
 def create_lesson_route(body: LessonCreate):
     try:
         return create_lesson_from_html(
@@ -64,6 +68,7 @@ def create_lesson_route(body: LessonCreate):
 
 
 @router.post("/{lesson_id}/publish", response_model=dict, dependencies=[Depends(require_role("admin"))])
+@router.post("/{lesson_id}/publish/", response_model=dict, dependencies=[Depends(require_role("admin"))])
 def publish_lesson_route(lesson_id: str):
     try:
         return publish_lesson(lesson_id)
@@ -72,6 +77,7 @@ def publish_lesson_route(lesson_id: str):
 
 
 @router.delete("/{lesson_id}", dependencies=[Depends(require_role("admin"))])
+@router.delete("/{lesson_id}/", dependencies=[Depends(require_role("admin"))])
 def delete_lesson_route(lesson_id: str):
     try:
         return delete_lesson(lesson_id)
@@ -82,6 +88,7 @@ def delete_lesson_route(lesson_id: str):
 
 
 @router.put("/{lesson_id}", response_model=dict, dependencies=[Depends(require_role("admin"))])
+@router.put("/{lesson_id}/", response_model=dict, dependencies=[Depends(require_role("admin"))])
 def update_lesson_route(lesson_id: str, body: LessonUpdate):
     try:
         return update_lesson(

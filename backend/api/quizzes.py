@@ -21,11 +21,13 @@ router = APIRouter(prefix="/quizzes", tags=["quizzes"])
 
 
 @router.get("", response_model=list[dict])
+@router.get("/", response_model=list[dict])
 def list_quizzes_route(current_user=Depends(get_current_user)):
     return list_quizzes()
 
 
 @router.get("/{quiz_id}", response_model=dict)
+@router.get("/{quiz_id}/", response_model=dict)
 def get_quiz_route(quiz_id: str, current_user=Depends(get_current_user)):
     quiz = get_quiz(quiz_id)
     if not quiz:
@@ -34,6 +36,7 @@ def get_quiz_route(quiz_id: str, current_user=Depends(get_current_user)):
 
 
 @router.get("/{quiz_id}/content")
+@router.get("/{quiz_id}/content/")
 def get_quiz_content_route(quiz_id: str, current_user=Depends(get_current_user)):
     quiz = get_quiz(quiz_id)
     if not quiz:
@@ -48,22 +51,26 @@ def get_quiz_content_route(quiz_id: str, current_user=Depends(get_current_user))
 
 
 @router.get("/by-lesson/{lesson_id}", response_model=dict | None)
+@router.get("/by-lesson/{lesson_id}/", response_model=dict | None)
 def get_quiz_for_lesson_route(lesson_id: str, current_user=Depends(get_current_user)):
     quiz = get_quiz_for_lesson(lesson_id)
     return quiz
 
 
 @router.post("", response_model=dict, dependencies=[Depends(require_role("admin"))])
+@router.post("/", response_model=dict, dependencies=[Depends(require_role("admin"))])
 def create_quiz_route(body: QuizCreate):
     return create_quiz(lesson_id=body.lesson_id, title=body.title, questions=body.questions)
 
 
 @router.post("/from-html", response_model=dict, dependencies=[Depends(require_role("admin"))])
+@router.post("/from-html/", response_model=dict, dependencies=[Depends(require_role("admin"))])
 def create_quiz_from_html_route(body: QuizCreateHTML):
     return create_quiz_from_html(lesson_id=body.lesson_id, title=body.title, html=body.html_content)
 
 
 @router.post("/{quiz_id}/publish", response_model=dict, dependencies=[Depends(require_role("admin"))])
+@router.post("/{quiz_id}/publish/", response_model=dict, dependencies=[Depends(require_role("admin"))])
 def publish_quiz_route(quiz_id: str):
     try:
         return publish_quiz(quiz_id)
@@ -72,6 +79,7 @@ def publish_quiz_route(quiz_id: str):
 
 
 @router.delete("/{quiz_id}", dependencies=[Depends(require_role("admin"))])
+@router.delete("/{quiz_id}/", dependencies=[Depends(require_role("admin"))])
 def delete_quiz_route(quiz_id: str):
     try:
         return delete_quiz(quiz_id)
@@ -80,6 +88,7 @@ def delete_quiz_route(quiz_id: str):
 
 
 @router.put("/{quiz_id}", response_model=dict, dependencies=[Depends(require_role("admin"))])
+@router.put("/{quiz_id}/", response_model=dict, dependencies=[Depends(require_role("admin"))])
 def update_quiz_route(quiz_id: str, body: QuizUpdate):
     try:
         return update_quiz(quiz_id=quiz_id, title=body.title, html=body.html_content)
@@ -88,5 +97,6 @@ def update_quiz_route(quiz_id: str, body: QuizUpdate):
 
 
 @router.post("/{quiz_id}/submit", response_model=QuizResult)
+@router.post("/{quiz_id}/submit/", response_model=QuizResult)
 def submit_quiz_attempt(quiz_id: str, body: QuizSubmission, current_user=Depends(get_current_user)):
     return grade_attempt(quiz_id=quiz_id, answers=body.answers)

@@ -1,12 +1,26 @@
 from fastapi import Request
 from fastapi.responses import JSONResponse
+import re
 
 from backend.config.settings import get_settings
 
 
+def _is_allowed_origin(origin: str) -> bool:
+    settings = get_settings()
+    if "*" in settings.allowed_origins:
+        return True
+    if origin in settings.allowed_origins:
+        return True
+    if settings.cors_origin_regex:
+        pattern = re.compile(settings.cors_origin_regex)
+        if pattern.fullmatch(origin):
+            return True
+    return False
+
+
 def _add_cors_headers(response: JSONResponse, request: Request) -> JSONResponse:
     origin = request.headers.get("origin")
-    if origin and origin in get_settings().allowed_origins:
+    if origin and _is_allowed_origin(origin):
         response.headers["Access-Control-Allow-Origin"] = origin
         response.headers["Access-Control-Allow-Credentials"] = "true"
         response.headers["Vary"] = "Origin"

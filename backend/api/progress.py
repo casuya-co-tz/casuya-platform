@@ -27,12 +27,14 @@ def _do_sync(student_id: str, payload: dict):
 
 
 @router.post("/sync", response_model=dict)
+@router.post("/sync/", response_model=dict)
 def sync_progress(body: ProgressSyncPayload, background_tasks: BackgroundTasks, current_user=Depends(bridge_auth)):
     background_tasks.add_task(_do_sync, student_id=body.student_id, payload=body.model_dump())
     return {"status": "queued", "student_id": body.student_id, "lesson_id": body.lesson_id}
 
 
 @router.get("/{student_id}/stats")
+@router.get("/{student_id}/stats/")
 def get_student_stats(student_id: str, _current_user=Depends(get_current_user)):
     """Return server-side streak, lessons viewed count, average score, and recent lessons."""
     db: Session = next(get_db())
@@ -115,5 +117,6 @@ def get_student_stats(student_id: str, _current_user=Depends(get_current_user)):
 
 
 @router.get("/{student_id}", response_model=list[dict])
+@router.get("/{student_id}/", response_model=list[dict])
 def get_student_progress_route(student_id: str, current_user=Depends(get_current_user)):
     return get_student_progress(student_id)

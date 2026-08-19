@@ -116,6 +116,42 @@ class SafeRedis:
         except RedisError:
             return None
 
+    def zremrangebyscore(self, *args: Any, **kwargs: Any) -> Any:
+        client = self._get()
+        if client is None:
+            return 0
+        try:
+            return client.zremrangebyscore(*args, **kwargs)
+        except RedisError:
+            return 0
+
+    def zcard(self, *args: Any, **kwargs: Any) -> Any:
+        client = self._get()
+        if client is None:
+            return 0
+        try:
+            return client.zcard(*args, **kwargs)
+        except RedisError:
+            return 0
+
+    def zadd(self, *args: Any, **kwargs: Any) -> Any:
+        client = self._get()
+        if client is None:
+            return 0
+        try:
+            return client.zadd(*args, **kwargs)
+        except RedisError:
+            return 0
+
+    def ttl(self, *args: Any, **kwargs: Any) -> Any:
+        client = self._get()
+        if client is None:
+            return -1
+        try:
+            return client.ttl(*args, **kwargs)
+        except RedisError:
+            return -1
+
     def close(self) -> None:
         if self._client is not None:
             try:

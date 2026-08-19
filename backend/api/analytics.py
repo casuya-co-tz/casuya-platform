@@ -7,15 +7,18 @@ router = APIRouter(prefix="/analytics", tags=["analytics"])
 
 
 @router.get("/lessons/{lesson_id}", response_model=dict | None)
+@router.get("/lessons/{lesson_id}/", response_model=dict | None)
 def get_lesson_analytics_route(lesson_id: str, current_user=Depends(get_current_user)):
     return get_lesson_analytics(lesson_id)
 
 
 @router.get("/overview", response_model=dict)
+@router.get("/overview/", response_model=dict)
 def get_platform_overview_route(current_user=Depends(get_current_user)):
     return get_platform_overview()
 
 
 @router.get("/lesson-distribution", response_model=list[dict])
+@router.get("/lesson-distribution/", response_model=list[dict])
 def get_lesson_distribution_route(current_user=Depends(get_current_user)):
     return get_lesson_distribution()

@@ -20,6 +20,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post("/register", response_model=AuthResponse)
+@router.post("/register/", response_model=AuthResponse)
 def register(body: RegisterRequest):
     try:
         return register_user(
@@ -36,6 +37,7 @@ def register(body: RegisterRequest):
 
 
 @router.post("/login", response_model=AuthResponse)
+@router.post("/login/", response_model=AuthResponse)
 def login(body: LoginRequest):
     try:
         return authenticate_user(email=body.email, password=body.password)
@@ -46,6 +48,7 @@ def login(body: LoginRequest):
 
 
 @router.post("/refresh")
+@router.post("/refresh/")
 def refresh(body: RefreshTokenRequest):
     try:
         return refresh_access_token(body.refresh_token)
@@ -56,6 +59,7 @@ def refresh(body: RefreshTokenRequest):
 
 
 @router.post("/forgot-password")
+@router.post("/forgot-password/")
 def forgot_password_endpoint(body: ForgotPasswordRequest):
     try:
         return forgot_password(email=body.email)
@@ -64,6 +68,7 @@ def forgot_password_endpoint(body: ForgotPasswordRequest):
 
 
 @router.post("/reset-password")
+@router.post("/reset-password/")
 def reset_password_endpoint(body: ResetPasswordRequest):
     try:
         return reset_password(token=body.token, new_password=body.new_password)

@@ -42,6 +42,7 @@ def _get_current_student(current_user: dict, db: Session) -> Student:
 
 
 @router.get("")
+@router.get("/")
 def list_students(current_user=Depends(get_current_user)):
     _gen = get_db()
     db: Session = next(_gen)
@@ -62,6 +63,7 @@ def list_students(current_user=Depends(get_current_user)):
 
 
 @router.get("/me", response_model=dict)
+@router.get("/me/", response_model=dict)
 def get_my_profile(current_user=Depends(get_current_user)):
     _gen = get_db()
     db: Session = next(_gen)
@@ -79,6 +81,7 @@ def get_my_profile(current_user=Depends(get_current_user)):
 
 
 @router.patch("/me", response_model=dict)
+@router.patch("/me/", response_model=dict)
 def update_my_profile(body: StudentUpdateRequest, current_user=Depends(get_current_user)):
     _gen = get_db()
     db: Session = next(_gen)
@@ -103,6 +106,7 @@ def update_my_profile(body: StudentUpdateRequest, current_user=Depends(get_curre
 
 
 @router.get("/{student_id}")
+@router.get("/{student_id}/")
 def get_student(student_id: str, current_user=Depends(get_current_user)):
     _gen = get_db()
     db: Session = next(_gen)

@@ -67,12 +67,14 @@ def _merge_with_db_meta(files: list[dict]) -> list[dict]:
 
 
 @router.get("")
+@router.get("/")
 async def list_files(current_user=Depends(require_role("admin"))):
     files = _scan_files()
     return _merge_with_db_meta(files)
 
 
 @router.get("/public")
+@router.get("/public/")
 async def list_files_public():
     files = _scan_files()
     enriched = _merge_with_db_meta(files)
@@ -80,6 +82,7 @@ async def list_files_public():
 
 
 @router.post("")
+@router.post("/")
 async def upload_file(file: UploadFile, current_user=Depends(require_role("admin"))):
     if not file.filename:
         raise HTTPException(status_code=400, detail="No filename provided")
@@ -126,6 +129,7 @@ async def upload_file(file: UploadFile, current_user=Depends(require_role("admin
 
 
 @router.patch("/{filename:path}")
+@router.patch("/{filename:path}/")
 async def update_file(filename: str, body: FileUpdateRequest, current_user=Depends(require_role("admin"))):
     gen = get_db()
     db = next(gen)
@@ -157,6 +161,7 @@ async def update_file(filename: str, body: FileUpdateRequest, current_user=Depen
 
 
 @router.get("/{filename:path}")
+@router.get("/{filename:path}/")
 async def serve_file(filename: str):
     settings = get_settings()
     root = Path(settings.storage_root)
@@ -170,6 +175,7 @@ async def serve_file(filename: str):
 
 
 @router.delete("/{filename:path}")
+@router.delete("/{filename:path}/")
 async def delete_file(filename: str, current_user=Depends(require_role("admin"))):
     settings = get_settings()
     root = Path(settings.storage_root)

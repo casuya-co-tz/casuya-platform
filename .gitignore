@@ -21,3 +21,4 @@ build/
 .coverage
 htmlcov/
 serve_static.py.bak
+.vercel

@@ -10,6 +10,7 @@ router = APIRouter(prefix="/subjects", tags=["subjects"])
 
 
 @router.get("", response_model=list[SubjectResponse])
+@router.get("/", response_model=list[SubjectResponse])
 def list_subjects():
     _gen = get_db()
     db: Session = next(_gen)
@@ -21,6 +22,7 @@ def list_subjects():
 
 
 @router.post("", response_model=SubjectResponse, dependencies=[Depends(require_role("admin"))])
+@router.post("/", response_model=SubjectResponse, dependencies=[Depends(require_role("admin"))])
 def create_subject(body: SubjectCreate):
     _gen = get_db()
     db: Session = next(_gen)
@@ -36,6 +38,7 @@ def create_subject(body: SubjectCreate):
 
 
 @router.delete("/{subject_id}", dependencies=[Depends(require_role("admin"))])
+@router.delete("/{subject_id}/", dependencies=[Depends(require_role("admin"))])
 def delete_subject(subject_id: str):
     _gen = get_db()
     db: Session = next(_gen)

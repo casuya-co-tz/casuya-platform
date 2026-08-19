@@ -19,11 +19,13 @@ router = APIRouter(prefix="/games", tags=["games"])
 
 
 @router.get("", response_model=list[dict])
+@router.get("/", response_model=list[dict])
 def list_games_route(current_user=Depends(get_current_user)):
     return list_games()
 
 
 @router.get("/{game_id}", response_model=dict)
+@router.get("/{game_id}/", response_model=dict)
 def get_game_route(game_id: str, current_user=Depends(get_current_user)):
     game = get_game(game_id)
     if not game:
@@ -32,6 +34,7 @@ def get_game_route(game_id: str, current_user=Depends(get_current_user)):
 
 
 @router.get("/{game_id}/content")
+@router.get("/{game_id}/content/")
 def get_game_content_route(game_id: str, current_user=Depends(get_current_user)):
     game = get_game(game_id)
     if not game:
@@ -46,16 +49,19 @@ def get_game_content_route(game_id: str, current_user=Depends(get_current_user))
 
 
 @router.get("/by-lesson/{lesson_id}", response_model=list[dict])
+@router.get("/by-lesson/{lesson_id}/", response_model=list[dict])
 def get_games_for_lesson_route(lesson_id: str, current_user=Depends(get_current_user)):
     return get_games_for_lesson(lesson_id)
 
 
 @router.post("/from-html", response_model=dict, dependencies=[Depends(require_role("admin"))])
+@router.post("/from-html/", response_model=dict, dependencies=[Depends(require_role("admin"))])
 def create_game_from_html_route(body: GameCreateHTML):
     return create_game_from_html(lesson_id=body.lesson_id, title=body.title, html=body.html_content)
 
 
 @router.post("/{game_id}/publish", response_model=dict, dependencies=[Depends(require_role("admin"))])
+@router.post("/{game_id}/publish/", response_model=dict, dependencies=[Depends(require_role("admin"))])
 def publish_game_route(game_id: str):
     try:
         return publish_game(game_id)
@@ -64,6 +70,7 @@ def publish_game_route(game_id: str):
 
 
 @router.delete("/{game_id}", dependencies=[Depends(require_role("admin"))])
+@router.delete("/{game_id}/", dependencies=[Depends(require_role("admin"))])
 def delete_game_route(game_id: str):
     try:
         return delete_game(game_id)
@@ -72,6 +79,7 @@ def delete_game_route(game_id: str):
 
 
 @router.put("/{game_id}", response_model=dict, dependencies=[Depends(require_role("admin"))])
+@router.put("/{game_id}/", response_model=dict, dependencies=[Depends(require_role("admin"))])
 def update_game_route(game_id: str, body: GameUpdate):
     try:
         return update_game(game_id=game_id, title=body.title, html=body.html_content)
@@ -80,6 +88,7 @@ def update_game_route(game_id: str, body: GameUpdate):
 
 
 @router.post("", response_model=dict, dependencies=[Depends(require_role("admin"))])
+@router.post("/", response_model=dict, dependencies=[Depends(require_role("admin"))])
 def create_game_route(body: GameCreate):
     # For now, just create a structured game (legacy support)
     from backend.services.game_service import create_structured_game

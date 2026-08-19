@@ -17,8 +17,8 @@
       ? window.location.protocol
       : "http:";
     var port = window.location.port;
-    var isSameOrigin = port === "8765" || port === "" || port === "443" || port === "80";
-    return isSameOrigin ? window.location.origin : protocol + "//" + hostname + ":8765";
+    var isSameOrigin = port === "8000" || port === "" || port === "443" || port === "80";
+    return isSameOrigin ? window.location.origin : protocol + "//" + hostname + ":8000";
   }
 
   window.casuyaApiBase = function () {

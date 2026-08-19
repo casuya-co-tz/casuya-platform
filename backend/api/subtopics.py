@@ -10,6 +10,7 @@ router = APIRouter(prefix="/subtopics", tags=["subtopics"])
 
 
 @router.get("", response_model=list[SubtopicResponse])
+@router.get("/", response_model=list[SubtopicResponse])
 def list_subtopics(topic_id: str | None = None):
     _gen = get_db()
     db: Session = next(_gen)
@@ -24,6 +25,7 @@ def list_subtopics(topic_id: str | None = None):
 
 
 @router.post("", response_model=SubtopicResponse, dependencies=[Depends(require_role("admin"))])
+@router.post("/", response_model=SubtopicResponse, dependencies=[Depends(require_role("admin"))])
 def create_subtopic(body: SubtopicCreate):
     _gen = get_db()
     db: Session = next(_gen)
@@ -37,6 +39,7 @@ def create_subtopic(body: SubtopicCreate):
 
 
 @router.delete("/{subtopic_id}", dependencies=[Depends(require_role("admin"))])
+@router.delete("/{subtopic_id}/", dependencies=[Depends(require_role("admin"))])
 def delete_subtopic(subtopic_id: str):
     _gen = get_db()
     db: Session = next(_gen)

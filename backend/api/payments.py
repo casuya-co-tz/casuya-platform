@@ -33,6 +33,7 @@ def _service_unavailable():
 
 
 @router.post("/checkout", response_model=PaymentResponse)
+@router.post("/checkout/", response_model=PaymentResponse)
 def create_checkout(body: CheckoutRequest, current_user=Depends(get_current_user)):
     try:
         result = initiate_checkout(
@@ -52,6 +53,7 @@ def create_checkout(body: CheckoutRequest, current_user=Depends(get_current_user
 
 
 @router.post("/webhook")
+@router.post("/webhook/")
 async def azampay_webhook(request: Request):
     payload = await request.json()
     try:
@@ -68,6 +70,7 @@ async def azampay_webhook(request: Request):
 
 
 @router.get("/transactions")
+@router.get("/transactions/")
 def list_transactions(current_user=Depends(get_current_user)):
     try:
         role = current_user.get("role", "student")
@@ -79,6 +82,7 @@ def list_transactions(current_user=Depends(get_current_user)):
 
 
 @router.get("/my-history")
+@router.get("/my-history/")
 def my_payment_history(current_user=Depends(get_current_user)):
     try:
         stats = get_user_payment_stats(current_user["sub"])
@@ -103,6 +107,7 @@ class SubscriptionRequest(BaseModel):
 
 
 @router.get("/subscriptions")
+@router.get("/subscriptions/")
 def list_subscriptions(current_user=Depends(get_current_user)):
     try:
         return list_user_subscriptions(current_user["sub"])
@@ -111,6 +116,7 @@ def list_subscriptions(current_user=Depends(get_current_user)):
 
 
 @router.post("/subscriptions")
+@router.post("/subscriptions/")
 def create_sub(body: SubscriptionRequest, current_user=Depends(get_current_user)):
     try:
         return create_subscription(current_user["sub"], body.plan_id, body.amount)
@@ -123,6 +129,7 @@ def create_sub(body: SubscriptionRequest, current_user=Depends(get_current_user)
 
 
 @router.post("/subscriptions/{subscription_id}/cancel")
+@router.post("/subscriptions/{subscription_id}/cancel/")
 def cancel_sub(subscription_id: str, immediate: bool = False, current_user=Depends(get_current_user)):
     try:
         return cancel_subscription(subscription_id, immediate)
@@ -138,6 +145,7 @@ def cancel_sub(subscription_id: str, immediate: bool = False, current_user=Depen
 
 
 @router.get("/invoices")
+@router.get("/invoices/")
 def list_invoices(status: str | None = None, current_user=Depends(get_current_user)):
     try:
         role = current_user.get("role", "student")
@@ -151,6 +159,7 @@ def list_invoices(status: str | None = None, current_user=Depends(get_current_us
 
 
 @router.get("/invoices/{invoice_id}")
+@router.get("/invoices/{invoice_id}/")
 def get_inv(invoice_id: str, current_user=Depends(get_current_user)):
     try:
         return get_invoice(invoice_id)
@@ -163,6 +172,7 @@ def get_inv(invoice_id: str, current_user=Depends(get_current_user)):
 
 
 @router.post("/invoices/{invoice_id}/pay")
+@router.post("/invoices/{invoice_id}/pay/")
 def pay_inv(invoice_id: str, current_user=Depends(get_current_user)):
     try:
         return pay_invoice(invoice_id)
@@ -184,6 +194,7 @@ class RefundRequest(BaseModel):
 
 
 @router.get("/refunds")
+@router.get("/refunds/")
 def list_refunds(current_user=Depends(get_current_user)):
     try:
         return list_user_refunds(current_user["sub"])
@@ -192,6 +203,7 @@ def list_refunds(current_user=Depends(get_current_user)):
 
 
 @router.post("/refunds")
+@router.post("/refunds/")
 def create_refund(body: RefundRequest, current_user=Depends(get_current_user)):
     role = current_user.get("role", "student")
     if role != "admin":

@@ -10,6 +10,7 @@ router = APIRouter(prefix="/topics", tags=["topics"])
 
 
 @router.get("", response_model=list[TopicResponse])
+@router.get("/", response_model=list[TopicResponse])
 def list_topics(subject_id: str | None = None):
     _gen = get_db()
     db: Session = next(_gen)
@@ -24,6 +25,7 @@ def list_topics(subject_id: str | None = None):
 
 
 @router.post("", response_model=TopicResponse, dependencies=[Depends(require_role("admin"))])
+@router.post("/", response_model=TopicResponse, dependencies=[Depends(require_role("admin"))])
 def create_topic(body: TopicCreate):
     _gen = get_db()
     db: Session = next(_gen)
@@ -37,6 +39,7 @@ def create_topic(body: TopicCreate):
 
 
 @router.delete("/{topic_id}", dependencies=[Depends(require_role("admin"))])
+@router.delete("/{topic_id}/", dependencies=[Depends(require_role("admin"))])
 def delete_topic(topic_id: str):
     from fastapi import HTTPException
 

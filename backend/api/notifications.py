@@ -18,11 +18,13 @@ class SendNotificationRequest(BaseModel):
 
 
 @router.get("", response_model=list[dict])
+@router.get("/", response_model=list[dict])
 def list_notifications_route(current_user=Depends(get_current_user)):
     return list_notifications(user_id=current_user["sub"])
 
 
 @router.post("", dependencies=[Depends(require_role("admin"))])
+@router.post("/", dependencies=[Depends(require_role("admin"))])
 def send_notification_route(body: SendNotificationRequest):
     if not body.user_id and not body.role:
         raise HTTPException(status_code=400, detail="Provide user_id or role")
@@ -44,6 +46,7 @@ def send_notification_route(body: SendNotificationRequest):
 
 
 @router.post("/bulk", dependencies=[Depends(require_role("admin"))])
+@router.post("/bulk/", dependencies=[Depends(require_role("admin"))])
 def send_bulk_notification_route(body: SendNotificationRequest):
     if not body.role:
         raise HTTPException(status_code=400, detail="Provide role (student|teacher)")
@@ -62,6 +65,7 @@ def send_bulk_notification_route(body: SendNotificationRequest):
 
 
 @router.post("/{notification_id}/read", response_model=dict)
+@router.post("/{notification_id}/read/", response_model=dict)
 def mark_read_route(notification_id: str, current_user=Depends(get_current_user)):
     try:
         return mark_notification_read(notification_id)
