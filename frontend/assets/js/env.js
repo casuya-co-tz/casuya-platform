@@ -2,4 +2,4 @@
 // Set CASUYA_API_URL to your Render backend URL before deploying to Vercel.
 // Leave empty for local development (config.js targets port 8765 automatically).
 
-window.CASUYA_API_URL = "";  // e.g. "https://casuya-backend.onrender.com"
+window.CASUYA_API_URL = "https://casuya-backend.onrender.com";
