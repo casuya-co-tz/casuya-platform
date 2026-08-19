@@ -2,6 +2,7 @@ import hashlib
 import uuid
 from pathlib import Path
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from backend.config.database import get_db
@@ -61,6 +62,7 @@ def list_quizzes() -> list[dict]:
     db: Session = next(_gen)
     try:
         quizzes = db.query(Quiz).all()
+        counts = dict(db.query(QuizQuestion.quiz_id, func.count(QuizQuestion.id)).group_by(QuizQuestion.quiz_id).all())
         return [
             {
                 "id": q.id,
@@ -69,6 +71,7 @@ def list_quizzes() -> list[dict]:
                 "slug": q.slug,
                 "status": q.status,
                 "content_hash": q.content_hash,
+                "question_count": counts.get(q.id, 0),
             }
             for q in quizzes
         ]
@@ -83,6 +86,7 @@ def get_quiz(quiz_id: str) -> dict | None:
         quiz = db.query(Quiz).filter(Quiz.id == quiz_id).first()
         if not quiz:
             return None
+        questions = db.query(QuizQuestion).filter(QuizQuestion.quiz_id == quiz.id).all()
         return {
             "id": quiz.id,
             "lesson_id": quiz.lesson_id,
@@ -90,6 +94,17 @@ def get_quiz(quiz_id: str) -> dict | None:
             "slug": quiz.slug,
             "content_hash": quiz.content_hash,
             "status": quiz.status,
+            "questions": [
+                {
+                    "id": q.id,
+                    "prompt": q.prompt,
+                    "options": [
+                        {"id": o.id, "text": o.text}
+                        for o in db.query(QuizOption).filter(QuizOption.question_id == q.id).all()
+                    ],
+                }
+                for q in questions
+            ],
         }
     finally:
         _gen.close()

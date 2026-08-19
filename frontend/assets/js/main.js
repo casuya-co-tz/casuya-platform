@@ -1917,7 +1917,7 @@ async function renderStudentDashboard() {
                 return `
                   <div class="card" style="padding:1rem">
                     <h3 style="margin:0">${escapeHtml(q.title || "Exam")}</h3>
-                    <p style="color:var(--color-text-muted);font-size:0.85rem;margin-top:0.25rem">${q.questions?.length || 0} questions</p>
+                    <p style="color:var(--color-text-muted);font-size:0.85rem;margin-top:0.25rem">${q.question_count ?? q.questions?.length ?? 0} questions</p>
                     ${bestScore !== null ? `<p style="color:var(--color-success);font-size:0.85rem;margin-top:0.15rem">Best: ${bestScore}%</p>` : ''}
                     <button class="btn btn-primary btn-sm start-exam-btn" data-quiz-id="${q.id}" style="margin-top:0.5rem">Start Exam</button>
                   </div>
