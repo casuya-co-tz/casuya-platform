@@ -6,9 +6,10 @@ const API_HOST = window.location.hostname || "localhost";
 const API_PROTOCOL = (window.location.protocol === "http:" || window.location.protocol === "https:")
   ? window.location.protocol
   : "http:";
-const API_BASE = (window.location.port === "8765" || window.location.port === "" || window.location.port === "443" || window.location.port === "80")
-  ? window.location.origin
-  : `${API_PROTOCOL}//${API_HOST}:8765`;
+const API_BASE = window.casuyaApiBase ? window.casuyaApiBase()
+  : (window.location.port === "8765" || window.location.port === "" || window.location.port === "443" || window.location.port === "80")
+    ? window.location.origin
+    : `${API_PROTOCOL}//${API_HOST}:8765`;
 
 function decodeToken(token) {
   try {
@@ -4446,7 +4447,7 @@ async function renderAdminDashboard() {
   }
 
   async function loadAdminBranding() {
-    const API = (window.location.port === "8765" || window.location.port === "" || window.location.port === "443" || window.location.port === "80") ? window.location.origin : `${window.location.protocol}//${window.location.hostname}:8765`;
+    const API = window.casuyaApiBase ? window.casuyaApiBase() : ((window.location.port === "8765" || window.location.port === "" || window.location.port === "443" || window.location.port === "80") ? window.location.origin : `${window.location.protocol}//${window.location.hostname}:8765`);
     const token = localStorage.getItem("casuya_token");
     const headers = token ? { "Authorization": `Bearer ${token}` } : {};
 

@@ -2,9 +2,11 @@ const API_HOST = window.location.hostname || "localhost";
 const API_PROTOCOL = window.location.protocol === "http:" || window.location.protocol === "https:"
   ? window.location.protocol
   : "http:";
-const API_BASE = (window.location.port === "8765" || window.location.port === "" || window.location.port === "443" || window.location.port === "80")
-  ? window.location.origin
-  : `${API_PROTOCOL}//${API_HOST}:8765`;
+const API_BASE = (window.casuyaApiBase
+  ? window.casuyaApiBase()
+  : (window.location.port === "8765" || window.location.port === "" || window.location.port === "443" || window.location.port === "80")
+    ? window.location.origin
+    : `${API_PROTOCOL}//${API_HOST}:8765`);
 
 const STORAGE_KEYS = {
   accessToken: "casuya_token",

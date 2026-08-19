@@ -2,9 +2,10 @@
 // Mounts a blackboard into any element marked with [data-blackboard].
 // Requires the blackboard UMD bundle (blackboard.umd.js) loaded before this.
 (function () {
-  const API_BASE = (window.location.port === "8765" || window.location.port === "" || window.location.port === "443" || window.location.port === "80")
-    ? window.location.origin
-    : `${window.location.protocol}//${window.location.hostname}:8765`;
+  const API_BASE = window.casuyaApiBase ? window.casuyaApiBase()
+    : (window.location.port === "8765" || window.location.port === "" || window.location.port === "443" || window.location.port === "80")
+      ? window.location.origin
+      : `${window.location.protocol}//${window.location.hostname}:8765`;
 
   function request(path, options) {
     const token = localStorage.getItem("casuya_token");
