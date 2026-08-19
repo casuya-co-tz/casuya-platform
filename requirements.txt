@@ -14,6 +14,6 @@ redis==8.0.1
 rq>=2.10.0
 sentry-sdk>=2.64.0
 psycopg2-binary>=2.9.12
-alembic==1.18.5
+alembic==1.19.1
 
 # Local workspace dependency — install with: pip install -e ../casuya-core
