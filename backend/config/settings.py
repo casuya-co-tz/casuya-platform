@@ -29,6 +29,8 @@ class Settings(BaseSettings):
         "http://127.0.0.1:8000",
     ]
 
+    cors_origin_regex: str | None = r"https://.*\.vercel\.app"
+
     casuya_core_signing_key: str | None = None
     casuya_ai_url: str = "http://localhost:3000"
     casuya_bridge_shared_key: str | None = None

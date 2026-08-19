@@ -168,4 +168,5 @@ def add_cors(app):
             "X-Requested-With",
             "X-CSRF-Token",
         ],
+        allow_origin_regex=settings.cors_origin_regex,
     )

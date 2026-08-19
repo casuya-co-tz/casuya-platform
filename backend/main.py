@@ -81,6 +81,7 @@ app = FastAPI(
     openapi_url="/openapi.json",
     debug=settings.debug,
     lifespan=lifespan,
+    redirect_slashes=False,
 )
 
 register_error_handlers(app)
