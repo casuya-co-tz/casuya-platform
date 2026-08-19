@@ -27,9 +27,7 @@ function safeJsonParse(text) {
 function buildApiUrl(path, method = "GET") {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
   const [pathname, search = ""] = normalizedPath.split("?");
-  const needsTrailingSlash = method !== "DELETE" && !pathname.endsWith("/");
-  const finalPath = `${pathname}${needsTrailingSlash ? "/" : ""}`;
-  return `${API_BASE}${finalPath}${search ? `?${search}` : ""}`;
+  return `${API_BASE}${pathname}${search ? `?${search}` : ""}`;
 }
 
 function getAuthHeaders(headers = {}, includeJson = true) {
