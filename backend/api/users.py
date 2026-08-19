@@ -15,8 +15,8 @@ def list_users_route():
     _gen = get_db()
     db: Session = next(_gen)
     try:
-        users = db.query(User).filter(User.is_active == True).all()
-        return [{"id": u.id, "email": u.email, "phone": u.phone, "role": u.role} for u in users]
+        users = db.query(User).filter(User.is_active).all()
+        return [{"id": u.id, "email": u.email, "full_name": u.full_name, "phone": u.phone, "role": u.role} for u in users]
     finally:
         _gen.close()
 
@@ -29,7 +29,7 @@ def get_current_user_route(current_user=Depends(get_current_user)):
         user = db.query(User).filter(User.id == current_user["sub"]).first()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
-        return UserResponse(id=user.id, email=user.email, phone=user.phone, role=user.role, is_active=user.is_active)
+        return UserResponse(id=user.id, email=user.email, full_name=user.full_name, phone=user.phone, role=user.role, is_active=user.is_active)
     finally:
         _gen.close()
 
@@ -42,9 +42,11 @@ def update_current_user_route(body: UserUpdateRequest, current_user=Depends(get_
         user = db.query(User).filter(User.id == current_user["sub"]).first()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
+        if body.full_name is not None:
+            user.full_name = body.full_name
         if body.phone is not None:
             user.phone = body.phone
         db.commit()
-        return UserResponse(id=user.id, email=user.email, phone=user.phone, role=user.role, is_active=user.is_active)
+        return UserResponse(id=user.id, email=user.email, full_name=user.full_name, phone=user.phone, role=user.role, is_active=user.is_active)
     finally:
         _gen.close()

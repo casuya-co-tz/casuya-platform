@@ -77,10 +77,11 @@ def create_game_from_html(lesson_id: str | None, title: str, html: str) -> dict:
     db: Session = next(get_db())
     slug = title.lower().replace(" ", "-") + "-" + uuid.uuid4().hex[:8]
     content_hash = hashlib.sha256(html.encode()).hexdigest()
-    game = Game(lesson_id=lesson_id, title=title, slug=slug, content_hash=content_hash)
+    pkg_path = _get_game_pkg_path(slug)
+    resolved_lesson_id = lesson_id or None
+    game = Game(lesson_id=resolved_lesson_id, title=title, slug=slug, package_path=str(pkg_path), content_hash=content_hash)
     db.add(game)
     db.flush()
-    pkg_path = _get_game_pkg_path(slug)
     pkg_path.parent.mkdir(parents=True, exist_ok=True)
     pkg_path.write_text(html, encoding="utf-8")
     db.commit()
@@ -123,6 +124,7 @@ def update_game(game_id: str, title: str | None = None, html: str | None = None)
         content_hash = hashlib.sha256(html.encode()).hexdigest()
         game.content_hash = content_hash
         pkg_path = _get_game_pkg_path(game.slug)
+        game.package_path = str(pkg_path)
         pkg_path.parent.mkdir(parents=True, exist_ok=True)
         pkg_path.write_text(html, encoding="utf-8")
     db.commit()

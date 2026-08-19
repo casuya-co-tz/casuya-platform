@@ -1,91 +1,96 @@
-from datetime import datetime, timezone
+"""Payment service — reads from in-memory cache (<1ms), writes to microservice.
 
-from sqlalchemy.orm import Session
+The microservice (SQLite) is the single source of truth.
+The in-memory cache serves all read operations instantly.
+After writes, cache is immediately refreshed.
+"""
 
-from backend.config.database import get_db
-from backend.config.jobs import enqueue_job
-from backend.config.settings import get_settings
-from backend.models.payment import Payment
+from __future__ import annotations
+
+from backend.services.payments_client import get_payments_client
+from backend.services import payment_cache
 
 
 def initiate_checkout(
     user_id: str, amount_tzs: float, mobile_number: str, provider: str, idempotency_key: str | None = None
 ) -> dict:
-    settings = get_settings()
-    sandbox = getattr(settings, "azampay_sandbox", True)
-
-    _gen = get_db()
-    db: Session = next(_gen)
-    try:
-        if idempotency_key:
-            existing = db.query(Payment).filter(Payment.idempotency_key == idempotency_key).first()
-            if existing:
-                return {
-                    "id": existing.id,
-                    "amount_tzs": existing.amount_tzs,
-                    "provider": existing.provider,
-                    "provider_reference": existing.provider_reference,
-                    "status": existing.status,
-                    "idempotent": True,
-                }
-
-        payment = Payment(
-            user_id=user_id,
-            amount_tzs=amount_tzs,
-            provider=provider,
-            idempotency_key=idempotency_key,
-            status="pending",
-        )
-        db.add(payment)
-        db.commit()
-
-        if sandbox:
-            return {
-                "id": payment.id,
-                "amount_tzs": amount_tzs,
-                "provider": provider,
-                "status": "pending",
-                "sandbox": True,
-                "note": "Sandbox mode — no real charge will be made",
-            }
-
-        enqueue_job("high", "backend.tasks.payments.process_checkout", payment.id, mobile_number)
-
-        return {
-            "id": payment.id,
-            "amount_tzs": amount_tzs,
-            "provider": provider,
-            "status": "pending",
-            "sandbox": False,
-        }
-    finally:
-        _gen.close()
+    client = get_payments_client()
+    result = client.checkout(
+        amount=amount_tzs,
+        mobile_number=mobile_number,
+        provider=provider,
+        user_id=user_id,
+        idempotency_key=idempotency_key,
+    )
+    payment_cache.invalidate()
+    return result
 
 
 def handle_webhook_payload(payload: dict) -> dict:
-    _gen = get_db()
-    db: Session = next(_gen)
-    try:
-        payment_id = payload.get("external_id")
-        status = payload.get("status", "failed")
-        reference = payload.get("reference")
-        idempotency_key = payload.get("idempotency_key")
+    client = get_payments_client()
+    result = client.webhook(payload)
+    payment_cache.invalidate()
+    return result
 
-        payment = db.query(Payment).filter(Payment.id == payment_id).first()
-        if not payment:
-            raise ValueError("Payment not found")
 
-        if payment.status == "success":
-            return {"id": payment.id, "status": payment.status, "idempotent": True}
+def list_user_payments(user_id: str) -> list[dict]:
+    return payment_cache.get_payments(user_id=user_id)
 
-        payment.status = "success" if status == "success" else "failed"
-        payment.provider_reference = reference
-        if idempotency_key:
-            payment.idempotency_key = idempotency_key
-        db.commit()
 
-        enqueue_job("default", "backend.tasks.payments.handle_payment_completion", payment.id)
+def list_all_payments() -> list[dict]:
+    return payment_cache.get_all_payments()
 
-        return {"id": payment.id, "status": payment.status}
-    finally:
-        _gen.close()
+
+def get_user_payment_stats(user_id: str) -> dict:
+    return payment_cache.get_stats(user_id=user_id)
+
+
+# ── Subscriptions ────────────────────────────────────────────────────────
+
+def list_user_subscriptions(user_id: str) -> list[dict]:
+    return payment_cache.get_subscriptions(user_id=user_id)
+
+
+def create_subscription(user_id: str, plan_id: str, amount: float) -> dict:
+    client = get_payments_client()
+    result = client.create_subscription(user_id=user_id, plan_id=plan_id, amount=amount)
+    payment_cache.invalidate()
+    return result
+
+
+def cancel_subscription(subscription_id: str, immediate: bool = False) -> dict:
+    client = get_payments_client()
+    result = client.cancel_subscription(subscription_id=subscription_id, immediate=immediate)
+    payment_cache.invalidate()
+    return result
+
+
+# ── Invoices ─────────────────────────────────────────────────────────────
+
+def list_user_invoices(user_id: str) -> list[dict]:
+    return payment_cache.get_invoices(user_id=user_id)
+
+
+def get_invoice(invoice_id: str) -> dict:
+    client = get_payments_client()
+    return client.get_invoice(invoice_id=invoice_id)
+
+
+def pay_invoice(invoice_id: str) -> dict:
+    client = get_payments_client()
+    result = client.pay_invoice(invoice_id=invoice_id)
+    payment_cache.invalidate()
+    return result
+
+
+# ── Refunds ──────────────────────────────────────────────────────────────
+
+def process_refund(payment_id: str, amount: float | None = None, reason: str = "") -> dict:
+    client = get_payments_client()
+    result = client.refund_payment(payment_id=payment_id, amount=amount, reason=reason)
+    payment_cache.invalidate()
+    return result
+
+
+def list_user_refunds(user_id: str) -> list[dict]:
+    return payment_cache.get_refunds(user_id=user_id)

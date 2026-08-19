@@ -45,3 +45,27 @@ def optional_user(authorization: str | None = Header(default=None)):
         return decode_access_token(token)
     except Exception:
         return None
+
+
+def bridge_auth(x_bridge_key: str | None = Header(default=None), authorization: str | None = Header(default=None)):
+    """Authenticate bridge sync requests via JWT or shared key.
+
+    Used by casuya-bridge clients that sync progress from student devices.
+    """
+    # Prefer JWT if present
+    if authorization and authorization.startswith("Bearer "):
+        try:
+            return get_current_user(authorization)
+        except HTTPException:
+            pass  # fall through to shared key
+
+    # Fall back to shared key
+    if x_bridge_key and settings.casuya_bridge_shared_key:
+        if x_bridge_key == settings.casuya_bridge_shared_key:
+            return {"sub": "bridge", "role": "bridge"}
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid bridge key")
+
+    if authorization and authorization.startswith("Bearer "):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
+
+    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required")

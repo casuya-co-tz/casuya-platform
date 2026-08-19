@@ -60,9 +60,12 @@ def get_db() -> Generator[Session, None, None]:
 
 def init_db() -> None:
     from backend.models import (  # noqa: F401
+        activity,
         analytics,
+        assignment,
         audit_log,
         bookmark,
+        file_record,
         game,
         lesson,
         lesson_version,

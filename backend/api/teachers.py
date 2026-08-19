@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 
 from backend.config.database import get_db
@@ -13,6 +13,13 @@ class TeacherUpdateRequest(BaseModel):
     full_name: str | None = None
     subjects: str | None = None
     school_code: str | None = None
+
+    @field_validator("full_name")
+    @classmethod
+    def validate_full_name(cls, v: str | None) -> str | None:
+        if v is not None and v.strip():
+            return v.strip()
+        return None
 
 
 def _get_current_teacher(current_user: dict, db: Session) -> Teacher:

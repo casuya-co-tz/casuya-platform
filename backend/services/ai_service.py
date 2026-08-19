@@ -15,7 +15,7 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
-CASUYA_AI_URL = os.getenv("CASUYA_AI_URL", "http://localhost:3001")
+CASUYA_AI_URL = os.getenv("CASUYA_AI_URL", "http://localhost:3000")
 
 
 async def _call_ai_service(endpoint: str, payload: dict) -> dict | None:

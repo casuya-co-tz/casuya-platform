@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     ]
 
     casuya_core_signing_key: str | None = None
-    casuya_ai_url: str = "http://localhost:3001"
+    casuya_ai_url: str = "http://localhost:3000"
     casuya_bridge_shared_key: str | None = None
     supabase_url: str | None = None
     supabase_key: str | None = None
@@ -40,6 +40,19 @@ class Settings(BaseSettings):
     azampay_client_secret: str | None = None
     africastalking_username: str | None = None
     africastalking_api_key: str | None = None
+
+    # Casuya Payments microservice
+    casuya_payments_url: str = "http://localhost:3002"
+
+    # Casuya Services Bridge microservice (content, exams, media, auth, analytics, search)
+    casuya_services_bridge_url: str = "http://localhost:3003"
+
+    # Casuya API gateway (blackboard exam/math endpoints, etc.)
+    casuya_api_url: str = "http://localhost:8081"
+
+    # Casuya Orchestrator (standalone automation/maintenance tool). Optional; when set,
+    # the platform polls this URL for a health signal. Leave empty if not deployed.
+    casuya_orchestrator_health_url: str | None = None
 
     sentry_dsn: str | None = None
 

@@ -1,17 +1,34 @@
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 
 from backend.config.database import get_db
 from backend.middleware.auth import get_current_user
 from backend.models.student import Student
-from backend.models.user import User
+
+VALID_FORM_LEVELS = ["Form I", "Form II", "Form III", "Form IV", "Form V", "Form VI"]
 
 
 class StudentUpdateRequest(BaseModel):
     full_name: str | None = None
     form_level: str | None = None
     school_code: str | None = None
+
+    @field_validator("form_level")
+    @classmethod
+    def validate_form_level(cls, v: str | None) -> str | None:
+        if v is not None and v.strip():
+            if v not in VALID_FORM_LEVELS:
+                raise ValueError(f"Invalid form level. Must be one of: {', '.join(VALID_FORM_LEVELS)}")
+            return v
+        return None
+
+    @field_validator("full_name")
+    @classmethod
+    def validate_full_name(cls, v: str | None) -> str | None:
+        if v is not None and v.strip():
+            return v.strip()
+        return None
 
 
 router = APIRouter(prefix="/students", tags=["students"])

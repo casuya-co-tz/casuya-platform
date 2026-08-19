@@ -10,10 +10,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="/assets/js/brand.js"></script>
 </head>
-<body class="bg-slate-50/50 text-slate-800 antialiased overflow-x-hidden">
+<body class="bg-[#f9f3e9] text-slate-800 antialiased overflow-x-hidden">
 
   <!-- NAVIGATION BAR -->
-  <nav class="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-100">
+  <nav class="sticky top-0 z-50 bg-[#f9f3e9]/80 backdrop-blur-md border-b border-[#e0d8cc]">
     <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
       <!-- Logo -->
       <div class="flex items-center gap-2">
@@ -30,9 +30,9 @@
       </div>
 
       <!-- Auth Buttons (auth-aware) -->
-      <div class="flex items-center gap-4" id="auth-buttons">
-        <a href="/login.html" class="text-sm font-semibold text-blue-600">Login</a>
-        <a href="/register.html" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl shadow-lg shadow-blue-100 transition-all hover:-translate-y-0.5">Get Started</a>
+      <div class="flex items-center gap-3 sm:gap-4" id="auth-buttons">
+        <a href="/login.html" class="min-h-[44px] flex items-center text-sm font-semibold text-blue-600">Login</a>
+        <a href="/register.html" class="min-h-[44px] flex items-center bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl shadow-lg shadow-blue-100 transition-all hover:-translate-y-0.5">Get Started</a>
       </div>
       <script type="module">
         import { applyAuthChrome } from "/assets/js/auth-ui.js";
@@ -45,7 +45,7 @@
   <section class="max-w-7xl mx-auto px-6 py-20">
     <div class="max-w-md mx-auto">
       <!-- Login Card -->
-      <div class="bg-white border border-slate-100 rounded-3xl p-8 shadow-xl shadow-slate-100/50">
+      <div class="bg-white border border-[#e0d8cc] rounded-3xl p-8 shadow-xl shadow-[#e0d8cc]/50">
         <!-- Header -->
         <div class="text-center mb-8">
           <h1 class="text-3xl font-extrabold text-slate-900 mb-2">Welcome Back</h1>
@@ -69,7 +69,7 @@
                 id="email" 
                 name="email" 
                 required
-                class="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl text-sm font-medium placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                class="w-full pl-10 pr-4 py-3 border border-[#d6cdbf] rounded-xl text-sm font-medium placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 placeholder="Enter your email"
               >
             </div>
@@ -92,12 +92,12 @@
                 id="password" 
                 name="password" 
                 required
-                class="w-full pl-10 pr-12 py-3 border border-slate-200 rounded-xl text-sm font-medium placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                class="w-full pl-10 pr-12 py-3 border border-[#d6cdbf] rounded-xl text-sm font-medium placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 placeholder="Enter your password"
               >
               <button 
                 type="button" 
-                class="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                class="absolute right-3 top-1/2 transform -translate-y-1/2 min-w-[44px] min-h-[44px] flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors"
                 onclick="togglePasswordVisibility(event)"
               >
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -109,7 +109,7 @@
           </div>
 
           <!-- Remember Me -->
-          <div class="flex items-center">
+          <div class="flex items-center min-h-[44px] py-1">
             <input id="remember" type="checkbox" class="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500">
             <label for="remember" class="ml-2 text-sm text-slate-600">Remember me</label>
           </div>
@@ -127,7 +127,7 @@
         <div class="my-8">
           <div class="relative">
             <div class="absolute inset-0 flex items-center">
-              <div class="w-full border-t border-slate-200"></div>
+              <div class="w-full border-t border-[#d6cdbf]"></div>
             </div>
             <div class="relative flex justify-center text-sm">
               <span class="px-4 bg-white text-slate-400 font-medium">OR</span>
@@ -140,7 +140,7 @@
           <button 
             type="button" 
             onclick="window.location.href=(window.location.port==='8000'?window.location.origin:window.location.protocol+'//'+window.location.hostname+':8000')+'/auth/oauth/google'"
-            class="w-full flex items-center justify-center gap-3 bg-white border border-slate-200 rounded-xl py-3 px-4 text-sm font-semibold text-slate-700 hover:border-slate-300 hover:bg-slate-50 transition-all"
+            class="w-full flex items-center justify-center gap-3 bg-white border border-[#d6cdbf] rounded-xl py-3 px-4 text-sm font-semibold text-slate-700 hover:border-[#c8bdb0] hover:bg-[#f3ede1] transition-all"
           >
             <svg class="w-5 h-5" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h6.38c-.29 1.55-1.18 2.87-2.54 3.74v3.01h4.1c2.41-2.22 3.79-5.5 3.79-9.38z"/>
@@ -154,7 +154,7 @@
           <button 
             type="button" 
             onclick="window.location.href=(window.location.port==='8000'?window.location.origin:window.location.protocol+'//'+window.location.hostname+':8000')+'/auth/oauth/facebook'"
-            class="w-full flex items-center justify-center gap-3 bg-white border border-slate-200 rounded-xl py-3 px-4 text-sm font-semibold text-slate-700 hover:border-slate-300 hover:bg-slate-50 transition-all"
+            class="w-full flex items-center justify-center gap-3 bg-white border border-[#d6cdbf] rounded-xl py-3 px-4 text-sm font-semibold text-slate-700 hover:border-[#c8bdb0] hover:bg-[#f3ede1] transition-all"
           >
             <svg class="w-5 h-5" fill="#1877F2" viewBox="0 0 24 24">
               <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.625h-3.062v-3.5h3.062v-2.642c0-2.977 2.147-5.475 5.207-5.475 1.665 0 3.033 1.133 3.33 2.647v2.918h-2.346c-1.157 0-2.139.885-2.275 2.047h6.028L13.256 14.78z"/>
@@ -165,7 +165,7 @@
 
         <!-- Sign Up Link -->
         <div class="mt-8 text-center">
-          <p class="text-sm text-slate-600">
+          <p class="text-sm text-slate-600 py-2">
             Don't have an account? 
             <a href="/register.html" class="font-semibold text-blue-600 hover:text-blue-700 transition-colors">Sign up for free</a>
           </p>
@@ -175,7 +175,7 @@
   </section>
 
   <!-- FOOTER -->
-  <footer class="bg-white border-t border-slate-100 text-slate-500 text-xs py-12 mt-20">
+  <footer class="bg-white border-t border-[#e0d8cc] text-slate-500 text-xs py-12 mt-20">
     <div class="max-w-7xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-8">
       <div class="space-y-3">
         <div class="font-bold text-slate-900 text-sm">Platform</div>
@@ -336,12 +336,12 @@
 
       document.getElementById('email').addEventListener('input', function onEmailInput() {
         this.classList.toggle('border-red-300', this.value && !isValidEmail(this.value));
-        this.classList.toggle('border-slate-200', !this.value || isValidEmail(this.value));
+        this.classList.toggle('border-[#d6cdbf]', !this.value || isValidEmail(this.value));
       });
 
       document.getElementById('password').addEventListener('input', function onPasswordInput() {
         this.classList.toggle('border-red-300', this.value && this.value.length < 6);
-        this.classList.toggle('border-slate-200', !this.value || this.value.length >= 6);
+        this.classList.toggle('border-[#d6cdbf]', !this.value || this.value.length >= 6);
       });
     }
   </script>

@@ -10,8 +10,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="/assets/js/brand.js"></script>
 </head>
-<body class="bg-slate-50/50 text-slate-800 antialiased overflow-x-hidden">
-  <nav class="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-100">
+<body class="bg-[#f9f3e9] text-slate-800 antialiased overflow-x-hidden">
+  <nav class="sticky top-0 z-50 bg-[#f9f3e9]/80 backdrop-blur-md border-b border-[#e0d8cc]">
     <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
       <div class="flex items-center gap-2">
         <div data-brand-logo data-brand-logo-class="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center text-white font-extrabold text-lg shadow-md shadow-blue-200" class="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center text-white font-extrabold text-lg shadow-md shadow-blue-200">C</div>
@@ -25,9 +25,9 @@
         <a href="/index.html#about" class="hover:text-blue-600 transition-colors">About</a>
       </div>
 
-      <div class="flex items-center gap-4" id="auth-buttons">
-        <a href="/login.html" class="text-sm font-semibold text-slate-700 hover:text-blue-600 transition-colors">Login</a>
-        <a href="/register.html" class="text-sm font-semibold text-blue-600">Create Account</a>
+      <div class="flex items-center gap-2 sm:gap-4" id="auth-buttons">
+        <a href="/login.html" class="min-h-[44px] flex items-center text-sm font-semibold text-slate-700 hover:text-blue-600 transition-colors">Login</a>
+        <a href="/register.html" class="min-h-[44px] flex items-center text-sm font-semibold text-blue-600">Create Account</a>
       </div>
       <script type="module">
         import { applyAuthChrome } from "/assets/js/auth-ui.js";
@@ -38,7 +38,7 @@
 
   <section class="max-w-7xl mx-auto px-6 py-16">
     <div class="max-w-2xl mx-auto">
-      <div class="bg-white border border-slate-100 rounded-3xl p-8 shadow-xl shadow-slate-100/50">
+      <div class="bg-white border border-[#e0d8cc] rounded-3xl p-8 shadow-xl shadow-[#e0d8cc]/50">
         <div class="text-center mb-8">
           <h1 class="text-3xl font-extrabold text-slate-900 mb-2">Create your account</h1>
           <p class="text-slate-500 text-sm">Join Casuya and continue with your student or teacher portal.</p>
@@ -53,7 +53,7 @@
                 id="full_name"
                 name="full_name"
                 required
-                class="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm font-medium placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                class="w-full px-4 py-3 border border-[#d6cdbf] rounded-xl text-sm font-medium placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 placeholder="Enter your full name"
               >
             </div>
@@ -65,7 +65,7 @@
                 id="email"
                 name="email"
                 required
-                class="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm font-medium placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                class="w-full px-4 py-3 border border-[#d6cdbf] rounded-xl text-sm font-medium placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 placeholder="you@example.com"
               >
             </div>
@@ -77,7 +77,7 @@
                 id="phone"
                 name="phone"
                 pattern="[\+]?[0-9]{10,15}"
-                class="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm font-medium placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                class="w-full px-4 py-3 border border-[#d6cdbf] rounded-xl text-sm font-medium placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 placeholder="+255..."
               >
             </div>
@@ -87,7 +87,7 @@
               <select
                 id="role"
                 name="role"
-                class="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm font-medium bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                class="w-full px-4 py-3 border border-[#d6cdbf] rounded-xl text-sm font-medium bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               >
                 <option value="student">Student</option>
                 <option value="teacher">Teacher</option>
@@ -101,7 +101,7 @@
                 id="password"
                 name="password"
                 required
-                class="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm font-medium placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                class="w-full px-4 py-3 border border-[#d6cdbf] rounded-xl text-sm font-medium placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 placeholder="At least 6 characters"
               >
             </div>
@@ -113,7 +113,7 @@
                 id="confirm_password"
                 name="confirm_password"
                 required
-                class="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm font-medium placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                class="w-full px-4 py-3 border border-[#d6cdbf] rounded-xl text-sm font-medium placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 placeholder="Re-enter your password"
               >
             </div>
@@ -128,7 +128,7 @@
         </form>
 
         <div class="mt-8 text-center">
-          <p class="text-sm text-slate-600">
+          <p class="text-sm text-slate-600 min-h-[44px] flex items-center justify-center">
             Already have an account?
             <a href="/login.html" class="font-semibold text-blue-600 hover:text-blue-700 transition-colors">Sign in</a>
           </p>
@@ -137,7 +137,7 @@
     </div>
   </section>
 
-  <footer class="bg-white border-t border-slate-100 text-slate-500 text-xs py-12 mt-20">
+  <footer class="bg-white border-t border-[#e0d8cc] text-slate-500 text-xs py-12 mt-20">
     <div class="max-w-7xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-8">
       <div class="space-y-3">
         <div class="font-bold text-slate-900 text-sm">Platform</div>
@@ -263,20 +263,20 @@
     document.getElementById('email').addEventListener('input', function () {
       if (this.value && !isValidEmail(this.value)) {
         this.classList.add('border-red-300');
-        this.classList.remove('border-slate-200');
+        this.classList.remove('border-[#d6cdbf]');
       } else {
         this.classList.remove('border-red-300');
-        this.classList.add('border-slate-200');
+        this.classList.add('border-[#d6cdbf]');
       }
     });
 
     document.getElementById('password').addEventListener('input', function () {
       if (this.value && this.value.length < 6) {
         this.classList.add('border-red-300');
-        this.classList.remove('border-slate-200');
+        this.classList.remove('border-[#d6cdbf]');
       } else {
         this.classList.remove('border-red-300');
-        this.classList.add('border-slate-200');
+        this.classList.add('border-[#d6cdbf]');
       }
     });
 
@@ -284,10 +284,10 @@
       const password = document.getElementById('password').value;
       if (this.value && this.value !== password) {
         this.classList.add('border-red-300');
-        this.classList.remove('border-slate-200');
+        this.classList.remove('border-[#d6cdbf]');
       } else {
         this.classList.remove('border-red-300');
-        this.classList.add('border-slate-200');
+        this.classList.add('border-[#d6cdbf]');
       }
     });
 
@@ -295,10 +295,10 @@
       const phonePattern = /^[\+]?[0-9]{10,15}$/;
       if (this.value && !phonePattern.test(this.value)) {
         this.classList.add('border-red-300');
-        this.classList.remove('border-slate-200');
+        this.classList.remove('border-[#d6cdbf]');
       } else {
         this.classList.remove('border-red-300');
-        this.classList.add('border-slate-200');
+        this.classList.add('border-[#d6cdbf]');
       }
     });
 

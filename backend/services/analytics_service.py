@@ -96,29 +96,36 @@ def get_platform_overview() -> dict:
 
 
 def get_lesson_distribution() -> list[dict]:
-    from backend.models.lesson import Lesson
+    from backend.models.lesson import Lesson, Subtopic, Topic, Subject
 
     gen = get_db()
     db: Session = next(gen)
     try:
         rows = (
             db.query(
-                Lesson.id,
-                Lesson.title,
+                Subject.id,
+                Subject.name,
+                func.count(Lesson.id).label("lesson_count"),
                 func.avg(ProgressRecord.completion_percentage).label("avg_completion"),
-                func.count(ProgressRecord.id).label("session_count"),
             )
+            .select_from(Subject)
+            .join(Topic, Topic.subject_id == Subject.id)
+            .join(Subtopic, Subtopic.topic_id == Topic.id)
+            .join(Lesson, Lesson.subtopic_id == Subtopic.id)
             .outerjoin(ProgressRecord, Lesson.id == ProgressRecord.lesson_id)
             .filter(Lesson.status == "published")
-            .group_by(Lesson.id, Lesson.title)
+            .group_by(Subject.id, Subject.name)
+            .order_by(func.count(Lesson.id).desc())
             .all()
         )
+        if not rows:
+            return []
         return [
             {
-                "lesson_id": r.id,
-                "lesson_title": r.title,
+                "subject": r.name,
+                "subject_id": r.id,
+                "count": int(r.lesson_count or 0),
                 "avg_completion_percentage": round(float(r.avg_completion or 0.0), 1),
-                "session_count": r.session_count or 0,
             }
             for r in rows
         ]

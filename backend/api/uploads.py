@@ -3,14 +3,23 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from fastapi.responses import FileResponse
+from pydantic import BaseModel
 
+from backend.config.database import get_db
 from backend.config.settings import get_settings
+from backend.middleware.auth import get_current_user
 from backend.middleware.permissions import require_role
+from backend.models.file_record import FileRecord
 from backend.services.upload_service import store_upload
 
 router = APIRouter(prefix="/uploads", tags=["uploads"])
 
 ALLOWED_KINDS = {"images", "videos", "audio", "documents"}
+
+
+class FileUpdateRequest(BaseModel):
+    display_name: str | None = None
+    is_visible: bool | None = None
 
 
 def _scan_files() -> list[dict]:
@@ -33,14 +42,39 @@ def _scan_files() -> list[dict]:
     return files
 
 
+def _merge_with_db_meta(files: list[dict]) -> list[dict]:
+    """Enrich filesystem scan results with DB metadata (display_name, is_visible)."""
+    gen = get_db()
+    db = next(gen)
+    try:
+        records = db.query(FileRecord).all()
+        meta_map = {r.filename: r for r in records}
+        result = []
+        for f in files:
+            rec = meta_map.get(f["filename"])
+            f["display_name"] = rec.display_name if rec else f["filename"]
+            f["is_visible"] = rec.is_visible if rec else True
+            if rec:
+                f["id"] = rec.id
+            result.append(f)
+        return result
+    except Exception:
+        return files
+    finally:
+        gen.close()
+
+
 @router.get("")
 async def list_files(current_user=Depends(require_role("admin"))):
-    return _scan_files()
+    files = _scan_files()
+    return _merge_with_db_meta(files)
 
 
 @router.get("/public")
 async def list_files_public():
-    return _scan_files()
+    files = _scan_files()
+    enriched = _merge_with_db_meta(files)
+    return [f for f in enriched if f.get("is_visible", True)]
 
 
 @router.post("")
@@ -56,8 +90,58 @@ async def upload_file(file: UploadFile, current_user=Depends(require_role("admin
         "mp3": "audio", "wav": "audio", "ogg": "audio",
     }.get(ext, "images")
     content = await file.read()
-    path = store_upload(content, file.filename, kind)
-    return {"path": path, "filename": file.filename, "kind": kind}
+    stored_name = store_upload(content, file.filename, kind)
+
+    filename_only = Path(stored_name).name
+    gen = get_db()
+    db = next(gen)
+    try:
+        record = FileRecord(
+            filename=filename_only,
+            display_name=file.filename,
+            kind=kind,
+            size=len(content),
+            is_visible=True,
+        )
+        db.add(record)
+        db.commit()
+    except Exception:
+        pass
+    finally:
+        gen.close()
+
+    return {"path": stored_name, "filename": file.filename, "kind": kind}
+
+
+@router.patch("/{filename:path}")
+async def update_file(filename: str, body: FileUpdateRequest, current_user=Depends(require_role("admin"))):
+    gen = get_db()
+    db = next(gen)
+    try:
+        record = db.query(FileRecord).filter(FileRecord.filename == filename).first()
+        if not record:
+            record = FileRecord(
+                filename=filename,
+                display_name=filename,
+                kind="documents",
+                size=0,
+                is_visible=True,
+            )
+            db.add(record)
+            db.flush()
+        if body.display_name is not None:
+            record.display_name = body.display_name
+        if body.is_visible is not None:
+            record.is_visible = body.is_visible
+        db.commit()
+        return {
+            "id": record.id,
+            "filename": record.filename,
+            "display_name": record.display_name,
+            "is_visible": record.is_visible,
+        }
+    finally:
+        gen.close()
 
 
 @router.get("/{filename:path}")
@@ -83,5 +167,16 @@ async def delete_file(filename: str, current_user=Depends(require_role("admin"))
         target = kind_dir / filename
         if target.exists() and target.is_file():
             target.unlink()
+            gen = get_db()
+            db = next(gen)
+            try:
+                rec = db.query(FileRecord).filter(FileRecord.filename == filename).first()
+                if rec:
+                    db.delete(rec)
+                    db.commit()
+            except Exception:
+                pass
+            finally:
+                gen.close()
             return {"deleted": filename}
     raise HTTPException(status_code=404, detail="File not found")

@@ -7,7 +7,7 @@ from backend.services.lesson_service import create_lesson_from_html, publish_les
 from backend.services.quiz_service import create_quiz, get_quiz_for_lesson, grade_attempt
 from backend.services.progress_service import apply_progress_sync, get_student_progress
 from backend.services.search_service import search_content
-from backend.services.analytics_service import recompute_lesson_snapshot, get_platform_overview
+from backend.services.analytics_service import recompute_lesson_snapshot, get_platform_overview, get_lesson_distribution
 from sqlalchemy.orm import Session
 
 
@@ -92,3 +92,26 @@ def test_analytics():
     overview = get_platform_overview()
     assert "total_students" in overview
     assert "total_lessons" in overview
+
+
+def test_lesson_distribution_grouped_by_subject():
+    db: Session = next(get_db())
+    subj = Subject(name="Biology", slug="biology-test")
+    db.add(subj)
+    db.flush()
+    topic = Topic(subject_id=subj.id, title="Cells", form_level="I")
+    db.add(topic)
+    db.flush()
+    subtopic = Subtopic(topic_id=topic.id, title="Intro")
+    db.add(subtopic)
+    db.flush()
+    lesson = Lesson(subtopic_id=subtopic.id, slug="cells-intro-test", title="Cells Intro", status="published")
+    db.add(lesson)
+    db.commit()
+
+    dist = get_lesson_distribution()
+    assert isinstance(dist, list)
+    bio = next((d for d in dist if d["subject"] == "Biology"), None)
+    assert bio is not None, "published lesson should appear under its subject"
+    assert bio["count"] >= 1
+    assert "avg_completion_percentage" in bio
