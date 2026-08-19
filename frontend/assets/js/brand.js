@@ -1,7 +1,7 @@
 (function(){
 // brand.js — Dynamic site branding (favicon + logo).
 
-var API_BASE = window.location.port === "8765"
+var API_BASE = (window.location.port === "8765" || window.location.port === "" || window.location.port === "443" || window.location.port === "80")
   ? window.location.origin
   : window.location.protocol + "//" + window.location.hostname + ":8765";
 

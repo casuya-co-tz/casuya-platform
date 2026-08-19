@@ -13,21 +13,27 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from backend.api import (
+    activity,
     ai,
     analytics,
+    assignments,
     auth,
     bookmarks,
     branding,
+    casuya_api_proxy,
+    core,
     games,
     lessons,
     math,
     note,
     notifications,
     oauth,
+    orchestrator,
     payments,
     progress,
     quizzes,
     search,
+    services_bridge,
     students,
     subjects,
     subtopics,
@@ -58,7 +64,11 @@ async def lifespan(app: FastAPI):
         # Tolerate an unreachable/unconfigured database in local dev so the
         # API still serves health/readiness and static routes.
         print(f"WARNING: init_db failed, continuing without DB: {exc}")
+
+    from backend.services.payment_cache import start_cache_sync, stop_cache_sync
+    start_cache_sync()
     yield
+    stop_cache_sync()
 
 
 app = FastAPI(
@@ -91,15 +101,21 @@ for router_module in (
     quizzes,
     games,
     progress,
+    activity,
     analytics,
+    core,
     payments,
     notifications,
+    orchestrator,
     search,
+    services_bridge,
     uploads,
     bookmarks,
     note,
     ai,
     math,
+    assignments,
+    casuya_api_proxy,
 ):
     app.include_router(router_module.router)
 
@@ -112,6 +128,34 @@ app.mount("/static/lessons", StaticFiles(directory=str(pkg_dir)), name="lesson-p
 lib_dir = Path(settings.storage_root) / "lib"
 lib_dir.mkdir(parents=True, exist_ok=True)
 app.mount("/static/lib", StaticFiles(directory=str(lib_dir)), name="shared-lib")
+
+# Mount built client-side Casuya packages so the web app can load them directly.
+# These point at the monorepo package dist folders; when absent they are skipped.
+import os as _os
+
+_repo_root = Path(__file__).resolve().parents[2]  # casuya-platform/backend -> repo root
+
+# Single-package dist folders.
+_pkg_mounts = [
+    ("casuya-runtime", "dist", "/static/pkg/runtime"),
+    ("casuya-blackboard", "dist", "/static/pkg/blackboard"),
+    ("casuya-editor", "dist", "/static/pkg/editor"),
+    ("casuya-math", "dist", "/static/pkg/math"),
+]
+for _pkg, _sub, _route in _pkg_mounts:
+    _d = _repo_root / _pkg / _sub
+    if _d.is_dir():
+        app.mount(_route, StaticFiles(directory=str(_d)), name=f"pkg-{_pkg}")
+
+# casuya-design-system is a pnpm sub-workspace; mount each built sub-package.
+_ds_root = _repo_root / "casuya-design-system" / "packages"
+if _ds_root.is_dir():
+    for _ds_pkg in _ds_root.iterdir():
+        if _ds_pkg.is_dir():
+            _dd = _ds_pkg / "dist"
+            if _dd.is_dir():
+                _route = f"/static/pkg/design-system/{_ds_pkg.name}"
+                app.mount(_route, StaticFiles(directory=str(_dd)), name=f"pkg-design-system-{_ds_pkg.name}")
 
 
 @app.get("/health")
@@ -145,3 +189,11 @@ def readiness_check():
         "database": db_ok,
         "redis": redis_ok,
     }
+
+
+# Serve the static frontend (HTML/JS/CSS) from the repo's frontend/ directory.
+# Mounted LAST so API routes keep priority; html=True lets "/" return index.html.
+# This makes the API and the web app share one origin (no CORS, works on Koyeb).
+_FRONTEND_DIR = Path(__file__).resolve().parent.parent.parent / "frontend"
+if _FRONTEND_DIR.is_dir():
+    app.mount("/", StaticFiles(directory=str(_FRONTEND_DIR), html=True), name="frontend")

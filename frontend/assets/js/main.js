@@ -6,7 +6,7 @@ const API_HOST = window.location.hostname || "localhost";
 const API_PROTOCOL = (window.location.protocol === "http:" || window.location.protocol === "https:")
   ? window.location.protocol
   : "http:";
-const API_BASE = window.location.port === "8765"
+const API_BASE = (window.location.port === "8765" || window.location.port === "" || window.location.port === "443" || window.location.port === "80")
   ? window.location.origin
   : `${API_PROTOCOL}//${API_HOST}:8765`;
 
@@ -52,7 +52,28 @@ async function request(path, options = {}) {
         let fetchUrl = `${API_BASE}${path}`;
         const resp = await fetch(fetchUrl, { ...options, headers });
         if (resp.status === 401) {
+          if (!options._retried) {
+            try {
+              const newToken = await refreshAuthToken();
+              headers["Authorization"] = `Bearer ${newToken}`;
+              const retryResp = await fetch(fetchUrl, { ...options, headers, _retried: true });
+              if (retryResp.status === 401) throw new Error("Session expired. Please sign in again.");
+              if (!retryResp.ok) {
+                const err = await retryResp.json().catch(() => ({ detail: retryResp.statusText }));
+                throw new Error(err.detail || "Request failed");
+              }
+              const retryData = await retryResp.json();
+              if (method === "GET") requestCache.set(cacheKey, { data: retryData, timestamp: Date.now() });
+              return retryData;
+            } catch (refreshErr) {
+              localStorage.removeItem("casuya_token");
+              localStorage.removeItem("casuya_refresh_token");
+              renderLogin();
+              return null;
+            }
+          }
           localStorage.removeItem("casuya_token");
+          localStorage.removeItem("casuya_refresh_token");
           renderLogin();
           return null;
         }
@@ -79,6 +100,21 @@ async function request(path, options = {}) {
     inFlight.set(cacheKey, promise);
   }
   return promise;
+}
+
+async function refreshAuthToken() {
+  const refreshToken = localStorage.getItem("casuya_refresh_token");
+  if (!refreshToken) throw new Error("No refresh token");
+  const resp = await fetch(`${API_BASE}/auth/refresh`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ refresh_token: refreshToken }),
+  });
+  if (!resp.ok) throw new Error("Refresh failed");
+  const data = await resp.json();
+  if (data.access_token) localStorage.setItem("casuya_token", data.access_token);
+  if (data.refresh_token) localStorage.setItem("casuya_refresh_token", data.refresh_token);
+  return data.access_token;
 }
 
 let _globalAbort = null;
@@ -132,7 +168,7 @@ function confirmDelete(label) {
 }
 
 function deleteBtn(id, label, endpoint, onDone) {
-  return `<button class="btn btn-danger" data-delete="${id}" data-label="${escapeHtml(label)}" data-endpoint="${endpoint}" style="font-size:0.75rem;padding:0.2rem 0.5rem">Delete</button>`;
+  return `<button class="btn btn-danger btn-sm" data-delete="${id}" data-label="${escapeHtml(label)}" data-endpoint="${endpoint}">Delete</button>`;
 }
 
 function initDeleteButtons() {
@@ -340,6 +376,10 @@ async function viewLessonContent(containerId, lessonId, backFn) {
                     <input type="radio" name="q_${escapeHtml(q.id)}" value="${escapeHtml(o.id)}" required> ${escapeHtml(o.text)}
                   </label>
                 `).join("")}
+                <details style="margin-top:0.5rem">
+                  <summary style="cursor:pointer;font-size:0.85rem;color:var(--color-text-muted)">Show your work</summary>
+                  <div data-blackboard data-lesson-id="${escapeHtml(lessonId)}-${escapeHtml(q.id)}" data-quiz-question="${escapeHtml(q.id)}" style="width:100%;height:250px;border:1px solid var(--color-border);border-radius:var(--radius);overflow:hidden;margin-top:0.5rem"></div>
+                </details>
               </div>
             `).join("")}
             <button type="submit" class="btn btn-primary" id="quiz-submit-btn">Submit Quiz</button>
@@ -392,6 +432,11 @@ async function viewLessonContent(containerId, lessonId, backFn) {
             </details>
             ${renderQuiz()}
             ${renderGames()}
+            <div class="card" style="margin-top:0.75rem;padding:1rem">
+              <h3 style="margin:0 0 0.5rem">✏️ Practice Blackboard</h3>
+              <p style="font-size:0.85rem;color:var(--color-text-muted);margin:0 0 0.5rem">Work out the steps below. Your progress is saved automatically.</p>
+              <div data-blackboard data-lesson-id="${escapeHtml(lessonId)}" style="width:100%;height:420px;border:1px solid var(--color-border);border-radius:var(--radius);overflow:hidden"></div>
+            </div>
           </div>
         ` : ""}
       </div>
@@ -497,6 +542,11 @@ async function viewLessonContent(containerId, lessonId, backFn) {
       });
     }
 
+    // Mount blackboard (if embed script is present)
+    if (window.CasuyaBlackboardEmbed) {
+      window.CasuyaBlackboardEmbed.autoMount();
+    }
+
     document.querySelectorAll(".game-item").forEach(item => {
       item.addEventListener("click", async () => {
         const gameId = item.dataset.gameId;
@@ -560,6 +610,8 @@ async function handleLogin(e) {
     });
     if (data && data.access_token) {
       localStorage.setItem("casuya_token", data.access_token);
+      if (data.refresh_token) localStorage.setItem("casuya_refresh_token", data.refresh_token);
+      if (data.role) localStorage.setItem("casuya_role", data.role);
       renderApp();
     } else {
       errorEl.textContent = data?.detail || "Login failed";
@@ -638,10 +690,12 @@ async function renderStudentDashboard() {
           <div class="sidebar-nav-item" data-view="subjects">📚 Subjects</div>
           <div class="sidebar-nav-item" data-view="progress">📊 Progress</div>
           <div class="sidebar-nav-item" data-view="bookmarks">🔖 Bookmarks</div>
+          <div class="sidebar-nav-item" data-view="assignments">📋 Assignments</div>
           <div class="sidebar-nav-item" data-view="games">🎮 Games</div>
           <div class="sidebar-nav-item" data-view="downloads">📥 Downloads</div>
           <div class="sidebar-nav-item" data-view="exams">📝 Exams</div>
           <div class="sidebar-nav-item" data-view="files">📁 Files</div>
+          <div class="sidebar-nav-item" data-view="payments">💳 Payments</div>
           <div class="sidebar-nav-item" data-view="notifications">🔔 Notifications</div>
           <div class="sidebar-nav-item" data-view="settings">⚙️ Settings</div>
         </nav>
@@ -806,7 +860,8 @@ async function renderStudentDashboard() {
   }
 
   function showStudentView(content) {
-    document.getElementById("student-content").innerHTML = content;
+    const el = document.getElementById("student-content");
+    if (el) el.innerHTML = content;
   }
 
   const navHandlers = {
@@ -814,19 +869,33 @@ async function renderStudentDashboard() {
     subjects: () => { setActiveNav("subjects"); loadStudentSubjects(); },
     progress: () => { setActiveNav("progress"); loadStudentProgress(); },
     bookmarks: () => { setActiveNav("bookmarks"); loadStudentBookmarks(); },
+    assignments: () => { setActiveNav("assignments"); loadStudentAssignments(); },
     games: () => { setActiveNav("games"); loadStudentGames(); },
     downloads: () => { setActiveNav("downloads"); loadStudentDownloads(); },
     exams: () => { setActiveNav("exams"); loadStudentExams(); },
     files: () => { setActiveNav("files"); loadStudentFiles(); },
+    payments: () => { setActiveNav("payments"); loadStudentPayments(); },
     notifications: () => { setActiveNav("notifications"); loadStudentNotifications(); },
     settings: () => { setActiveNav("settings"); loadStudentSettings(); },
   };
 
+  function navigateTo(view) {
+    if (navHandlers[view]) {
+      location.hash = view;
+      navHandlers[view]();
+    }
+  }
+
   document.querySelectorAll("#student-nav .sidebar-nav-item").forEach(el => {
     el.addEventListener("click", () => {
       document.getElementById("student-sidebar")?.classList.remove("open");
-      navHandlers[el.dataset.view]?.();
+      navigateTo(el.dataset.view);
     });
+  });
+
+  window.addEventListener("hashchange", () => {
+    const view = location.hash.slice(1) || "dashboard";
+    if (navHandlers[view]) navHandlers[view]();
   });
 
   // Load dashboard overview
@@ -841,10 +910,6 @@ async function renderStudentDashboard() {
       const name = profile?.full_name || payload.full_name || payload.email || "Student";
       const formLevel = profile?.form_level || "";
 
-      // Recently viewed lessons from localStorage
-      let recent = [];
-      try { recent = JSON.parse(localStorage.getItem("casuya_recently_viewed") || "[]"); } catch(e) {}
-
       // Build subject list with icon colors
       const subjectList = Array.isArray(subjects) ? subjects : [];
       const iconColors = [
@@ -856,40 +921,59 @@ async function renderStudentDashboard() {
         { bg: "#e0f2fe", color: "#0284c7", emoji: "💻" },
       ];
 
-      // Try to get progress data for stats
+      // Fetch progress data + server-side stats in parallel
       let progressData = [];
       let totalCompleted = 0;
       let avgScore = 0;
+      let streak = 0;
+      let recent = [];
+      let lessonsViewed = 0;
       try {
         if (profile?.id) {
-          progressData = await request(`/progress/${profile.id}`).catch(() => []);
-          if (Array.isArray(progressData) && progressData.length > 0) {
+          const [progressResult, statsResult] = await Promise.all([
+            request(`/progress/${profile.id}`).catch(() => []),
+            request(`/progress/${profile.id}/stats`).catch(() => null),
+          ]);
+
+          progressData = Array.isArray(progressResult) ? progressResult : [];
+          if (progressData.length > 0) {
             totalCompleted = progressData.filter(p => p.completion_percentage >= 100).length;
             const scores = progressData.filter(p => p.score_percentage != null && p.score_percentage > 0);
             if (scores.length > 0) {
               avgScore = Math.round(scores.reduce((sum, p) => sum + p.score_percentage, 0) / scores.length);
             }
           }
+
+          // Server-side stats override localStorage values
+          if (statsResult) {
+            streak = statsResult.streak || 0;
+            lessonsViewed = statsResult.lessonsViewed || 0;
+            recent = Array.isArray(statsResult.recent) ? statsResult.recent : [];
+            if (statsResult.avgScore != null) avgScore = statsResult.avgScore;
+          }
         }
       } catch(e) {}
 
-      // Calculate streak from recently viewed (consecutive days)
-      let streak = 0;
-      if (recent.length > 0) {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        let checkDate = new Date(today);
-        for (let i = 0; i < 30; i++) {
-          const dayStr = checkDate.toISOString().slice(0, 10);
-          const hasActivity = recent.some(r => {
-            const rDate = new Date(r.viewedAt);
-            return rDate.toISOString().slice(0, 10) === dayStr;
-          });
-          if (hasActivity) {
-            streak++;
-            checkDate.setDate(checkDate.getDate() - 1);
-          } else {
-            break;
+      // Fallback: if server stats unavailable, use localStorage (legacy)
+      if (recent.length === 0) {
+        try { recent = JSON.parse(localStorage.getItem("casuya_recently_viewed") || "[]"); } catch(e) {}
+        lessonsViewed = recent.length;
+        if (streak === 0 && recent.length > 0) {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          let checkDate = new Date(today);
+          for (let i = 0; i < 30; i++) {
+            const dayStr = checkDate.toISOString().slice(0, 10);
+            const hasActivity = recent.some(r => {
+              const rDate = new Date(r.viewedAt);
+              return rDate.toISOString().slice(0, 10) === dayStr;
+            });
+            if (hasActivity) {
+              streak++;
+              checkDate.setDate(checkDate.getDate() - 1);
+            } else {
+              break;
+            }
           }
         }
       }
@@ -918,17 +1002,17 @@ async function renderStudentDashboard() {
             </div>
             <div class="stat-card">
               <div class="stat-icon" style="background:#f0fdf4;color:#16a34a">📈</div>
-              <div class="stat-value">${avgScore > 0 ? avgScore + "%" : "—"}</div>
+              <div class="stat-value">${avgScore != null ? avgScore + "%" : "0%"}</div>
               <div class="stat-label">Average Score</div>
             </div>
             <div class="stat-card">
               <div class="stat-icon" style="background:#fef3c7;color:#d97706">🔥</div>
-              <div class="stat-value">${streak > 0 ? streak : "—"}</div>
+              <div class="stat-value">${streak != null ? streak : 0}</div>
               <div class="stat-label">Day Streak</div>
             </div>
             <div class="stat-card">
               <div class="stat-icon" style="background:#fce7f3;color:#db2777">🔖</div>
-              <div class="stat-value">${recent.length}</div>
+              <div class="stat-value">${lessonsViewed}</div>
               <div class="stat-label">Lessons Viewed</div>
             </div>
           </div>
@@ -1049,7 +1133,7 @@ async function renderStudentDashboard() {
       const formFilter = localStorage.getItem("casuya_form_filter") || "";
       let filtered = Array.isArray(topics) ? topics.filter(t => t.subject_id === subjectId) : [];
       if (formFilter) {
-        filtered = filtered.filter(t => !t.form_level || t.form_level === formFilter);
+        filtered = filtered.filter(t => !t.form_level || t.form_level === formFilter || t.form_level === formFilter.replace(/^Form /, ""));
       }
       if (filtered.length === 0) {
         showStudentView('<div class="empty-state"><p>No topics found</p><button class="btn" id="back-btn">← Back</button></div>');
@@ -1211,6 +1295,95 @@ async function renderStudentDashboard() {
     } catch(e) { showStudentView('<div class="empty-state"><p>Error loading bookmarks</p></div>'); }
   }
 
+  // Assignments
+  async function loadStudentAssignments() {
+    showStudentView('<div class="loading-state"><div class="spinner"></div><p>Loading assignments...</p></div>');
+    try {
+      const assignments = await request("/assignments");
+      const assignmentList = Array.isArray(assignments) ? assignments : [];
+      showStudentView(`
+        <div class="content">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+            <h2 style="margin:0">📋 Assignments</h2>
+          </div>
+          ${assignmentList.length === 0 ? '<div class="empty-state"><p>No assignments yet. Check back later.</p></div>' :
+            assignmentList.map(a => `
+              <div class="card" style="padding:1rem;margin-bottom:0.5rem;cursor:pointer" data-open-assignment="${a.id}">
+                <div style="display:flex;justify-content:space-between;align-items:start">
+                  <div>
+                    <h4 style="margin:0">${escapeHtml(a.title)}</h4>
+                    <p style="color:var(--color-text-muted);font-size:0.85rem;margin-top:0.25rem">Due: ${a.due_date ? new Date(a.due_date).toLocaleDateString() : "No due date"} | ${a.status}</p>
+                    ${a.notes ? `<p style="color:var(--color-text-muted);font-size:0.8rem;margin-top:0.15rem">${escapeHtml(a.notes)}</p>` : ""}
+                  </div>
+                  <span class="btn btn-sm btn-primary">Open</span>
+                </div>
+              </div>
+            `).join("")}
+        </div>
+      `);
+      document.querySelectorAll("[data-open-assignment]").forEach(card => {
+        card.addEventListener("click", () => openStudentAssignment(card.dataset.openAssignment));
+      });
+    } catch(e) { showStudentView('<div class="empty-state"><p>Error loading assignments</p></div>'); }
+  }
+
+  async function openStudentAssignment(assignmentId) {
+    showStudentView('<div class="loading-state"><div class="spinner"></div><p>Loading assignment...</p></div>');
+    try {
+      const assignment = await request(`/assignments/${assignmentId}`);
+      const lessonId = assignment.lesson_id;
+      let studentId = null;
+      try {
+        const me = await request("/students/me");
+        studentId = me && (me.id || me.user_id);
+      } catch(e) {}
+      showStudentView(`
+        <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1rem;flex-wrap:wrap">
+          <button class="btn" id="back-btn">← Back</button>
+          <h2 style="flex:1">${escapeHtml(assignment.title)}</h2>
+          <button class="btn btn-primary" id="submit-assignment-btn">Submit Work</button>
+        </div>
+        ${assignment.notes ? `<p style="color:var(--color-text-muted);margin-bottom:1rem">${escapeHtml(assignment.notes)}</p>` : ""}
+        <div class="card" style="padding:1rem">
+          <h3 style="margin:0 0 0.5rem">✏️ Complete on Blackboard</h3>
+          <p style="font-size:0.85rem;color:var(--color-text-muted);margin:0 0 0.5rem">Show your working below, then click Submit Work when done.</p>
+          <div data-blackboard data-lesson-id="assignment-${assignmentId}" data-assignment-id="${assignmentId}" data-student-id="${escapeHtml(studentId || "")}" style="width:100%;height:480px;border:1px solid var(--color-border);border-radius:var(--radius);overflow:hidden"></div>
+        </div>
+        <div id="assignment-result" style="margin-top:0.75rem"></div>
+      `);
+      if (window.CasuyaBlackboardEmbed) { window.CasuyaBlackboardEmbed.autoMount(); }
+      document.getElementById("back-btn").addEventListener("click", loadStudentAssignments);
+      document.getElementById("submit-assignment-btn").addEventListener("click", async () => {
+        const bbEl = document.querySelector(`[data-assignment-id="${assignmentId}"]`);
+        const bb = bbEl && bbEl._casuyaBlackboard;
+        if (!bb) { showToast("Blackboard not loaded"); return; }
+        const btn = document.getElementById("submit-assignment-btn");
+        btn.disabled = true; btn.textContent = "Submitting...";
+        try {
+          const elements = bb.getElements ? bb.getElements() : [];
+          await request(`/assignments/${assignmentId}/submit`, {
+            method: "POST",
+            body: JSON.stringify({
+              student_id: studentId || "anonymous",
+              elements_json: JSON.stringify(elements),
+            }),
+          });
+          document.getElementById("assignment-result").innerHTML = `
+            <div class="card" style="padding:1.5rem;text-align:center">
+              <h3 style="color:var(--color-success);margin:0 0 0.5rem">Submitted!</h3>
+              <p style="color:var(--color-text-muted);font-size:0.85rem">Your teacher can now review your work.</p>
+              <button class="btn btn-primary" id="back-to-assignments" style="margin-top:1rem">Back to Assignments</button>
+            </div>
+          `;
+          document.getElementById("back-to-assignments").addEventListener("click", loadStudentAssignments);
+        } catch(err) {
+          btn.disabled = false; btn.textContent = "Submit Work";
+          document.getElementById("assignment-result").innerHTML = `<p style="color:var(--color-danger)">Failed to submit: ${escapeHtml(err.message)}</p>`;
+        }
+      });
+    } catch(e) { showStudentView('<div class="empty-state"><p>Error loading assignment</p></div>'); }
+  }
+
   // Games
   async function loadStudentGames() {
     showStudentView('<div class="loading-state"><div class="spinner"></div><p>Loading games...</p></div>');
@@ -1283,6 +1456,11 @@ async function renderStudentDashboard() {
         <div style="width:100%">
           <iframe class="lesson-iframe" style="width:100%;border:none;display:block"></iframe>
         </div>
+        <div class="card" style="margin-top:0.75rem;padding:1rem">
+          <h3 style="margin:0 0 0.5rem">✏️ Scratch Pad</h3>
+          <p style="font-size:0.85rem;color:var(--color-text-muted);margin:0 0 0.5rem">Work out problems here while you play.</p>
+          <div data-blackboard data-lesson-id="game-${gameId}" style="width:100%;height:300px;border:1px solid var(--color-border);border-radius:var(--radius);overflow:hidden"></div>
+        </div>
       `);
 
       const iframe = document.querySelector("#student-content .lesson-iframe");
@@ -1308,6 +1486,7 @@ async function renderStudentDashboard() {
       }
 
       document.getElementById("back-btn").addEventListener("click", goBack);
+      if (window.CasuyaBlackboardEmbed) { window.CasuyaBlackboardEmbed.autoMount(); }
     } catch(e) { showStudentView('<div class="empty-state"><p>Error loading game</p><button class="btn" id="back-btn">← Back</button></div>'); document.getElementById("back-btn")?.addEventListener("click", goBack); }
   }
 
@@ -1320,7 +1499,6 @@ async function renderStudentDashboard() {
         <h2>Edit Profile</h2>
         <form id="profile-form" class="card" style="margin-top:1rem;display:flex;flex-direction:column;gap:0.75rem">
           <label>Full Name<input class="input" name="full_name" value="${escapeHtml(profile.full_name || "")}"></label>
-          <label>Phone<input class="input" name="phone" value="${escapeHtml(profile.phone || "")}"></label>
           <label>Form Level
             <select class="input" name="form_level">
               ${["Form I","Form II","Form III","Form IV","Form V","Form VI"].map(f => `<option ${profile.form_level === f ? "selected" : ""}>${f}</option>`).join("")}
@@ -1333,9 +1511,8 @@ async function renderStudentDashboard() {
         e.preventDefault();
         const fd = new FormData(e.target);
         try {
-          await request("/students/me", { method: "PATCH", body: JSON.stringify({ full_name: fd.get("full_name"), phone: fd.get("phone"), form_level: fd.get("form_level") }) });
+          await request("/students/me", { method: "PATCH", body: JSON.stringify({ full_name: fd.get("full_name"), form_level: fd.get("form_level") }) });
           showToast("Profile updated");
-          loadStudentOverview();
         } catch(err) { showToast("Error: " + err.message); }
       });
     } catch(e) { showStudentView('<div class="empty-state"><p>Error loading profile</p></div>'); }
@@ -1368,13 +1545,19 @@ async function renderStudentDashboard() {
       const isBookmarked = bookmarkStatus?.bookmarked || false;
       const lessonContent = contentResp || "<p>No content</p>";
 
-      // Track recently viewed
+      // Track recently viewed (localStorage + server-side)
       const recent = JSON.parse(localStorage.getItem("casuya_recently_viewed") || "[]");
       const exists = recent.findIndex(r => r.id === lessonId);
       if (exists >= 0) recent.splice(exists, 1);
       recent.unshift({ id: lessonId, title: lesson.title, viewedAt: Date.now() });
       if (recent.length > 20) recent.length = 20;
       localStorage.setItem("casuya_recently_viewed", JSON.stringify(recent));
+      // Fire-and-forget: record activity server-side for streak/stats
+      request("/progress/activity", {
+        method: "POST",
+        body: JSON.stringify({ student_id: payload.id || payload.sub, lesson_id: lessonId, lesson_title: lesson.title }),
+        headers: { "Content-Type": "application/json" },
+      }).catch(() => {});
 
       const renderStudentQuiz = () => {
         if (!quizData || !quizData.questions || quizData.questions.length === 0) return "";
@@ -1390,6 +1573,10 @@ async function renderStudentDashboard() {
                       <input type="radio" name="q_${escapeHtml(q.id)}" value="${escapeHtml(o.id)}" required> ${escapeHtml(o.text)}
                     </label>
                   `).join("")}
+                  <details style="margin-top:0.5rem">
+                    <summary style="cursor:pointer;font-size:0.85rem;color:var(--color-text-muted)">Show your work</summary>
+                    <div data-blackboard data-lesson-id="${escapeHtml(lessonId)}-${escapeHtml(q.id)}" data-quiz-question="${escapeHtml(q.id)}" style="width:100%;height:250px;border:1px solid var(--color-border);border-radius:var(--radius);overflow:hidden;margin-top:0.5rem"></div>
+                  </details>
                 </div>
               `).join("")}
               <button type="submit" class="btn btn-primary" id="quiz-submit-btn">Submit Quiz</button>
@@ -1418,7 +1605,8 @@ async function renderStudentDashboard() {
         <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1rem;flex-wrap:wrap">
           <button class="btn" id="back-btn">← Back</button>
           <h2 style="flex:1">${escapeHtml(lesson.title)}</h2>
-          <button id="bookmark-btn" style="background:none;border:none;cursor:pointer;font-size:1.5rem" title="Bookmark">${isBookmarked ? "★" : "☆"}</button>
+          <button id="bookmark-btn" class="btn-icon" style="font-size:1.5rem" title="Bookmark">${isBookmarked ? "★" : "☆"}</button>
+          <button id="complete-btn" class="btn btn-primary" style="font-size:0.85rem">Mark Complete</button>
         </div>
         <div style="width:100%">
           <iframe class="lesson-iframe" style="width:100%;border:none;display:block"></iframe>
@@ -1433,8 +1621,16 @@ async function renderStudentDashboard() {
           </details>
           ${renderStudentQuiz()}
           ${renderStudentGames()}
+          <div class="card" style="margin-top:0.75rem;padding:1rem">
+            <h3 style="margin:0 0 0.5rem">✏️ Practice Blackboard</h3>
+            <p style="font-size:0.85rem;color:var(--color-text-muted);margin:0 0 0.5rem">Work out the steps below. Your progress is saved automatically.</p>
+            <div data-blackboard data-lesson-id="${escapeHtml(lessonId)}" style="width:100%;height:420px;border:1px solid var(--color-border);border-radius:var(--radius);overflow:hidden"></div>
+          </div>
         </div>
       `);
+
+      // Mount blackboard for student lesson
+      if (window.CasuyaBlackboardEmbed) { window.CasuyaBlackboardEmbed.autoMount(); }
 
       // Render lesson content in iframe
       const iframe = document.querySelector("#student-content .lesson-iframe");
@@ -1471,16 +1667,24 @@ async function renderStudentDashboard() {
             const pct = Math.round((e.data.score / e.data.total) * 100);
             request("/progress/sync", {
               method: "POST",
-              body: JSON.stringify({ student_id: studentId, lesson_id: lessonId, session_id: sessionId, completion_percentage: 100, score_percentage: pct }),
+              body: JSON.stringify({ student_id: studentId, lesson_id: lessonId, session_id: sessionId, elapsed_ms: 0, completion_percentage: 100, score_percentage: pct }),
             }).catch(() => {});
           } else if (e.data?.type === "casuya-progress" && e.data.percent != null) {
             request("/progress/sync", {
               method: "POST",
-              body: JSON.stringify({ student_id: studentId, lesson_id: lessonId, session_id: sessionId, completion_percentage: e.data.percent }),
+              body: JSON.stringify({ student_id: studentId, lesson_id: lessonId, session_id: sessionId, elapsed_ms: 0, completion_percentage: e.data.percent }),
             }).catch(() => {});
           }
         };
         window.addEventListener("message", onMessage);
+
+        // Sync initial progress (10%) when lesson opens
+        if (studentId) {
+          request("/progress/sync", {
+            method: "POST",
+            body: JSON.stringify({ student_id: studentId, lesson_id: lessonId, session_id: sessionId, elapsed_ms: 0, completion_percentage: 10, score_percentage: null }),
+          }).catch(() => {});
+        }
 
         // Cleanup function for navigation away
         const cleanupLesson = () => {
@@ -1489,6 +1693,24 @@ async function renderStudentDashboard() {
           clearTimeout(poll);
         };
         document.getElementById("back-btn").addEventListener("click", () => { cleanupLesson(); goBack(); });
+
+        // Mark Complete button
+        const completeBtn = document.getElementById("complete-btn");
+        if (completeBtn && studentId) {
+          completeBtn.addEventListener("click", () => {
+            request("/progress/sync", {
+              method: "POST",
+              body: JSON.stringify({ student_id: studentId, lesson_id: lessonId, session_id: sessionId, elapsed_ms: 0, completion_percentage: 100, score_percentage: null }),
+            }).then(() => {
+              completeBtn.textContent = "Completed!";
+              completeBtn.disabled = true;
+              completeBtn.style.opacity = "0.6";
+              showToast("Progress saved");
+            }).catch(() => showToast("Failed to save progress"));
+          });
+        } else if (completeBtn) {
+          completeBtn.style.display = "none";
+        }
       } else {
         document.getElementById("back-btn").addEventListener("click", goBack);
       }
@@ -1567,7 +1789,16 @@ async function renderStudentDashboard() {
             });
             if (resp.ok) {
               const html = await resp.text();
-              area.innerHTML = `<iframe style="width:100%;border:none;min-height:300px" srcdoc="${escapeHtml(html)}"></iframe>`;
+              area.innerHTML = `
+                <iframe style="width:100%;border:none;min-height:300px" srcdoc="${escapeHtml(html)}"></iframe>
+                <div style="margin-top:0.75rem">
+                  <details>
+                    <summary style="cursor:pointer;font-size:0.85rem;color:var(--color-text-muted)">✏️ Scratch Pad</summary>
+                    <div data-blackboard data-lesson-id="game-${gid}" style="width:100%;height:300px;border:1px solid var(--color-border);border-radius:var(--radius);overflow:hidden;margin-top:0.5rem"></div>
+                  </details>
+                </div>
+              `;
+              if (window.CasuyaBlackboardEmbed) { window.CasuyaBlackboardEmbed.autoMount(); }
             }
           } catch(e) {}
         });
@@ -1757,6 +1988,10 @@ async function renderStudentDashboard() {
                     <input type="radio" name="q_${escapeHtml(q.id)}" value="${escapeHtml(o.id)}" required style="margin-right:0.5rem"> ${escapeHtml(o.text)}
                   </label>
                 `).join("")}
+                <details style="margin-top:0.5rem">
+                  <summary style="cursor:pointer;font-size:0.85rem;color:var(--color-text-muted)">Show your work</summary>
+                  <div data-blackboard data-lesson-id="exam-${quizId}-${escapeHtml(q.id)}" data-exam-question="${escapeHtml(q.id)}" style="width:100%;height:250px;border:1px solid var(--color-border);border-radius:var(--radius);overflow:hidden;margin-top:0.5rem"></div>
+                </details>
               </div>
             `).join("")}
           </form>
@@ -1850,6 +2085,7 @@ async function renderStudentDashboard() {
         }
         grid.innerHTML = filtered.map(f => {
           const name = f.filename || f.path || "unknown";
+          const displayName = f.display_name || name;
           const isImage = /\.(png|jpg|jpeg|gif|svg|webp)$/i.test(name);
           const isVideo = /\.(mp4|webm)$/i.test(name);
           const isAudio = /\.(mp3|wav|ogg)$/i.test(name);
@@ -1859,7 +2095,7 @@ async function renderStudentDashboard() {
               <div style="display:flex;align-items:center;gap:0.75rem">
                 <div style="font-size:1.5rem;flex-shrink:0">${icon}</div>
                 <div style="flex:1;min-width:0">
-                  <p style="margin:0;font-size:0.85rem;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(name)}</p>
+                  <p style="margin:0;font-size:0.85rem;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(displayName)}</p>
                   <p style="margin:0.15rem 0 0;font-size:0.7rem;color:var(--color-text-muted)">${f.size ? (f.size / 1024).toFixed(1) + " KB" : ""}</p>
                 </div>
               </div>
@@ -1870,13 +2106,13 @@ async function renderStudentDashboard() {
 
       showStudentView(`
         <div class="content">
-          <h2>Files & Resources</h2>
+          <h2>📂 Files & Resources</h2>
           <p style="color:var(--color-text-muted);font-size:0.85rem;margin-top:0.25rem">Browse and download files uploaded by your teachers.</p>
           <div style="margin-top:1rem;display:flex;gap:0.5rem;flex-wrap:wrap">
-            <button class="btn btn-sm student-files-filter" data-filter="all" style="background:var(--color-bg);border:1px solid var(--color-border);font-weight:600">All</button>
-            <button class="btn btn-sm student-files-filter" data-filter="images" style="background:var(--color-bg);border:1px solid var(--color-border)">🖼️ Images</button>
-            <button class="btn btn-sm student-files-filter" data-filter="documents" style="background:var(--color-bg);border:1px solid var(--color-border)">📄 Documents</button>
-            <button class="btn btn-sm student-files-filter" data-filter="media" style="background:var(--color-bg);border:1px solid var(--color-border)">🎬 Media</button>
+            <button class="btn-filter student-files-filter active" data-filter="all">All</button>
+            <button class="btn-filter student-files-filter" data-filter="images">🖼️ Images</button>
+            <button class="btn-filter student-files-filter" data-filter="documents">📄 Documents</button>
+            <button class="btn-filter student-files-filter" data-filter="media">🎬 Media</button>
           </div>
           <div id="student-files-grid" style="margin-top:0.75rem;display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:0.5rem"></div>
         </div>
@@ -1884,12 +2120,153 @@ async function renderStudentDashboard() {
       document.querySelectorAll(".student-files-filter").forEach(btn => {
         btn.addEventListener("click", () => {
           activeFilter = btn.dataset.filter;
-          document.querySelectorAll(".student-files-filter").forEach(b => b.style.fontWeight = b.dataset.filter === activeFilter ? "600" : "400");
+          document.querySelectorAll(".student-files-filter").forEach(b => b.classList.toggle("active", b.dataset.filter === activeFilter));
           renderStudentFiles();
         });
       });
       renderStudentFiles();
     } catch(e) { showStudentView('<div class="empty-state"><p>Error loading files</p></div>'); }
+  }
+
+  async function loadStudentPayments() {
+    showStudentView('<div class="loading-state"><div class="spinner"></div><p>Loading payments...</p></div>');
+    try {
+      const [history, subs, invoices] = await Promise.all([
+        request("/payments/my-history").catch(() => ({ transactions: [], total_paid: 0, pending_amount: 0, total_transactions: 0 })),
+        request("/payments/subscriptions").catch(() => []),
+        request("/payments/invoices").catch(() => []),
+      ]);
+      const txList = Array.isArray(history.transactions) ? history.transactions : [];
+      const subList = Array.isArray(subs) ? subs : [];
+      const invList = Array.isArray(invoices) ? invoices : [];
+      const totalPaid = history.total_paid || 0;
+      const pendingAmount = history.pending_amount || 0;
+      const totalTx = history.total_transactions || 0;
+
+      function renderTab(tabId) {
+        if (tabId === "payments") {
+          return `
+            <div class="card" style="padding:0;max-width:560px;margin-top:1rem;overflow:hidden">
+              <div class="checkout-header">
+                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+                <h3>Make a Payment</h3>
+              </div>
+              <form id="student-payment-form" class="checkout-body">
+                <div>
+                  <label class="field-label">Mobile Number</label>
+                  <div class="input-icon-wrap">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+                    <input class="input" name="mobile_number" placeholder="0712345678" required>
+                  </div>
+                </div>
+                <div>
+                  <label class="field-label">Amount (TZS)</label>
+                  <div class="input-icon-wrap">
+                    <span class="input-currency-prefix">TZS</span>
+                    <input class="input" name="amount_tzs" type="number" placeholder="5,000" required min="100">
+                  </div>
+                </div>
+                <div>
+                  <label class="field-label">Provider</label>
+                  <div class="provider-grid">
+                    <label class="provider-card"><input type="radio" name="provider" value="m-pesa" required><span class="provider-dot" style="background:#16a34a"></span><span>M-Pesa</span></label>
+                    <label class="provider-card"><input type="radio" name="provider" value="tigo-pesa"><span class="provider-dot" style="background:#2563eb"></span><span>Tigo Pesa</span></label>
+                    <label class="provider-card"><input type="radio" name="provider" value="halopesa"><span class="provider-dot" style="background:#d97706"></span><span>HaloPesa</span></label>
+                    <label class="provider-card"><input type="radio" name="provider" value="azampay"><span class="provider-dot" style="background:#8b5cf6"></span><span>AzamPay</span></label>
+                  </div>
+                </div>
+                <button class="btn btn-success btn-block" type="submit" id="student-payment-submit-btn">Pay Now</button>
+              </form>
+              <div id="student-payment-result" style="padding:0 1.5rem 1.5rem"></div>
+            </div>
+            <div class="card" style="padding:1.5rem;margin-top:1rem">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem">
+                <h3>Payment History</h3>
+                <button class="btn btn-sm" id="student-refresh-tx-btn">Refresh</button>
+              </div>
+              ${txList.length === 0 ? '<div class="empty-state" style="padding:2rem"><p>No payments yet</p></div>' : `<div style="overflow-x:auto"><table class="tx-table" style="width:100%;border-collapse:collapse;font-size:0.85rem"><thead><tr style="border-bottom:2px solid var(--color-border)"><th style="padding:0.6rem;text-align:left;font-weight:600">Date</th><th style="padding:0.6rem;text-align:left;font-weight:600">Provider</th><th style="padding:0.6rem;text-align:right;font-weight:600">Amount</th><th style="padding:0.6rem;text-align:center;font-weight:600">Status</th></tr></thead><tbody>${txList.map(t => `<tr style="border-bottom:1px solid var(--color-border)"><td style="padding:0.6rem;color:var(--color-text-muted)">${t.created_at ? new Date(t.created_at).toLocaleDateString() : "\u2014"}</td><td style="padding:0.6rem">${escapeHtml(t.provider || "\u2014")}</td><td style="padding:0.6rem;text-align:right;font-weight:600">${(t.amount_tzs || 0).toLocaleString()} TZS</td><td style="padding:0.6rem;text-align:center"><span class="badge badge-${t.status || 'pending'}">${escapeHtml(t.status || "unknown")}</span></td></tr>`).join("")}</tbody></table></div>`}
+            </div>`;
+        }
+        if (tabId === "subscriptions") {
+          return subList.length === 0
+            ? '<div class="empty-state" style="padding:3rem"><p>No active subscriptions</p></div>'
+            : `<div style="display:grid;gap:0.75rem;margin-top:1rem">${subList.map(s => `
+              <div class="card" style="padding:1rem;display:flex;justify-content:space-between;align-items:center">
+                <div><div style="font-weight:600">${escapeHtml(s.plan_id)}</div><div style="font-size:0.8rem;color:var(--color-text-muted)">Since ${new Date(s.created_at).toLocaleDateString()}</div></div>
+                <div style="text-align:right"><div style="font-weight:600">${(s.amount || 0).toLocaleString()} TZS</div><span class="badge badge-${s.status === 'active' ? 'completed' : 'pending'}">${escapeHtml(s.status)}</span></div>
+              </div>`).join("")}</div>`;
+        }
+        if (tabId === "invoices") {
+          return invList.length === 0
+            ? '<div class="empty-state" style="padding:3rem"><p>No invoices yet</p></div>'
+            : `<div style="overflow-x:auto;margin-top:1rem"><table class="tx-table" style="width:100%;border-collapse:collapse;font-size:0.85rem"><thead><tr style="border-bottom:2px solid var(--color-border)"><th style="padding:0.6rem;text-align:left;font-weight:600">Invoice #</th><th style="padding:0.6rem;text-align:right;font-weight:600">Amount</th><th style="padding:0.6rem;text-align:left;font-weight:600">Due Date</th><th style="padding:0.6rem;text-align:center;font-weight:600">Status</th></tr></thead><tbody>${invList.map(inv => `<tr style="border-bottom:1px solid var(--color-border)"><td style="padding:0.6rem;font-weight:500">${escapeHtml(inv.invoice_number || "\u2014")}</td><td style="padding:0.6rem;text-align:right;font-weight:600">${(inv.total_amount || 0).toLocaleString()} TZS</td><td style="padding:0.6rem;color:var(--color-text-muted)">${inv.due_date ? new Date(inv.due_date).toLocaleDateString() : "\u2014"}</td><td style="padding:0.6rem;text-align:center"><span class="badge badge-${inv.status === 'paid' ? 'completed' : inv.status === 'pending' ? 'pending' : 'failed'}">${escapeHtml(inv.status)}</span></td></tr>`).join("")}</tbody></table></div>`;
+        }
+        return "";
+      }
+
+      showStudentView(`
+        <div class="content">
+          <h2>Payments</h2>
+          <p style="color:var(--color-text-muted);font-size:0.85rem;margin-top:0.25rem">Manage your payments, subscriptions and invoices</p>
+          <div class="stat-grid" style="margin-top:1rem">
+            <div class="stat-card"><div class="stat-icon" style="background:#f0fdf4;color:#16a34a">💰</div><div class="stat-value">${totalPaid.toLocaleString()}</div><div class="stat-label">Total Paid (TZS)</div></div>
+            <div class="stat-card"><div class="stat-icon" style="background:#fef3c7;color:#d97706">⏳</div><div class="stat-value">${pendingAmount.toLocaleString()}</div><div class="stat-label">Pending (TZS)</div></div>
+            <div class="stat-card"><div class="stat-icon" style="background:#eff6ff;color:#2563eb">📊</div><div class="stat-value">${totalTx}</div><div class="stat-label">Transactions</div></div>
+            <div class="stat-card"><div class="stat-icon" style="background:#ede9fe;color:#7c3aed">🔄</div><div class="stat-value">${subList.filter(s => s.status === "active").length}</div><div class="stat-label">Active Subs</div></div>
+          </div>
+          <div class="tab-bar" style="margin-top:1rem">
+            <button class="tab-btn active" data-stab="payments">💳 Payments</button>
+            <button class="tab-btn" data-stab="subscriptions">🔄 Subscriptions</button>
+            <button class="tab-btn" data-stab="invoices">📄 Invoices</button>
+          </div>
+          <div id="student-payment-tab-content">${renderTab("payments")}</div>
+        </div>
+      `);
+
+      // Tab switching
+      document.querySelectorAll("[data-stab]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          document.querySelectorAll("[data-stab]").forEach(b => b.classList.remove("active"));
+          btn.classList.add("active");
+          document.getElementById("student-payment-tab-content").innerHTML = renderTab(btn.dataset.stab);
+          bindStudentPaymentForm();
+        });
+      });
+
+      function bindStudentPaymentForm() {
+        let studentPaymentInProgress = false;
+        document.getElementById("student-payment-form")?.addEventListener("submit", async (ev) => {
+          ev.preventDefault();
+          const btn = document.getElementById("student-payment-submit-btn");
+          if (studentPaymentInProgress) return;
+          studentPaymentInProgress = true;
+          btn.innerHTML = '<span class="btn-spinner"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10" stroke-dasharray="31.4 31.4" stroke-linecap="round"/></svg> Processing...</span>';
+          btn.disabled = true;
+          const fd = new FormData(ev.target);
+          try {
+            const result = await request("/payments/checkout", {
+              method: "POST",
+              body: JSON.stringify({
+                mobile_number: fd.get("mobile_number"),
+                amount_tzs: parseInt(fd.get("amount_tzs"), 10),
+                provider: fd.get("provider"),
+                idempotency_key: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(),
+              }),
+            });
+            if (result === null) return;
+            document.getElementById("student-payment-result").innerHTML = `<div class="payment-result success"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><div><strong>Payment initiated!</strong><br><span style="opacity:0.8;font-size:0.8rem">${escapeHtml(result.id || "")}</span></div></div>`;
+            loadStudentPayments();
+          } catch (err) {
+            document.getElementById("student-payment-result").innerHTML = `<div class="payment-result error"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><div>${escapeHtml(err.message)}</div></div>`;
+          }
+          studentPaymentInProgress = false;
+          btn.innerHTML = 'Pay Now';
+          btn.disabled = false;
+        });
+      }
+      bindStudentPaymentForm();
+      document.getElementById("student-refresh-tx-btn")?.addEventListener("click", loadStudentPayments);
+    } catch(e) { showStudentView('<div class="empty-state"><p>Error loading payments: ' + escapeHtml(e.message) + '</p></div>'); }
   }
 
   async function loadStudentNotifications() {
@@ -1918,7 +2295,7 @@ async function renderStudentDashboard() {
                 <p style="margin:0;font-size:0.875rem;${n.is_read ? "" : "font-weight:600"}">${escapeHtml(n.message)}</p>
                 <p style="margin:0.25rem 0 0;font-size:0.75rem;color:var(--color-text-muted)">${n.created_at ? new Date(n.created_at).toLocaleString() : ""}</p>
               </div>
-              ${!n.is_read ? `<button class="btn btn-sm btn-primary student-notif-read" data-id="${n.id}" style="font-size:0.7rem;padding:0.2rem 0.5rem">Mark Read</button>` : ""}
+              ${!n.is_read ? `<button class="btn btn-primary btn-xs student-notif-read" data-id="${n.id}">✓ Read</button>` : ""}
             </div>
           </div>
         `).join("");
@@ -1939,13 +2316,13 @@ async function renderStudentDashboard() {
       showStudentView(`
         <div class="content">
           <div style="display:flex;justify-content:space-between;align-items:center">
-            <h2>Notifications</h2>
-            <button class="btn btn-sm" id="student-mark-all-read">Mark All Read</button>
+            <h2>🔔 Notifications</h2>
+            <button class="btn btn-ghost btn-sm" id="student-mark-all-read">✓ Mark All Read</button>
           </div>
-          <div style="margin-top:1rem;display:flex;gap:0.5rem">
-            <button class="btn btn-sm student-notif-filter" data-filter="all" style="background:var(--color-bg);border:1px solid var(--color-border);font-weight:600">All (${allNotifs.length})</button>
-            <button class="btn btn-sm student-notif-filter" data-filter="unread" style="background:var(--color-bg);border:1px solid var(--color-border)">Unread (${unread.length})</button>
-            <button class="btn btn-sm student-notif-filter" data-filter="read" style="background:var(--color-bg);border:1px solid var(--color-border)">Read (${read.length})</button>
+          <div style="margin-top:1rem;display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center">
+            <button class="btn-filter student-notif-filter active" data-filter="all">All <span class="filter-count">${allNotifs.length}</span></button>
+            <button class="btn-filter student-notif-filter" data-filter="unread">🔴 Unread <span class="filter-count">${unread.length}</span></button>
+            <button class="btn-filter student-notif-filter" data-filter="read">✅ Read <span class="filter-count">${read.length}</span></button>
           </div>
           <div id="student-notif-list" style="margin-top:0.75rem"></div>
         </div>
@@ -1953,7 +2330,7 @@ async function renderStudentDashboard() {
       document.querySelectorAll(".student-notif-filter").forEach(btn => {
         btn.addEventListener("click", () => {
           showFilter = btn.dataset.filter;
-          document.querySelectorAll(".student-notif-filter").forEach(b => b.style.fontWeight = b.dataset.filter === showFilter ? "600" : "400");
+          document.querySelectorAll(".student-notif-filter").forEach(b => b.classList.toggle("active", b.dataset.filter === showFilter));
           render();
         });
       });
@@ -2005,7 +2382,7 @@ async function renderStudentDashboard() {
                     ${["Form I","Form II","Form III","Form IV","Form V","Form VI"].map(f => `<option value="${f}" ${profile.form_level === f ? "selected" : ""}>${f}</option>`).join("")}
                   </select>
                 </div>
-                <button class="btn btn-primary" type="submit" style="align-self:flex-start">Save Changes</button>
+                <button class="btn btn-primary btn-pattern" type="submit" style="align-self:flex-start">💾 Save Changes</button>
               </form>
               <p id="student-profile-msg" style="font-size:0.85rem;margin-top:0.5rem;display:none"></p>
             </div>
@@ -2016,9 +2393,9 @@ async function renderStudentDashboard() {
             const msg = document.getElementById("student-profile-msg");
             try {
               await request("/students/me", { method: "PATCH", body: JSON.stringify({ full_name: fd.get("full_name"), form_level: fd.get("form_level") }) });
-              msg.textContent = "Profile updated!"; msg.style.color = "var(--color-success)"; msg.style.display = "block";
+              msg.textContent = "✅ Profile updated!"; msg.style.color = "var(--color-success)"; msg.style.display = "block";
               setTimeout(() => msg.style.display = "none", 3000);
-            } catch(err) { msg.textContent = err.message; msg.style.color = "var(--color-danger)"; msg.style.display = "block"; }
+            } catch(err) { msg.textContent = "❌ " + err.message; msg.style.color = "var(--color-danger)"; msg.style.display = "block"; }
           });
         } else if (tab === "password") {
           panel.innerHTML = `
@@ -2037,7 +2414,7 @@ async function renderStudentDashboard() {
                   <label style="font-size:0.85rem;font-weight:500;display:block;margin-bottom:0.25rem">Confirm New Password</label>
                   <input class="input" name="confirm_password" type="password" required>
                 </div>
-                <button class="btn btn-primary" type="submit" style="align-self:flex-start">Update Password</button>
+                <button class="btn btn-primary btn-pattern" type="submit" style="align-self:flex-start">🔐 Update Password</button>
               </form>
               <p id="student-pw-msg" style="font-size:0.85rem;margin-top:0.5rem;display:none"></p>
             </div>
@@ -2047,24 +2424,24 @@ async function renderStudentDashboard() {
             const fd = new FormData(e.target);
             const msg = document.getElementById("student-pw-msg");
             if (fd.get("new_password") !== fd.get("confirm_password")) {
-              msg.textContent = "Passwords do not match"; msg.style.color = "var(--color-danger)"; msg.style.display = "block";
+              msg.textContent = "❌ Passwords do not match"; msg.style.color = "var(--color-danger)"; msg.style.display = "block";
               return;
             }
             try {
               await request("/auth/change-password", { method: "POST", body: JSON.stringify({ current_password: fd.get("current_password"), new_password: fd.get("new_password") }) });
-              msg.textContent = "Password updated!"; msg.style.color = "var(--color-success)"; msg.style.display = "block";
+              msg.textContent = "✅ Password updated!"; msg.style.color = "var(--color-success)"; msg.style.display = "block";
               e.target.reset();
-            } catch(err) { msg.textContent = err.message; msg.style.color = "var(--color-danger)"; msg.style.display = "block"; }
+            } catch(err) { msg.textContent = "❌ " + err.message; msg.style.color = "var(--color-danger)"; msg.style.display = "block"; }
           });
         }
       }
 
       showStudentView(`
         <div class="content">
-          <h2>Settings</h2>
-          <div style="display:flex;gap:0;border-bottom:2px solid var(--color-border);margin-top:1rem;margin-bottom:1rem">
-            <button class="btn student-settings-tab" data-tab="profile" style="border-radius:0;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;${activeTab === "profile" ? "border-bottom-color:var(--color-primary);color:var(--color-primary);font-weight:600" : "color:var(--color-text-muted)"}">Profile</button>
-            <button class="btn student-settings-tab" data-tab="password" style="border-radius:0;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;${activeTab === "password" ? "border-bottom-color:var(--color-primary);color:var(--color-primary);font-weight:600" : "color:var(--color-text-muted)"}">Password</button>
+          <h2>⚙️ Settings</h2>
+          <div class="tab-bar">
+            <button class="tab-btn student-settings-tab" data-tab="profile" ${activeTab === "profile" ? 'class="tab-btn student-settings-tab active"' : ''}>👤 Profile</button>
+            <button class="tab-btn student-settings-tab" data-tab="password" ${activeTab === "password" ? 'class="tab-btn student-settings-tab active"' : ''}>🔒 Password</button>
           </div>
           <div id="student-settings-panel"></div>
         </div>
@@ -2076,8 +2453,13 @@ async function renderStudentDashboard() {
     } catch(e) { showStudentView('<div class="empty-state"><p>Error loading settings</p></div>'); }
   }
 
-  // Initial load
-  loadStudentOverview();
+  // Load initial view from URL hash, fallback to dashboard
+  const initialView = location.hash.slice(1) || "dashboard";
+  if (navHandlers[initialView]) {
+    navHandlers[initialView]();
+  } else {
+    loadStudentOverview();
+  }
 }
 
 // --- Admin Dashboard ---
@@ -2209,12 +2591,24 @@ async function renderAdminDashboard() {
     settings: () => { setActiveNav("settings"); loadAdminSettings(); },
   };
 
+  function navigateTo(view) {
+    if (navHandlers[view]) {
+      location.hash = view;
+      navHandlers[view]();
+    }
+  }
+
   document.querySelectorAll("#admin-nav .sidebar-nav-item").forEach(el => {
     el.addEventListener("click", (e) => {
       e.preventDefault();
       document.getElementById("admin-sidebar")?.classList.remove("open");
-      navHandlers[el.dataset.view]?.();
+      navigateTo(el.dataset.view);
     });
+  });
+
+  window.addEventListener("hashchange", () => {
+    const view = location.hash.slice(1) || "dashboard";
+    if (navHandlers[view]) navHandlers[view]();
   });
 
   async function loadAdminOverview() {
@@ -3440,7 +3834,7 @@ async function renderAdminDashboard() {
       const progressList = Array.isArray(progressData) ? progressData : [];
       const totalCompleted = progressList.filter(p => p.completion_percentage >= 100).length;
       const scores = progressList.filter(p => p.score_percentage != null && p.score_percentage > 0);
-      const avgScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+      const avgScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b.score_percentage, 0) / scores.length) : 0;
 
       showAdminView(`
         <div class="content" style="max-width:960px">
@@ -3489,7 +3883,7 @@ async function renderAdminDashboard() {
               </div>
               <div class="stat-card">
                 <div class="stat-icon" style="background:#fef3c7;color:#d97706">📈</div>
-                <div class="stat-value">${avgScore > 0 ? avgScore + "%" : "—"}</div>
+                <div class="stat-value">${avgScore != null ? avgScore + "%" : "0%"}</div>
                 <div class="stat-label">Avg Score</div>
               </div>
             </div>
@@ -3574,30 +3968,54 @@ async function renderAdminDashboard() {
             </div>
           </div>
 
-          <div class="card" style="padding:1.5rem;max-width:560px;margin-top:1rem">
-              <h3 style="margin-bottom:0.75rem">Initiate Checkout</h3>
-              <form id="payment-form" style="display:flex;flex-direction:column;gap:0.5rem">
+          <div class="card" style="padding:0;max-width:560px;margin-top:1rem;overflow:hidden">
+              <div class="checkout-header">
+                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+                <h3>Initiate Checkout</h3>
+              </div>
+              <form id="payment-form" class="checkout-body">
                 <div>
-                  <label style="font-size:0.85rem;font-weight:500;display:block;margin-bottom:0.25rem">Mobile Number</label>
-                  <input class="input" name="mobile_number" placeholder="e.g. 0712345678" required>
+                  <label class="field-label">Mobile Number</label>
+                  <div class="input-icon-wrap">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+                    <input class="input" name="mobile_number" placeholder="0712345678" required>
+                  </div>
                 </div>
                 <div>
-                  <label style="font-size:0.85rem;font-weight:500;display:block;margin-bottom:0.25rem">Amount (TZS)</label>
-                  <input class="input" name="amount_tzs" type="number" placeholder="e.g. 5000" required min="100">
+                  <label class="field-label">Amount (TZS)</label>
+                  <div class="input-icon-wrap">
+                    <span class="input-currency-prefix">TZS</span>
+                    <input class="input" name="amount_tzs" type="number" placeholder="5,000" required min="100">
+                  </div>
                 </div>
                 <div>
-                  <label style="font-size:0.85rem;font-weight:500;display:block;margin-bottom:0.25rem">Provider</label>
-                  <select class="input" name="provider" required>
-                    <option value="">Select provider...</option>
-                    <option value="azampay">AzamPay</option>
-                    <option value="m-pesa">M-Pesa</option>
-                    <option value="tigo-pesa">Tigo Pesa</option>
-                    <option value="halopesa">HaloPesa</option>
-                  </select>
+                  <label class="field-label">Provider</label>
+                  <div class="provider-grid">
+                    <label class="provider-card">
+                      <input type="radio" name="provider" value="m-pesa" required>
+                      <span class="provider-dot" style="background:#16a34a"></span>
+                      <span>M-Pesa</span>
+                    </label>
+                    <label class="provider-card">
+                      <input type="radio" name="provider" value="tigo-pesa">
+                      <span class="provider-dot" style="background:#2563eb"></span>
+                      <span>Tigo Pesa</span>
+                    </label>
+                    <label class="provider-card">
+                      <input type="radio" name="provider" value="halopesa">
+                      <span class="provider-dot" style="background:#d97706"></span>
+                      <span>HaloPesa</span>
+                    </label>
+                    <label class="provider-card">
+                      <input type="radio" name="provider" value="azampay">
+                      <span class="provider-dot" style="background:#8b5cf6"></span>
+                      <span>AzamPay</span>
+                    </label>
+                  </div>
                 </div>
-                <button class="btn btn-success" type="submit" id="payment-submit-btn" style="width:100%;margin-top:0.25rem">Initiate Payment</button>
+                <button class="btn btn-success btn-block" type="submit" id="payment-submit-btn">Initiate Payment</button>
               </form>
-              <div id="payment-result" style="margin-top:0.75rem"></div>
+              <div id="payment-result" style="padding:0 1.5rem 1.5rem"></div>
             </div>
 
           <div class="card" style="padding:1.5rem;margin-top:1rem">
@@ -3608,7 +4026,7 @@ async function renderAdminDashboard() {
             ${txList.length === 0
               ? '<div class="empty-state" style="padding:2rem"><p>No transactions yet</p></div>'
               : `<div style="overflow-x:auto">
-                  <table style="width:100%;border-collapse:collapse;font-size:0.85rem">
+                  <table class="tx-table" style="width:100%;border-collapse:collapse;font-size:0.85rem">
                     <thead>
                       <tr style="border-bottom:2px solid var(--color-border)">
                         <th style="padding:0.6rem;text-align:left;font-weight:600">Date</th>
@@ -3621,13 +4039,11 @@ async function renderAdminDashboard() {
                     <tbody>
                       ${txList.map(t => `
                         <tr style="border-bottom:1px solid var(--color-border)">
-                          <td style="padding:0.5rem;color:var(--color-text-muted)">${t.created_at ? new Date(t.created_at).toLocaleDateString() : "—"}</td>
-                          <td style="padding:0.5rem">${escapeHtml(t.mobile_number || "—")}</td>
-                          <td style="padding:0.5rem">${escapeHtml(t.provider || "—")}</td>
-                          <td style="padding:0.5rem;text-align:right;font-weight:500">${(t.amount_tzs || 0).toLocaleString()} TZS</td>
-                          <td style="padding:0.5rem;text-align:center">
-                            <span style="font-size:0.75rem;padding:0.15rem 0.5rem;border-radius:var(--radius);${t.status === "completed" ? "background:#dcfce7;color:#16a34a" : t.status === "pending" ? "background:#fef3c7;color:#d97706" : "background:#fee2e2;color:#dc2626"}">${escapeHtml(t.status || "unknown")}</span>
-                          </td>
+                          <td style="padding:0.6rem;color:var(--color-text-muted)">${t.created_at ? new Date(t.created_at).toLocaleDateString() : "\u2014"}</td>
+                          <td style="padding:0.6rem;font-weight:500">${escapeHtml(t.mobile_number || "\u2014")}</td>
+                          <td style="padding:0.6rem">${escapeHtml(t.provider || "\u2014")}</td>
+                          <td style="padding:0.6rem;text-align:right;font-weight:600">${(t.amount_tzs || 0).toLocaleString()} TZS</td>
+                          <td style="padding:0.6rem;text-align:center"><span class="badge badge-${t.status || 'pending'}">${escapeHtml(t.status || "unknown")}</span></td>
                         </tr>
                       `).join("")}
                     </tbody>
@@ -3644,7 +4060,8 @@ async function renderAdminDashboard() {
         const btn = document.getElementById("payment-submit-btn");
         if (paymentInProgress) return;
         paymentInProgress = true;
-        btn.textContent = "Processing..."; btn.disabled = true; btn.style.opacity = "0.7";
+        btn.innerHTML = '<span class="btn-spinner"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10" stroke-dasharray="31.4 31.4" stroke-linecap="round"/></svg> Processing...</span>';
+        btn.disabled = true;
         const fd = new FormData(ev.target);
         try {
           const data = await request("/payments/checkout", {
@@ -3657,13 +4074,14 @@ async function renderAdminDashboard() {
             }),
           });
           if (data === null) return;
-          document.getElementById("payment-result").innerHTML = `<div style="padding:0.75rem;background:#dcfce7;border-radius:var(--radius);font-size:0.85rem"><strong>Payment initiated!</strong><br>${escapeHtml(data.external_transaction_id || data.id || "")}</div>`;
+          document.getElementById("payment-result").innerHTML = `<div class="payment-result success"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><div><strong>Payment initiated!</strong><br><span style="opacity:0.8;font-size:0.8rem">${escapeHtml(data.external_transaction_id || data.id || "")}</span></div></div>`;
           loadAdminPayments();
         } catch (err) {
-          document.getElementById("payment-result").innerHTML = `<div style="padding:0.75rem;background:#fee2e2;border-radius:var(--radius);font-size:0.85rem;color:var(--color-danger)">${escapeHtml(err.message)}</div>`;
+          document.getElementById("payment-result").innerHTML = `<div class="payment-result error"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><div>${escapeHtml(err.message)}</div></div>`;
         }
         paymentInProgress = false;
-        btn.textContent = "Initiate Payment"; btn.disabled = false; btn.style.opacity = "1";
+        btn.innerHTML = 'Initiate Payment';
+        btn.disabled = false;
       });
 
       document.getElementById("refresh-tx-btn")?.addEventListener("click", loadAdminPayments);
@@ -3723,7 +4141,7 @@ async function renderAdminDashboard() {
                   <p style="margin:0.25rem 0 0;font-size:0.75rem;color:var(--color-text-muted)">${n.created_at ? new Date(n.created_at).toLocaleString() : ""} · ${n.is_read ? "Read" : "Unread"}</p>
                 </div>
                 <div style="display:flex;gap:0.25rem;flex-shrink:0">
-                  ${!n.is_read ? `<button class="btn btn-sm btn-primary notif-mark-read" data-id="${n.id}" style="font-size:0.7rem;padding:0.2rem 0.5rem">Mark Read</button>` : ""}
+                  ${!n.is_read ? `<button class="btn btn-primary btn-xs notif-mark-read" data-id="${n.id}">✓ Read</button>` : ""}
                 </div>
               </div>
             </div>
@@ -3734,9 +4152,9 @@ async function renderAdminDashboard() {
         if (totalPages <= 1) { pag.innerHTML = ""; return; }
         pag.innerHTML = `
           <div style="display:flex;align-items:center;gap:0.5rem;justify-content:center;margin-top:1rem">
-            <button class="btn btn-sm notif-page-btn" data-page="${currentPage - 1}" ${currentPage <= 1 ? "disabled style='opacity:0.4;pointer-events:none'" : ""}>&larr; Prev</button>
+            <button class="btn btn-ghost btn-sm notif-page-btn" data-page="${currentPage - 1}" ${currentPage <= 1 ? "disabled" : ""}>← Prev</button>
             <span style="font-size:0.85rem;color:var(--color-text-muted)">Page ${currentPage} of ${totalPages}</span>
-            <button class="btn btn-sm notif-page-btn" data-page="${currentPage + 1}" ${currentPage >= totalPages ? "disabled style='opacity:0.4;pointer-events:none'" : ""}>Next &rarr;</button>
+            <button class="btn btn-ghost btn-sm notif-page-btn" data-page="${currentPage + 1}" ${currentPage >= totalPages ? "disabled" : ""}>Next →</button>
           </div>
         `;
         document.querySelectorAll(".notif-page-btn").forEach(btn => {
@@ -3755,8 +4173,8 @@ async function renderAdminDashboard() {
       showAdminView(`
         <div class="content">
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem">
-            <h2>Notifications</h2>
-            <button class="btn btn-primary" id="notif-send-btn">+ Send Notification</button>
+            <h2>🔔 Notifications</h2>
+            <button class="btn btn-primary btn-pattern" id="notif-send-btn">✉️ Send Notification</button>
           </div>
           <div class="card" style="margin-top:1rem;display:none" id="notif-send-form-area">
             <h3 style="margin-bottom:0.75rem">Send Notification</h3>
@@ -3776,18 +4194,18 @@ async function renderAdminDashboard() {
               <label style="font-size:0.85rem;font-weight:500">Message</label>
               <textarea class="input" name="message" rows="3" placeholder="Write your notification message..." required></textarea>
               <div style="display:flex;gap:0.5rem;align-items:center">
-                <button class="btn btn-success" type="submit">Send Notification</button>
-                <button class="btn" type="button" id="notif-cancel-send">Cancel</button>
+                <button class="btn btn-success btn-pattern" type="submit">📤 Send Notification</button>
+                <button class="btn btn-ghost" type="button" id="notif-cancel-send">Cancel</button>
                 <p id="notif-send-status" style="font-size:0.85rem;display:none;margin:0"></p>
               </div>
             </form>
           </div>
           <div style="margin-top:1rem;display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center">
-            <button class="btn btn-sm notif-filter-btn" data-filter="all" style="background:var(--color-bg);border:1px solid var(--color-border)">All</button>
-            <button class="btn btn-sm notif-filter-btn" data-filter="unread" style="background:var(--color-bg);border:1px solid var(--color-border)">Unread</button>
-            <button class="btn btn-sm notif-filter-btn" data-filter="read" style="background:var(--color-bg);border:1px solid var(--color-border)">Read</button>
+            <button class="btn-filter notif-filter-btn active" data-filter="all">All</button>
+            <button class="btn-filter notif-filter-btn" data-filter="unread">🔴 Unread</button>
+            <button class="btn-filter notif-filter-btn" data-filter="read">✅ Read</button>
             <input type="search" class="input" id="notif-search" placeholder="Search notifications..." style="max-width:240px;padding:0.35rem 0.6rem;font-size:0.85rem">
-            <button class="btn btn-sm" id="notif-mark-all" style="margin-left:auto">Mark All Read</button>
+            <button class="btn btn-ghost btn-sm" id="notif-mark-all" style="margin-left:auto">✓ Mark All Read</button>
           </div>
           <div id="notif-stats" style="margin-top:0.75rem"></div>
           <div style="margin-top:0.5rem" id="notif-list"></div>
@@ -3833,7 +4251,7 @@ async function renderAdminDashboard() {
       document.querySelectorAll(".notif-filter-btn").forEach(btn => {
         btn.addEventListener("click", () => {
           currentFilter = btn.dataset.filter; currentPage = 1;
-          document.querySelectorAll(".notif-filter-btn").forEach(b => b.style.fontWeight = b.dataset.filter === currentFilter ? "600" : "400");
+          document.querySelectorAll(".notif-filter-btn").forEach(b => b.classList.toggle("active", b.dataset.filter === currentFilter));
           renderNotifHistory();
         });
       });
@@ -3856,7 +4274,7 @@ async function renderAdminDashboard() {
   async function loadAdminUploads() {
     showAdminView('<div class="loading-state"><div class="spinner"></div><p>Loading uploads...</p></div>');
     try {
-      const files = await request("/uploads/public").catch(() => []);
+      const files = await request("/uploads").catch(() => []);
       const fileList = Array.isArray(files) ? files : [];
       const imageFiles = fileList.filter(f => /\.(png|jpg|jpeg|gif|svg|webp)$/i.test(f.filename || f.path || ""));
       const docFiles = fileList.filter(f => /\.(pdf|doc|docx|txt)$/i.test(f.filename || f.path || ""));
@@ -3877,23 +4295,63 @@ async function renderAdminDashboard() {
         }
         grid.innerHTML = filtered.map(f => {
           const name = f.filename || f.path || "unknown";
+          const displayName = f.display_name || name;
+          const isVisible = f.is_visible !== false;
           const isImage = /\.(png|jpg|jpeg|gif|svg|webp)$/i.test(name);
           const isVideo = /\.(mp4|webm)$/i.test(name);
           const isAudio = /\.(mp3|wav|ogg)$/i.test(name);
           const icon = isImage ? "🖼️" : isVideo ? "🎬" : isAudio ? "🎵" : "📄";
           return `
-            <div class="card" style="padding:0.75rem;cursor:pointer" data-filename="${escapeHtml(name)}">
+            <div class="card upload-card" style="padding:0.75rem;cursor:pointer" data-filename="${escapeHtml(name)}">
               <div style="display:flex;align-items:center;gap:0.75rem">
                 <div style="font-size:1.5rem;flex-shrink:0">${icon}</div>
                 <div style="flex:1;min-width:0">
-                  <p style="margin:0;font-size:0.85rem;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(name)}</p>
+                  <p style="margin:0;font-size:0.85rem;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" class="upload-display-name">${escapeHtml(displayName)}</p>
                   <p style="margin:0.15rem 0 0;font-size:0.7rem;color:var(--color-text-muted)">${f.size ? (f.size / 1024).toFixed(1) + " KB" : ""} · ${f.uploaded_at ? new Date(f.uploaded_at).toLocaleDateString() : ""}</p>
+                  ${!isVisible ? '<span style="display:inline-block;margin-top:0.25rem;font-size:0.65rem;padding:0.1rem 0.4rem;background:#fee2e2;color:#dc2626;border-radius:4px">Hidden</span>' : ""}
                 </div>
-                <button class="btn btn-danger btn-sm upload-delete-btn" data-filename="${escapeHtml(name)}" style="font-size:0.65rem;padding:0.15rem 0.4rem;flex-shrink:0">✕</button>
+                <div style="display:flex;flex-direction:column;gap:0.25rem;flex-shrink:0">
+                   <button class="btn btn-xs upload-rename-btn" data-filename="${escapeHtml(name)}" data-display="${escapeHtml(displayName)}" title="Rename">✏️</button>
+                   <button class="btn btn-xs upload-vis-btn" data-filename="${escapeHtml(name)}" data-visible="${isVisible}" title="${isVisible ? 'Hide from students & teachers' : 'Show to students & teachers'}">${isVisible ? "👁️" : "🚫"}</button>
+                   <button class="btn btn-outline-danger btn-xs upload-delete-btn" data-filename="${escapeHtml(name)}" title="Delete file">✕</button>
+                </div>
               </div>
             </div>
           `;
         }).join("");
+
+        document.querySelectorAll(".upload-rename-btn").forEach(btn => {
+          btn.addEventListener("click", async (e) => {
+            e.stopPropagation();
+            const oldName = btn.dataset.display;
+            const newName = prompt("Rename file:", oldName);
+            if (newName && newName !== oldName) {
+              try {
+                await request(`/uploads/${encodeURIComponent(btn.dataset.filename)}`, {
+                  method: "PATCH",
+                  body: JSON.stringify({ display_name: newName }),
+                });
+                showToast("File renamed");
+                loadAdminUploads();
+              } catch(err) { showToast(err.message || "Rename failed"); }
+            }
+          });
+        });
+
+        document.querySelectorAll(".upload-vis-btn").forEach(btn => {
+          btn.addEventListener("click", async (e) => {
+            e.stopPropagation();
+            const currentVisible = btn.dataset.visible === "true";
+            try {
+              await request(`/uploads/${encodeURIComponent(btn.dataset.filename)}`, {
+                method: "PATCH",
+                body: JSON.stringify({ is_visible: !currentVisible }),
+              });
+              showToast(currentVisible ? "File hidden from students & teachers" : "File now visible to students & teachers");
+              loadAdminUploads();
+            } catch(err) { showToast(err.message || "Update failed"); }
+          });
+        });
 
         document.querySelectorAll(".upload-delete-btn").forEach(btn => {
           btn.addEventListener("click", async (e) => {
@@ -3909,7 +4367,7 @@ async function renderAdminDashboard() {
         document.querySelectorAll("#uploads-grid .card[data-filename]").forEach(card => {
           if (card.querySelector(".upload-delete-btn")) {
             card.addEventListener("click", (e) => {
-              if (e.target.closest(".upload-delete-btn")) return;
+              if (e.target.closest(".upload-delete-btn") || e.target.closest(".upload-rename-btn") || e.target.closest(".upload-vis-btn")) return;
               window.open(`${API_BASE}/uploads/${encodeURIComponent(card.dataset.filename)}`, "_blank");
             });
           }
@@ -3918,26 +4376,26 @@ async function renderAdminDashboard() {
 
       showAdminView(`
         <div class="content">
-          <h2>Uploads</h2>
-          <p style="color:var(--color-text-muted);font-size:0.85rem;margin-top:0.25rem">Manage uploaded files. These files are accessible to students and teachers.</p>
+          <h2>📁 Uploads</h2>
+          <p style="color:var(--color-text-muted);font-size:0.85rem;margin-top:0.25rem">Manage uploaded files. Control visibility for students and teachers.</p>
 
           <div class="card" style="margin-top:1rem;padding:1.5rem">
-            <h3 style="margin-bottom:0.75rem">Upload New File</h3>
+            <h3 style="margin-bottom:0.75rem">📤 Upload New File</h3>
             <form id="upload-form" style="display:flex;flex-direction:column;gap:0.5rem">
               <p style="font-size:0.8rem;color:var(--color-text-muted);margin:0">Supports images (png, jpg, gif, svg, webp), documents (pdf, doc), videos (mp4, webm), audio (mp3, wav, ogg)</p>
               <input class="input" type="file" id="upload-file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt" required>
               <div style="display:flex;gap:0.5rem;align-items:center">
-                <button class="btn btn-success" type="submit" id="upload-submit-btn" style="width:100%">Upload File</button>
+                <button class="btn btn-success btn-pattern" type="submit" id="upload-submit-btn" style="width:100%">📤 Upload File</button>
               </div>
             </form>
             <div id="upload-result" style="margin-top:0.5rem"></div>
           </div>
 
           <div style="margin-top:1rem;display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center">
-            <button class="btn btn-sm upload-filter-btn" data-filter="all" style="background:var(--color-bg);border:1px solid var(--color-border);font-weight:600">All (${fileList.length})</button>
-            <button class="btn btn-sm upload-filter-btn" data-filter="images" style="background:var(--color-bg);border:1px solid var(--color-border)">🖼️ Images (${imageFiles.length})</button>
-            <button class="btn btn-sm upload-filter-btn" data-filter="documents" style="background:var(--color-bg);border:1px solid var(--color-border)">📄 Documents (${docFiles.length})</button>
-            <button class="btn btn-sm upload-filter-btn" data-filter="media" style="background:var(--color-bg);border:1px solid var(--color-border)">🎬 Media (${mediaFiles.length})</button>
+            <button class="btn-filter upload-filter-btn active" data-filter="all">All <span class="filter-count">${fileList.length}</span></button>
+            <button class="btn-filter upload-filter-btn" data-filter="images">🖼️ Images <span class="filter-count">${imageFiles.length}</span></button>
+            <button class="btn-filter upload-filter-btn" data-filter="documents">📄 Documents <span class="filter-count">${docFiles.length}</span></button>
+            <button class="btn-filter upload-filter-btn" data-filter="media">🎬 Media <span class="filter-count">${mediaFiles.length}</span></button>
           </div>
           <div id="uploads-grid" style="margin-top:0.75rem;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:0.5rem"></div>
         </div>
@@ -3946,7 +4404,7 @@ async function renderAdminDashboard() {
       document.querySelectorAll(".upload-filter-btn").forEach(btn => {
         btn.addEventListener("click", () => {
           activeFilter = btn.dataset.filter;
-          document.querySelectorAll(".upload-filter-btn").forEach(b => b.style.fontWeight = b.dataset.filter === activeFilter ? "600" : "400");
+          document.querySelectorAll(".upload-filter-btn").forEach(b => b.classList.toggle("active", b.dataset.filter === activeFilter));
           renderFiles();
         });
       });
@@ -3988,7 +4446,7 @@ async function renderAdminDashboard() {
   }
 
   async function loadAdminBranding() {
-    const API = window.location.port === "8765" ? window.location.origin : `${window.location.protocol}//${window.location.hostname}:8765`;
+    const API = (window.location.port === "8765" || window.location.port === "" || window.location.port === "443" || window.location.port === "80") ? window.location.origin : `${window.location.protocol}//${window.location.hostname}:8765`;
     const token = localStorage.getItem("casuya_token");
     const headers = token ? { "Authorization": `Bearer ${token}` } : {};
 
@@ -4011,19 +4469,19 @@ async function renderAdminDashboard() {
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem">
           <!-- Logo -->
           <div class="card" style="padding:1.5rem">
-            <h3 style="margin-bottom:0.75rem">Logo</h3>
+            <h3 style="margin-bottom:0.75rem">🖼️ Logo</h3>
             <div style="text-align:center;margin-bottom:1rem">
               ${logoExists
                 ? `<img src="${API}/branding/logo?t=${Date.now()}" alt="Current logo" style="max-width:120px;max-height:120px;border-radius:12px;border:1px solid var(--color-border)">`
-                : `<div style="width:120px;height:120px;margin:0 auto;background:var(--color-primary);border-radius:12px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:2rem;font-weight:800">C</div>`
+                : `<div style="width:120px;height:120px;margin:0 auto;background:linear-gradient(135deg,var(--color-primary),#7c3aed);border-radius:12px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:2rem;font-weight:800">C</div>`
               }
-              <p style="font-size:0.75rem;color:var(--color-text-muted);margin-top:0.5rem">${logoExists ? "Custom logo active" : "Using default"}</p>
+              <p style="font-size:0.75rem;color:var(--color-text-muted);margin-top:0.5rem">${logoExists ? "✅ Custom logo active" : "Using default"}</p>
             </div>
             <form id="logo-upload-form" style="display:flex;flex-direction:column;gap:0.5rem">
               <input class="input" type="file" id="logo-file" accept="image/*" required />
               <div style="display:flex;gap:0.5rem">
-                <button class="btn btn-success" type="submit" style="flex:1">${logoExists ? "Replace" : "Upload"}</button>
-                ${logoExists ? '<button class="btn btn-danger" type="button" id="logo-delete" style="flex:0">Delete</button>' : ''}
+                <button class="btn btn-success btn-pattern" type="submit" style="flex:1">${logoExists ? "🔄 Replace" : "📤 Upload"}</button>
+                ${logoExists ? '<button class="btn btn-outline-danger btn-sm" type="button" id="logo-delete">🗑️ Delete</button>' : ''}
               </div>
             </form>
             <div id="logo-result" style="margin-top:0.5rem;font-size:0.8rem"></div>
@@ -4031,19 +4489,19 @@ async function renderAdminDashboard() {
 
           <!-- Favicon -->
           <div class="card" style="padding:1.5rem">
-            <h3 style="margin-bottom:0.75rem">Favicon</h3>
+            <h3 style="margin-bottom:0.75rem">🏷️ Favicon</h3>
             <div style="text-align:center;margin-bottom:1rem">
               ${faviconExists
                 ? `<img src="${API}/branding/favicon?t=${Date.now()}" alt="Current favicon" style="width:64px;height:64px;border-radius:8px;border:1px solid var(--color-border)">`
-                : `<div style="width:64px;height:64px;margin:0 auto;background:var(--color-primary);border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.2rem;font-weight:800">C</div>`
+                : `<div style="width:64px;height:64px;margin:0 auto;background:linear-gradient(135deg,var(--color-primary),#7c3aed);border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.2rem;font-weight:800">C</div>`
               }
-              <p style="font-size:0.75rem;color:var(--color-text-muted);margin-top:0.5rem">${faviconExists ? "Custom favicon active" : "Using default"}</p>
+              <p style="font-size:0.75rem;color:var(--color-text-muted);margin-top:0.5rem">${faviconExists ? "✅ Custom favicon active" : "Using default"}</p>
             </div>
             <form id="favicon-upload-form" style="display:flex;flex-direction:column;gap:0.5rem">
               <input class="input" type="file" id="favicon-file" accept="image/*" required />
               <div style="display:flex;gap:0.5rem">
-                <button class="btn btn-success" type="submit" style="flex:1">${faviconExists ? "Replace" : "Upload"}</button>
-                ${faviconExists ? '<button class="btn btn-danger" type="button" id="favicon-delete" style="flex:0">Delete</button>' : ''}
+                <button class="btn btn-success btn-pattern" type="submit" style="flex:1">${faviconExists ? "🔄 Replace" : "📤 Upload"}</button>
+                ${faviconExists ? '<button class="btn btn-outline-danger btn-sm" type="button" id="favicon-delete">🗑️ Delete</button>' : ''}
               </div>
             </form>
             <div id="favicon-result" style="margin-top:0.5rem;font-size:0.8rem"></div>
@@ -4153,7 +4611,7 @@ async function renderAdminDashboard() {
               ${lessonAnalytics.map(a => `
                 <div class="card" style="padding:1rem">
                   <h4 style="margin:0 0 0.25rem">${escapeHtml(a.title)}</h4>
-                  <p style="color:var(--color-text-muted);font-size:0.85rem">Views: ${a.views ?? 0} | Completions: ${a.completions ?? 0} | Avg Score: ${a.avg_score ?? 0}%</p>
+                  <p style="color:var(--color-text-muted);font-size:0.85rem">Sessions: ${a.session_count ?? 0} | Avg Completion: ${a.avg_completion_percentage ?? 0}% | Avg Score: ${a.avg_score_percentage ?? 0}%</p>
                 </div>
               `).join("")}
             </div>
@@ -4196,8 +4654,8 @@ async function renderAdminDashboard() {
                   <label style="font-size:0.85rem;font-weight:500;display:block;margin-bottom:0.25rem">Phone</label>
                   <input class="input" name="phone" value="${escapeHtml(profile.phone || "")}" placeholder="Phone number">
                 </div>
-                <div style="display:flex;gap:0.5rem">
-                  <button class="btn btn-primary" type="submit">Save Profile</button>
+                <div style="display:flex;gap:0.5rem;align-items:center">
+                  <button class="btn btn-primary" type="submit">💾 Save Profile</button>
                   <span id="admin-profile-msg" style="font-size:0.85rem;display:none"></span>
                 </div>
               </form>
@@ -4209,9 +4667,9 @@ async function renderAdminDashboard() {
             const msg = document.getElementById("admin-profile-msg");
             try {
               await request("/users/me", { method: "PATCH", body: JSON.stringify({ full_name: fd.get("full_name"), phone: fd.get("phone") }) });
-              msg.textContent = "Profile updated!"; msg.style.color = "var(--color-success)"; msg.style.display = "inline";
+              msg.textContent = "✅ Profile updated!"; msg.style.color = "var(--color-success)"; msg.style.display = "inline";
               setTimeout(() => msg.style.display = "none", 3000);
-            } catch(err) { msg.textContent = err.message; msg.style.color = "var(--color-danger)"; msg.style.display = "inline"; }
+            } catch(err) { msg.textContent = "❌ " + err.message; msg.style.color = "var(--color-danger)"; msg.style.display = "inline"; }
           });
         } else if (tab === "security") {
           panel.innerHTML = `
@@ -4231,7 +4689,7 @@ async function renderAdminDashboard() {
                   <input class="input" name="confirm_password" type="password" required>
                 </div>
                 <div style="display:flex;gap:0.5rem;align-items:center">
-                  <button class="btn btn-primary" type="submit">Update Password</button>
+                  <button class="btn btn-primary btn-pattern" type="submit">🔐 Update Password</button>
                   <span id="admin-pw-msg" style="font-size:0.85rem;display:none"></span>
                 </div>
               </form>
@@ -4244,7 +4702,7 @@ async function renderAdminDashboard() {
                   <p style="font-weight:500;margin:0;font-size:0.9rem">Current Session</p>
                   <p style="font-size:0.75rem;color:var(--color-text-muted);margin:0.15rem 0 0">Now · ${navigator.userAgent.slice(0, 60)}...</p>
                 </div>
-                <span style="color:var(--color-success);font-size:0.8rem;font-weight:500">Active</span>
+                <span style="color:var(--color-success);font-size:0.8rem;font-weight:600">🟢 Active</span>
               </div>
             </div>
           `;
@@ -4253,15 +4711,15 @@ async function renderAdminDashboard() {
             const fd = new FormData(e.target);
             const msg = document.getElementById("admin-pw-msg");
             if (fd.get("new_password") !== fd.get("confirm_password")) {
-              msg.textContent = "Passwords do not match"; msg.style.color = "var(--color-danger)"; msg.style.display = "inline";
+              msg.textContent = "❌ Passwords do not match"; msg.style.color = "var(--color-danger)"; msg.style.display = "inline";
               return;
             }
             try {
               await request("/auth/change-password", { method: "POST", body: JSON.stringify({ current_password: fd.get("current_password"), new_password: fd.get("new_password") }) });
-              msg.textContent = "Password updated!"; msg.style.color = "var(--color-success)"; msg.style.display = "inline";
+              msg.textContent = "✅ Password updated!"; msg.style.color = "var(--color-success)"; msg.style.display = "inline";
               e.target.reset();
               setTimeout(() => msg.style.display = "none", 3000);
-            } catch(err) { msg.textContent = err.message; msg.style.color = "var(--color-danger)"; msg.style.display = "inline"; }
+            } catch(err) { msg.textContent = "❌ " + err.message; msg.style.color = "var(--color-danger)"; msg.style.display = "inline"; }
           });
         } else if (tab === "notifications") {
           panel.innerHTML = `
@@ -4277,7 +4735,7 @@ async function renderAdminDashboard() {
                 <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.9rem;cursor:pointer">
                   <input type="checkbox" name="system_notifs" checked> System alerts and errors
                 </label>
-                <button class="btn btn-primary" type="submit" style="align-self:flex-start">Save Preferences</button>
+                <button class="btn btn-primary btn-pattern" type="submit" style="align-self:flex-start">💾 Save Preferences</button>
               </form>
             </div>
             <div class="card" style="padding:1.5rem;margin-top:1rem">
@@ -4289,7 +4747,7 @@ async function renderAdminDashboard() {
                   <option value="teachers">All Teachers</option>
                 </select>
                 <textarea class="input" name="message" rows="3" placeholder="Notification message..." required></textarea>
-                <button class="btn btn-primary" type="submit">Send</button>
+                <button class="btn btn-primary btn-pattern" type="submit">📤 Send</button>
               </form>
               <div id="settings-notify-result" style="margin-top:0.5rem;font-size:0.85rem"></div>
             </div>
@@ -4340,11 +4798,11 @@ async function renderAdminDashboard() {
               </div>
             </div>
             <div class="card" style="padding:1.5rem;margin-top:1rem">
-              <h3 style="margin-bottom:0.75rem">Danger Zone</h3>
+              <h3 style="margin-bottom:0.75rem">⚠️ Danger Zone</h3>
               <p style="font-size:0.85rem;color:var(--color-text-muted);margin-bottom:0.75rem">Irreversible actions</p>
               <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
-                <button class="btn btn-danger btn-sm" id="clear-cache-btn">Clear Cache</button>
-                <button class="btn btn-danger btn-sm" id="export-data-btn">Export All Data</button>
+                <button class="btn btn-danger btn-sm btn-pattern" id="clear-cache-btn">🗑️ Clear Cache</button>
+                <button class="btn btn-outline-danger btn-sm" id="export-data-btn">📦 Export All Data</button>
               </div>
               <div id="danger-msg" style="font-size:0.85rem;margin-top:0.5rem"></div>
             </div>
@@ -4374,11 +4832,11 @@ async function renderAdminDashboard() {
       showAdminView(`
         <div class="content">
           <h2>Settings</h2>
-          <div style="display:flex;gap:0;border-bottom:2px solid var(--color-border);margin-top:1rem;margin-bottom:1rem">
-            <button class="btn settings-tab-btn" data-tab="profile" style="border-radius:0;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;${activeTab === "profile" ? "border-bottom-color:var(--color-primary);color:var(--color-primary);font-weight:600" : "color:var(--color-text-muted)"}">Profile</button>
-            <button class="btn settings-tab-btn" data-tab="security" style="border-radius:0;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;${activeTab === "security" ? "border-bottom-color:var(--color-primary);color:var(--color-primary);font-weight:600" : "color:var(--color-text-muted)"}">Security</button>
-            <button class="btn settings-tab-btn" data-tab="notifications" style="border-radius:0;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;${activeTab === "notifications" ? "border-bottom-color:var(--color-primary);color:var(--color-primary);font-weight:600" : "color:var(--color-text-muted)"}">Notifications</button>
-            <button class="btn settings-tab-btn" data-tab="platform" style="border-radius:0;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;${activeTab === "platform" ? "border-bottom-color:var(--color-primary);color:var(--color-primary);font-weight:600" : "color:var(--color-text-muted)"}">Platform</button>
+          <div class="tab-bar">
+            <button class="tab-btn settings-tab-btn" data-tab="profile" ${activeTab === "profile" ? 'class="tab-btn settings-tab-btn active"' : ''}>👤 Profile</button>
+            <button class="tab-btn settings-tab-btn" data-tab="security" ${activeTab === "security" ? 'class="tab-btn settings-tab-btn active"' : ''}>🔒 Security</button>
+            <button class="tab-btn settings-tab-btn" data-tab="notifications" ${activeTab === "notifications" ? 'class="tab-btn settings-tab-btn active"' : ''}>🔔 Notifications</button>
+            <button class="tab-btn settings-tab-btn" data-tab="platform" ${activeTab === "platform" ? 'class="tab-btn settings-tab-btn active"' : ''}>⚙️ Platform</button>
           </div>
           <div id="settings-panel"></div>
         </div>
@@ -4391,7 +4849,13 @@ async function renderAdminDashboard() {
     } catch(e) { showAdminView('<div class="empty-state"><p>Error loading settings</p></div>'); }
   }
 
-  loadAdminOverview();
+  // Load initial view from URL hash, fallback to dashboard
+  const initialView = location.hash.slice(1) || "dashboard";
+  if (navHandlers[initialView]) {
+    navHandlers[initialView]();
+  } else {
+    loadAdminOverview();
+  }
 }
 
 // --- Teacher Dashboard ---
@@ -4416,6 +4880,7 @@ async function renderTeacherDashboard() {
           <div class="sidebar-nav-item" data-view="ai-assistant">🤖 AI Assistant</div>
           <div class="sidebar-nav-item" data-view="bookmarks">🔖 Bookmarks</div>
           <div class="sidebar-nav-item" data-view="files">📁 Files</div>
+          <div class="sidebar-nav-item" data-view="payments">💳 Payments</div>
           <div class="sidebar-nav-item" data-view="notifications">🔔 Notifications</div>
           <div class="sidebar-nav-item" data-view="settings">⚙️ Settings</div>
         </nav>
@@ -4565,7 +5030,8 @@ async function renderTeacherDashboard() {
   }
 
   function showTeacherView(content) {
-    document.getElementById("teacher-content").innerHTML = content;
+    const el = document.getElementById("teacher-content");
+    if (el) el.innerHTML = content;
   }
 
   const navHandlers = {
@@ -4577,16 +5043,29 @@ async function renderTeacherDashboard() {
     "ai-assistant": () => { setActiveNav("ai-assistant"); loadTeacherAIAssistant(); },
     bookmarks: () => { setActiveNav("bookmarks"); loadTeacherBookmarks(); },
     files: () => { setActiveNav("files"); loadTeacherFiles(); },
+    payments: () => { setActiveNav("payments"); loadTeacherPayments(); },
     notifications: () => { setActiveNav("notifications"); loadTeacherNotifications(); },
     settings: () => { setActiveNav("settings"); loadTeacherSettings(); },
   };
+
+  function navigateTo(view) {
+    if (navHandlers[view]) {
+      location.hash = view;
+      navHandlers[view]();
+    }
+  }
 
   document.querySelectorAll("#teacher-nav .sidebar-nav-item").forEach(el => {
     el.addEventListener("click", (e) => {
       e.preventDefault();
       document.getElementById("teacher-sidebar")?.classList.remove("open");
-      navHandlers[el.dataset.view]?.();
+      navigateTo(el.dataset.view);
     });
+  });
+
+  window.addEventListener("hashchange", () => {
+    const view = location.hash.slice(1) || "overview";
+    if (navHandlers[view]) navHandlers[view]();
   });
 
   async function showTeacherProfileEditor() {
@@ -4821,7 +5300,7 @@ async function renderTeacherDashboard() {
             </div>
             <div class="stat-card">
               <div class="stat-icon" style="background:#fef3c7;color:#d97706">📈</div>
-              <div class="stat-value">${avgScore > 0 ? avgScore + "%" : "—"}</div>
+              <div class="stat-value">${avgScore != null ? avgScore + "%" : "0%"}</div>
               <div class="stat-label">Avg Score</div>
             </div>
           </div>
@@ -5000,14 +5479,14 @@ async function renderTeacherDashboard() {
   async function loadTeacherAssignments() {
     showTeacherView('<div class="loading-state"><div class="spinner"></div><p>Loading assignments...</p></div>');
     try {
-      const [lessons, students] = await Promise.all([
+      const [lessons, students, assignments] = await Promise.all([
         request("/lessons"),
         request("/students"),
+        request("/assignments").catch(() => []),
       ]);
       const lessonList = Array.isArray(lessons) ? lessons : [];
       const studentList = Array.isArray(students) ? students : [];
-      let assignments = [];
-      try { assignments = JSON.parse(localStorage.getItem("casuya_teacher_assignments") || "[]"); } catch(e) {}
+      const assignmentList = Array.isArray(assignments) ? assignments : [];
 
       showTeacherView(`
         <div class="content">
@@ -5017,16 +5496,16 @@ async function renderTeacherDashboard() {
           </div>
           <div id="assignment-form-area"></div>
           <div style="margin-top:1rem">
-            ${assignments.length === 0 ? '<div class="empty-state"><p>No assignments yet. Create one to assign lessons to students.</p></div>' :
-              assignments.map((a, i) => `
+            ${assignmentList.length === 0 ? '<div class="empty-state"><p>No assignments yet. Create one to assign lessons to students.</p></div>' :
+              assignmentList.map((a, i) => `
                 <div class="card" style="padding:1rem;margin-bottom:0.5rem">
                   <div style="display:flex;justify-content:space-between;align-items:start">
                     <div>
                       <h4 style="margin:0">${escapeHtml(a.title)}</h4>
-                      <p style="color:var(--color-text-muted);font-size:0.85rem;margin-top:0.25rem">${escapeHtml(a.lessonTitle || "Unknown lesson")} → ${escapeHtml(a.studentName || "All students")}</p>
-                      <p style="color:var(--color-text-muted);font-size:0.75rem;margin-top:0.15rem">Due: ${a.dueDate ? new Date(a.dueDate).toLocaleDateString() : "No due date"} | ${a.status}</p>
+                      <p style="color:var(--color-text-muted);font-size:0.85rem;margin-top:0.25rem">${escapeHtml((a.lesson_title || a.lesson_id || "Unknown lesson"))}</p>
+                      <p style="color:var(--color-text-muted);font-size:0.75rem;margin-top:0.15rem">Due: ${a.due_date ? new Date(a.due_date).toLocaleDateString() : "No due date"} | ${a.status}</p>
                     </div>
-                    <button class="btn btn-sm btn-danger" data-delete-assignment="${i}">Remove</button>
+                    <button class="btn btn-sm btn-danger" data-delete-assignment="${a.id}">Remove</button>
                   </div>
                 </div>
               `).join("")}
@@ -5050,13 +5529,6 @@ async function renderTeacherDashboard() {
                 </select>
               </div>
               <div>
-                <label style="font-size:0.8rem;color:var(--color-text-muted);display:block;margin-bottom:0.25rem">Student</label>
-                <select class="input" name="student_id">
-                  <option value="">All students</option>
-                  ${studentList.map(s => `<option value="${s.id || s.user_id}">${escapeHtml(s.full_name || "Student")}</option>`).join("")}
-                </select>
-              </div>
-              <div>
                 <label style="font-size:0.8rem;color:var(--color-text-muted);display:block;margin-bottom:0.25rem">Due Date</label>
                 <input class="input" type="date" name="due_date">
               </div>
@@ -5072,34 +5544,27 @@ async function renderTeacherDashboard() {
           </div>
         `;
         document.getElementById("cancel-assignment").addEventListener("click", () => document.getElementById("assignment-form-area").innerHTML = "");
-        document.getElementById("assignment-form").addEventListener("submit", (e) => {
+        document.getElementById("assignment-form").addEventListener("submit", async (e) => {
           e.preventDefault();
           const fd = new FormData(e.target);
-          const lessonId = fd.get("lesson_id");
-          const lesson = lessonList.find(l => l.id === lessonId);
-          const studentId = fd.get("student_id");
-          const student = studentList.find(s => (s.id || s.user_id) === studentId);
-          assignments.push({
-            title: fd.get("title"),
-            lessonId,
-            lessonTitle: lesson?.title || "",
-            studentId: studentId || null,
-            studentName: student?.full_name || "All students",
-            dueDate: fd.get("due_date") || null,
-            notes: fd.get("notes") || "",
-            status: "pending",
-            createdAt: Date.now(),
-          });
-          localStorage.setItem("casuya_teacher_assignments", JSON.stringify(assignments));
-          loadTeacherAssignments();
+          try {
+            await request("/assignments?" + new URLSearchParams({
+              lesson_id: fd.get("lesson_id"),
+              title: fd.get("title"),
+              due_date: fd.get("due_date") || "",
+              notes: fd.get("notes") || "",
+            }), { method: "POST" });
+            loadTeacherAssignments();
+          } catch(err) { alert("Failed to create assignment: " + err.message); }
         });
       });
       document.querySelectorAll("[data-delete-assignment]").forEach(btn => {
-        btn.addEventListener("click", () => {
-          const idx = parseInt(btn.dataset.deleteAssignment);
-          assignments.splice(idx, 1);
-          localStorage.setItem("casuya_teacher_assignments", JSON.stringify(assignments));
-          loadTeacherAssignments();
+        btn.addEventListener("click", async () => {
+          const id = btn.dataset.deleteAssignment;
+          try {
+            await request(`/assignments/${id}`, { method: "DELETE" });
+            loadTeacherAssignments();
+          } catch(err) { alert("Failed to delete assignment"); }
         });
       });
     } catch(e) {
@@ -5316,6 +5781,7 @@ async function renderTeacherDashboard() {
         }
         grid.innerHTML = filtered.map(f => {
           const name = f.filename || f.path || "unknown";
+          const displayName = f.display_name || name;
           const isImage = /\.(png|jpg|jpeg|gif|svg|webp)$/i.test(name);
           const isVideo = /\.(mp4|webm)$/i.test(name);
           const isAudio = /\.(mp3|wav|ogg)$/i.test(name);
@@ -5325,7 +5791,7 @@ async function renderTeacherDashboard() {
               <div style="display:flex;align-items:center;gap:0.75rem">
                 <div style="font-size:1.5rem;flex-shrink:0">${icon}</div>
                 <div style="flex:1;min-width:0">
-                  <p style="margin:0;font-size:0.85rem;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(name)}</p>
+                  <p style="margin:0;font-size:0.85rem;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(displayName)}</p>
                   <p style="margin:0.15rem 0 0;font-size:0.7rem;color:var(--color-text-muted)">${f.size ? (f.size / 1024).toFixed(1) + " KB" : ""}</p>
                 </div>
               </div>
@@ -5336,13 +5802,13 @@ async function renderTeacherDashboard() {
 
       showTeacherView(`
         <div class="content">
-          <h2>Files & Resources</h2>
+          <h2>📂 Files & Resources</h2>
           <p style="color:var(--color-text-muted);font-size:0.85rem;margin-top:0.25rem">Browse uploaded teaching materials and resources.</p>
           <div style="margin-top:1rem;display:flex;gap:0.5rem;flex-wrap:wrap">
-            <button class="btn btn-sm teacher-files-filter" data-filter="all" style="background:var(--color-bg);border:1px solid var(--color-border);font-weight:600">All</button>
-            <button class="btn btn-sm teacher-files-filter" data-filter="images" style="background:var(--color-bg);border:1px solid var(--color-border)">🖼️ Images</button>
-            <button class="btn btn-sm teacher-files-filter" data-filter="documents" style="background:var(--color-bg);border:1px solid var(--color-border)">📄 Documents</button>
-            <button class="btn btn-sm teacher-files-filter" data-filter="media" style="background:var(--color-bg);border:1px solid var(--color-border)">🎬 Media</button>
+            <button class="btn-filter teacher-files-filter active" data-filter="all">All</button>
+            <button class="btn-filter teacher-files-filter" data-filter="images">🖼️ Images</button>
+            <button class="btn-filter teacher-files-filter" data-filter="documents">📄 Documents</button>
+            <button class="btn-filter teacher-files-filter" data-filter="media">🎬 Media</button>
           </div>
           <div id="teacher-files-grid" style="margin-top:0.75rem;display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:0.5rem"></div>
         </div>
@@ -5350,12 +5816,152 @@ async function renderTeacherDashboard() {
       document.querySelectorAll(".teacher-files-filter").forEach(btn => {
         btn.addEventListener("click", () => {
           activeFilter = btn.dataset.filter;
-          document.querySelectorAll(".teacher-files-filter").forEach(b => b.style.fontWeight = b.dataset.filter === activeFilter ? "600" : "400");
+          document.querySelectorAll(".teacher-files-filter").forEach(b => b.classList.toggle("active", b.dataset.filter === activeFilter));
           renderTeacherFiles();
         });
       });
       renderTeacherFiles();
     } catch(e) { showTeacherView('<div class="empty-state"><p>Error loading files</p></div>'); }
+  }
+
+  async function loadTeacherPayments() {
+    showTeacherView('<div class="loading-state"><div class="spinner"></div><p>Loading payments...</p></div>');
+    try {
+      const [history, subs, invoices] = await Promise.all([
+        request("/payments/my-history").catch(() => ({ transactions: [], total_paid: 0, pending_amount: 0, total_transactions: 0 })),
+        request("/payments/subscriptions").catch(() => []),
+        request("/payments/invoices").catch(() => []),
+      ]);
+      const txList = Array.isArray(history.transactions) ? history.transactions : [];
+      const subList = Array.isArray(subs) ? subs : [];
+      const invList = Array.isArray(invoices) ? invoices : [];
+      const totalPaid = history.total_paid || 0;
+      const pendingAmount = history.pending_amount || 0;
+      const totalTx = history.total_transactions || 0;
+
+      function renderTeacherTab(tabId) {
+        if (tabId === "payments") {
+          return `
+            <div class="card" style="padding:0;max-width:560px;margin-top:1rem;overflow:hidden">
+              <div class="checkout-header">
+                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+                <h3>Make a Payment</h3>
+              </div>
+              <form id="teacher-payment-form" class="checkout-body">
+                <div>
+                  <label class="field-label">Mobile Number</label>
+                  <div class="input-icon-wrap">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+                    <input class="input" name="mobile_number" placeholder="0712345678" required>
+                  </div>
+                </div>
+                <div>
+                  <label class="field-label">Amount (TZS)</label>
+                  <div class="input-icon-wrap">
+                    <span class="input-currency-prefix">TZS</span>
+                    <input class="input" name="amount_tzs" type="number" placeholder="5,000" required min="100">
+                  </div>
+                </div>
+                <div>
+                  <label class="field-label">Provider</label>
+                  <div class="provider-grid">
+                    <label class="provider-card"><input type="radio" name="provider" value="m-pesa" required><span class="provider-dot" style="background:#16a34a"></span><span>M-Pesa</span></label>
+                    <label class="provider-card"><input type="radio" name="provider" value="tigo-pesa"><span class="provider-dot" style="background:#2563eb"></span><span>Tigo Pesa</span></label>
+                    <label class="provider-card"><input type="radio" name="provider" value="halopesa"><span class="provider-dot" style="background:#d97706"></span><span>HaloPesa</span></label>
+                    <label class="provider-card"><input type="radio" name="provider" value="azampay"><span class="provider-dot" style="background:#8b5cf6"></span><span>AzamPay</span></label>
+                  </div>
+                </div>
+                <button class="btn btn-success btn-block" type="submit" id="teacher-payment-submit-btn">Pay Now</button>
+              </form>
+              <div id="teacher-payment-result" style="padding:0 1.5rem 1.5rem"></div>
+            </div>
+            <div class="card" style="padding:1.5rem;margin-top:1rem">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem">
+                <h3>Payment History</h3>
+                <button class="btn btn-sm" id="teacher-refresh-tx-btn">Refresh</button>
+              </div>
+              ${txList.length === 0 ? '<div class="empty-state" style="padding:2rem"><p>No payments yet</p></div>' : `<div style="overflow-x:auto"><table class="tx-table" style="width:100%;border-collapse:collapse;font-size:0.85rem"><thead><tr style="border-bottom:2px solid var(--color-border)"><th style="padding:0.6rem;text-align:left;font-weight:600">Date</th><th style="padding:0.6rem;text-align:left;font-weight:600">Provider</th><th style="padding:0.6rem;text-align:right;font-weight:600">Amount</th><th style="padding:0.6rem;text-align:center;font-weight:600">Status</th></tr></thead><tbody>${txList.map(t => `<tr style="border-bottom:1px solid var(--color-border)"><td style="padding:0.6rem;color:var(--color-text-muted)">${t.created_at ? new Date(t.created_at).toLocaleDateString() : "\u2014"}</td><td style="padding:0.6rem">${escapeHtml(t.provider || "\u2014")}</td><td style="padding:0.6rem;text-align:right;font-weight:600">${(t.amount_tzs || 0).toLocaleString()} TZS</td><td style="padding:0.6rem;text-align:center"><span class="badge badge-${t.status || 'pending'}">${escapeHtml(t.status || "unknown")}</span></td></tr>`).join("")}</tbody></table></div>`}
+            </div>`;
+        }
+        if (tabId === "subscriptions") {
+          return subList.length === 0
+            ? '<div class="empty-state" style="padding:3rem"><p>No active subscriptions</p></div>'
+            : `<div style="display:grid;gap:0.75rem;margin-top:1rem">${subList.map(s => `
+              <div class="card" style="padding:1rem;display:flex;justify-content:space-between;align-items:center">
+                <div><div style="font-weight:600">${escapeHtml(s.plan_id)}</div><div style="font-size:0.8rem;color:var(--color-text-muted)">Since ${new Date(s.created_at).toLocaleDateString()}</div></div>
+                <div style="text-align:right"><div style="font-weight:600">${(s.amount || 0).toLocaleString()} TZS</div><span class="badge badge-${s.status === 'active' ? 'completed' : 'pending'}">${escapeHtml(s.status)}</span></div>
+              </div>`).join("")}</div>`;
+        }
+        if (tabId === "invoices") {
+          return invList.length === 0
+            ? '<div class="empty-state" style="padding:3rem"><p>No invoices yet</p></div>'
+            : `<div style="overflow-x:auto;margin-top:1rem"><table class="tx-table" style="width:100%;border-collapse:collapse;font-size:0.85rem"><thead><tr style="border-bottom:2px solid var(--color-border)"><th style="padding:0.6rem;text-align:left;font-weight:600">Invoice #</th><th style="padding:0.6rem;text-align:right;font-weight:600">Amount</th><th style="padding:0.6rem;text-align:left;font-weight:600">Due Date</th><th style="padding:0.6rem;text-align:center;font-weight:600">Status</th></tr></thead><tbody>${invList.map(inv => `<tr style="border-bottom:1px solid var(--color-border)"><td style="padding:0.6rem;font-weight:500">${escapeHtml(inv.invoice_number || "\u2014")}</td><td style="padding:0.6rem;text-align:right;font-weight:600">${(inv.total_amount || 0).toLocaleString()} TZS</td><td style="padding:0.6rem;color:var(--color-text-muted)">${inv.due_date ? new Date(inv.due_date).toLocaleDateString() : "\u2014"}</td><td style="padding:0.6rem;text-align:center"><span class="badge badge-${inv.status === 'paid' ? 'completed' : inv.status === 'pending' ? 'pending' : 'failed'}">${escapeHtml(inv.status)}</span></td></tr>`).join("")}</tbody></table></div>`;
+        }
+        return "";
+      }
+
+      showTeacherView(`
+        <div class="content">
+          <h2>Payments</h2>
+          <p style="color:var(--color-text-muted);font-size:0.85rem;margin-top:0.25rem">Manage your payments, subscriptions and invoices</p>
+          <div class="stat-grid" style="margin-top:1rem">
+            <div class="stat-card"><div class="stat-icon" style="background:#f0fdf4;color:#16a34a">💰</div><div class="stat-value">${totalPaid.toLocaleString()}</div><div class="stat-label">Total Paid (TZS)</div></div>
+            <div class="stat-card"><div class="stat-icon" style="background:#fef3c7;color:#d97706">⏳</div><div class="stat-value">${pendingAmount.toLocaleString()}</div><div class="stat-label">Pending (TZS)</div></div>
+            <div class="stat-card"><div class="stat-icon" style="background:#eff6ff;color:#2563eb">📊</div><div class="stat-value">${totalTx}</div><div class="stat-label">Transactions</div></div>
+            <div class="stat-card"><div class="stat-icon" style="background:#ede9fe;color:#7c3aed">🔄</div><div class="stat-value">${subList.filter(s => s.status === "active").length}</div><div class="stat-label">Active Subs</div></div>
+          </div>
+          <div class="tab-bar" style="margin-top:1rem">
+            <button class="tab-btn active" data-ttab="payments">💳 Payments</button>
+            <button class="tab-btn" data-ttab="subscriptions">🔄 Subscriptions</button>
+            <button class="tab-btn" data-ttab="invoices">📄 Invoices</button>
+          </div>
+          <div id="teacher-payment-tab-content">${renderTeacherTab("payments")}</div>
+        </div>
+      `);
+
+      document.querySelectorAll("[data-ttab]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          document.querySelectorAll("[data-ttab]").forEach(b => b.classList.remove("active"));
+          btn.classList.add("active");
+          document.getElementById("teacher-payment-tab-content").innerHTML = renderTeacherTab(btn.dataset.ttab);
+          bindTeacherPaymentForm();
+        });
+      });
+
+      function bindTeacherPaymentForm() {
+        let teacherPaymentInProgress = false;
+        document.getElementById("teacher-payment-form")?.addEventListener("submit", async (ev) => {
+          ev.preventDefault();
+          const btn = document.getElementById("teacher-payment-submit-btn");
+          if (teacherPaymentInProgress) return;
+          teacherPaymentInProgress = true;
+          btn.innerHTML = '<span class="btn-spinner"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10" stroke-dasharray="31.4 31.4" stroke-linecap="round"/></svg> Processing...</span>';
+          btn.disabled = true;
+          const fd = new FormData(ev.target);
+          try {
+            const result = await request("/payments/checkout", {
+              method: "POST",
+              body: JSON.stringify({
+                mobile_number: fd.get("mobile_number"),
+                amount_tzs: parseInt(fd.get("amount_tzs"), 10),
+                provider: fd.get("provider"),
+                idempotency_key: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(),
+              }),
+            });
+            if (result === null) return;
+            document.getElementById("teacher-payment-result").innerHTML = `<div class="payment-result success"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><div><strong>Payment initiated!</strong><br><span style="opacity:0.8;font-size:0.8rem">${escapeHtml(result.id || "")}</span></div></div>`;
+            loadTeacherPayments();
+          } catch (err) {
+            document.getElementById("teacher-payment-result").innerHTML = `<div class="payment-result error"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><div>${escapeHtml(err.message)}</div></div>`;
+          }
+          teacherPaymentInProgress = false;
+          btn.innerHTML = 'Pay Now';
+          btn.disabled = false;
+        });
+      }
+      bindTeacherPaymentForm();
+      document.getElementById("teacher-refresh-tx-btn")?.addEventListener("click", loadTeacherPayments);
+    } catch(e) { showTeacherView('<div class="empty-state"><p>Error loading payments: ' + escapeHtml(e.message) + '</p></div>'); }
   }
 
   async function loadTeacherNotifications() {
@@ -5384,7 +5990,7 @@ async function renderTeacherDashboard() {
                 <p style="margin:0;font-size:0.875rem;${n.is_read ? "" : "font-weight:600"}">${escapeHtml(n.message)}</p>
                 <p style="margin:0.25rem 0 0;font-size:0.75rem;color:var(--color-text-muted)">${n.created_at ? new Date(n.created_at).toLocaleString() : ""}</p>
               </div>
-              ${!n.is_read ? `<button class="btn btn-sm btn-primary teacher-notif-read" data-id="${n.id}" style="font-size:0.7rem;padding:0.2rem 0.5rem">Mark Read</button>` : ""}
+              ${!n.is_read ? `<button class="btn btn-primary btn-xs teacher-notif-read" data-id="${n.id}">✓ Read</button>` : ""}
             </div>
           </div>
         `).join("");
@@ -5405,13 +6011,13 @@ async function renderTeacherDashboard() {
       showTeacherView(`
         <div class="content">
           <div style="display:flex;justify-content:space-between;align-items:center">
-            <h2>Notifications</h2>
-            <button class="btn btn-sm" id="teacher-mark-all-read">Mark All Read</button>
+            <h2>🔔 Notifications</h2>
+            <button class="btn btn-ghost btn-sm" id="teacher-mark-all-read">✓ Mark All Read</button>
           </div>
-          <div style="margin-top:1rem;display:flex;gap:0.5rem">
-            <button class="btn btn-sm teacher-notif-filter" data-filter="all" style="background:var(--color-bg);border:1px solid var(--color-border);font-weight:600">All (${allNotifs.length})</button>
-            <button class="btn btn-sm teacher-notif-filter" data-filter="unread" style="background:var(--color-bg);border:1px solid var(--color-border)">Unread (${unread.length})</button>
-            <button class="btn btn-sm teacher-notif-filter" data-filter="read" style="background:var(--color-bg);border:1px solid var(--color-border)">Read (${read.length})</button>
+          <div style="margin-top:1rem;display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center">
+            <button class="btn-filter teacher-notif-filter active" data-filter="all">All <span class="filter-count">${allNotifs.length}</span></button>
+            <button class="btn-filter teacher-notif-filter" data-filter="unread">🔴 Unread <span class="filter-count">${unread.length}</span></button>
+            <button class="btn-filter teacher-notif-filter" data-filter="read">✅ Read <span class="filter-count">${read.length}</span></button>
           </div>
           <div id="teacher-notif-list" style="margin-top:0.75rem"></div>
         </div>
@@ -5419,7 +6025,7 @@ async function renderTeacherDashboard() {
       document.querySelectorAll(".teacher-notif-filter").forEach(btn => {
         btn.addEventListener("click", () => {
           showFilter = btn.dataset.filter;
-          document.querySelectorAll(".teacher-notif-filter").forEach(b => b.style.fontWeight = b.dataset.filter === showFilter ? "600" : "400");
+          document.querySelectorAll(".teacher-notif-filter").forEach(b => b.classList.toggle("active", b.dataset.filter === showFilter));
           render();
         });
       });
@@ -5472,7 +6078,7 @@ async function renderTeacherDashboard() {
                   <label style="font-size:0.85rem;font-weight:500;display:block;margin-bottom:0.25rem">Subjects</label>
                   <input class="input" name="subjects" value="${escapeHtml(profile.subjects || "")}" placeholder="e.g. Mathematics, Physics">
                 </div>
-                <button class="btn btn-primary" type="submit" style="align-self:flex-start">Save Changes</button>
+                <button class="btn btn-primary btn-pattern" type="submit" style="align-self:flex-start">💾 Save Changes</button>
               </form>
               <p id="teacher-profile-msg" style="font-size:0.85rem;margin-top:0.5rem;display:none"></p>
             </div>
@@ -5484,9 +6090,9 @@ async function renderTeacherDashboard() {
             try {
               await request("/users/me", { method: "PATCH", body: JSON.stringify({ phone: fd.get("phone") }) });
               await request("/teachers/me", { method: "PATCH", body: JSON.stringify({ full_name: fd.get("full_name"), subjects: fd.get("subjects") }) });
-              msg.textContent = "Profile updated!"; msg.style.color = "var(--color-success)"; msg.style.display = "block";
+              msg.textContent = "✅ Profile updated!"; msg.style.color = "var(--color-success)"; msg.style.display = "block";
               setTimeout(() => msg.style.display = "none", 3000);
-            } catch(err) { msg.textContent = err.message; msg.style.color = "var(--color-danger)"; msg.style.display = "block"; }
+            } catch(err) { msg.textContent = "❌ " + err.message; msg.style.color = "var(--color-danger)"; msg.style.display = "block"; }
           });
         } else if (tab === "password") {
           panel.innerHTML = `
@@ -5505,7 +6111,7 @@ async function renderTeacherDashboard() {
                   <label style="font-size:0.85rem;font-weight:500;display:block;margin-bottom:0.25rem">Confirm New Password</label>
                   <input class="input" name="confirm_password" type="password" required>
                 </div>
-                <button class="btn btn-primary" type="submit" style="align-self:flex-start">Update Password</button>
+                <button class="btn btn-primary btn-pattern" type="submit" style="align-self:flex-start">🔐 Update Password</button>
               </form>
               <p id="teacher-pw-msg" style="font-size:0.85rem;margin-top:0.5rem;display:none"></p>
             </div>
@@ -5515,24 +6121,24 @@ async function renderTeacherDashboard() {
             const fd = new FormData(e.target);
             const msg = document.getElementById("teacher-pw-msg");
             if (fd.get("new_password") !== fd.get("confirm_password")) {
-              msg.textContent = "Passwords do not match"; msg.style.color = "var(--color-danger)"; msg.style.display = "block";
+              msg.textContent = "❌ Passwords do not match"; msg.style.color = "var(--color-danger)"; msg.style.display = "block";
               return;
             }
             try {
               await request("/auth/change-password", { method: "POST", body: JSON.stringify({ current_password: fd.get("current_password"), new_password: fd.get("new_password") }) });
-              msg.textContent = "Password updated!"; msg.style.color = "var(--color-success)"; msg.style.display = "block";
+              msg.textContent = "✅ Password updated!"; msg.style.color = "var(--color-success)"; msg.style.display = "block";
               e.target.reset();
-            } catch(err) { msg.textContent = err.message; msg.style.color = "var(--color-danger)"; msg.style.display = "block"; }
+            } catch(err) { msg.textContent = "❌ " + err.message; msg.style.color = "var(--color-danger)"; msg.style.display = "block"; }
           });
         }
       }
 
       showTeacherView(`
         <div class="content">
-          <h2>Settings</h2>
-          <div style="display:flex;gap:0;border-bottom:2px solid var(--color-border);margin-top:1rem;margin-bottom:1rem">
-            <button class="btn teacher-settings-tab" data-tab="profile" style="border-radius:0;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;${activeTab === "profile" ? "border-bottom-color:var(--color-primary);color:var(--color-primary);font-weight:600" : "color:var(--color-text-muted)"}">Profile</button>
-            <button class="btn teacher-settings-tab" data-tab="password" style="border-radius:0;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;${activeTab === "password" ? "border-bottom-color:var(--color-primary);color:var(--color-primary);font-weight:600" : "color:var(--color-text-muted)"}">Password</button>
+          <h2>⚙️ Settings</h2>
+          <div class="tab-bar">
+            <button class="tab-btn teacher-settings-tab" data-tab="profile" ${activeTab === "profile" ? 'class="tab-btn teacher-settings-tab active"' : ''}>👤 Profile</button>
+            <button class="tab-btn teacher-settings-tab" data-tab="password" ${activeTab === "password" ? 'class="tab-btn teacher-settings-tab active"' : ''}>🔒 Password</button>
           </div>
           <div id="teacher-settings-panel"></div>
         </div>
@@ -5545,7 +6151,13 @@ async function renderTeacherDashboard() {
   }
 
   loadNotifs();
-  loadTeacherOverview();
+  // Load initial view from URL hash, fallback to overview
+  const initialView = location.hash.slice(1) || "overview";
+  if (navHandlers[initialView]) {
+    navHandlers[initialView]();
+  } else {
+    loadTeacherOverview();
+  }
 }
 
 document.addEventListener("DOMContentLoaded", () => {
