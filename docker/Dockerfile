@@ -2,7 +2,7 @@
 FROM node:26-alpine AS frontend
 WORKDIR /app
 COPY frontend/ frontend/
-RUN cp -r frontend/* /app/build/
+RUN mkdir -p /app/build && cp -r frontend/* /app/build/
 
 FROM python:3.14-slim
 RUN groupadd -r casuya && useradd -r -g casuya -d /app -s /sbin/nologin casuya
