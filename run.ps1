@@ -1,6 +1,6 @@
 Write-Host "=== Casuya Platform ===" -ForegroundColor Cyan
-Write-Host "1. Starting Backend (port 8765)..." -ForegroundColor Yellow
-$backend = Start-Process -PassThru -NoNewWindow python -ArgumentList "-m uvicorn backend.main:app --host 0.0.0.0 --port 8765 --reload"
+Write-Host "1. Starting Backend (port 8000)..." -ForegroundColor Yellow
+$backend = Start-Process -PassThru -NoNewWindow python -ArgumentList "-m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload"
 
 $timeout = 15
 $deadline = (Get-Date).AddSeconds($timeout)
@@ -8,7 +8,7 @@ $ready = $false
 Write-Host "   Waiting for backend to be ready..." -ForegroundColor Gray
 while ((Get-Date) -lt $deadline) {
     try {
-        $resp = Invoke-WebRequest -Uri "http://localhost:8765/health" -TimeoutSec 2 -UseBasicParsing
+        $resp = Invoke-WebRequest -Uri "http://localhost:8000/health" -TimeoutSec 2 -UseBasicParsing
         if ($resp.StatusCode -eq 200) { $ready = $true; break }
     } catch {}
     Start-Sleep -Milliseconds 500
@@ -22,7 +22,7 @@ $frontend = Start-Process -PassThru -NoNewWindow python -ArgumentList "-m http.s
 Start-Sleep 1
 
 Write-Host ""
-Write-Host " Backend:  http://localhost:8765" -ForegroundColor Green
+Write-Host " Backend:  http://localhost:8000" -ForegroundColor Green
 Write-Host " Frontend: http://localhost:5173" -ForegroundColor Green
 Write-Host ""
 Write-Host "Press any key to stop both services..." -ForegroundColor Gray

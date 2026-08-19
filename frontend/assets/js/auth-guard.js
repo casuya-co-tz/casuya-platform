@@ -24,6 +24,10 @@ export function guardPortal(expectedRole) {
     return false;
   }
   const role = decodeTokenRole(token);
+  if (!role) {
+    window.location.replace("/login.html");
+    return false;
+  }
   if (role !== expectedRole) {
     const target = ROLE_PORTALS[role] || "/login.html";
     window.location.replace(target);
