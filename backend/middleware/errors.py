@@ -1,6 +1,7 @@
+import re
+
 from fastapi import Request
 from fastapi.responses import JSONResponse
-import re
 
 from backend.config.settings import get_settings
 
