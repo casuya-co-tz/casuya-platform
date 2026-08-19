@@ -6,7 +6,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from backend.config.database import get_db
-from backend.middleware.auth import get_current_user, bridge_auth
+from backend.middleware.auth import bridge_auth, get_current_user
 from backend.models.activity import RecentActivity
 from backend.models.progress import ProgressRecord
 from backend.schemas.progress import ProgressSyncPayload
@@ -59,11 +59,13 @@ def get_student_stats(student_id: str, _current_user=Depends(get_current_user)):
         for r in recent_rows:
             if r.lesson_id not in seen:
                 seen.add(r.lesson_id)
-                recent_lessons.append({
-                    "id": r.lesson_id,
-                    "title": r.lesson_title,
-                    "viewedAt": int(r.viewed_at.timestamp() * 1000),
-                })
+                recent_lessons.append(
+                    {
+                        "id": r.lesson_id,
+                        "title": r.lesson_title,
+                        "viewedAt": int(r.viewed_at.timestamp() * 1000),
+                    }
+                )
 
         # --- Streak: count consecutive days with activity going back from today ---
         streak = 0

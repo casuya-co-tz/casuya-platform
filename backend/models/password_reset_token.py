@@ -25,7 +25,7 @@ class PasswordResetToken(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     @staticmethod
-    def create_for_user(user_id: str, ttl_minutes: int = 15) -> "PasswordResetToken":
+    def create_for_user(user_id: str, ttl_minutes: int = 15) -> PasswordResetToken:
         return PasswordResetToken(
             user_id=user_id,
             expires_at=datetime.now(timezone.utc) + timedelta(minutes=ttl_minutes),

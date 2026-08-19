@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel
 from fastapi import APIRouter
+from pydantic import BaseModel
 
 from backend.services.ai_service import (
-    solve_equation,
-    generate_math_steps,
     convert_units,
+    generate_math_steps,
     generate_physics_problem,
+    solve_equation,
 )
 
 router = APIRouter(prefix="/math", tags=["Math/STEM"])

@@ -99,9 +99,13 @@ class CORSMiddleware:
             body = b"OK"
             preflight["content-type"] = "text/plain"
             preflight["content-length"] = str(len(body))
-            await send({"type": "http.response.start", "status": 200, "headers": [
-                [k.encode(), v.encode()] for k, v in preflight.items()
-            ]})
+            await send(
+                {
+                    "type": "http.response.start",
+                    "status": 200,
+                    "headers": [[k.encode(), v.encode()] for k, v in preflight.items()],
+                }
+            )
             await send({"type": "http.response.body", "body": body})
             return
 
@@ -114,9 +118,13 @@ class CORSMiddleware:
                 cors_headers = self._preflight_headers(origin)
                 cors_headers["content-type"] = "application/json"
                 cors_headers["content-length"] = str(len(error_body))
-                await send({"type": "http.response.start", "status": 500, "headers": [
-                    [k.encode(), v.encode()] for k, v in cors_headers.items()
-                ]})
+                await send(
+                    {
+                        "type": "http.response.start",
+                        "status": 500,
+                        "headers": [[k.encode(), v.encode()] for k, v in cors_headers.items()],
+                    }
+                )
                 await send({"type": "http.response.body", "body": error_body})
                 scope["_cors_response_sent"] = True
             raise

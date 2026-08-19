@@ -83,7 +83,9 @@ class ServicesBridgeClient:
         return self._request("GET", "/content/tags/popular")
 
     def publish_content(self, content_id: str, published_by: str, notes: str | None = None) -> dict:
-        return self._request("POST", f"/content/publish/{content_id}", json={"publishedBy": published_by, "notes": notes})
+        return self._request(
+            "POST", f"/content/publish/{content_id}", json={"publishedBy": published_by, "notes": notes}
+        )
 
     def unpublish_content(self, content_id: str, notes: str | None = None) -> dict:
         return self._request("POST", f"/content/unpublish/{content_id}", json={"notes": notes})
@@ -141,7 +143,9 @@ class ServicesBridgeClient:
         return self._request("POST", f"/exams/{exam_id}/section", json=payload)
 
     def autofill_section(self, exam_id: str, section_id: str, criteria: dict | None = None) -> dict:
-        return self._request("POST", f"/exams/{exam_id}/autofill", json={"sectionId": section_id, "criteria": criteria or {}})
+        return self._request(
+            "POST", f"/exams/{exam_id}/autofill", json={"sectionId": section_id, "criteria": criteria or {}}
+        )
 
     def schedule_exam(self, payload: dict) -> dict:
         return self._request("POST", "/exams/schedule", json=payload)
@@ -218,7 +222,9 @@ class ServicesBridgeClient:
         return self._request("POST", "/auth/hash", json={"password": password})
 
     def verify_password(self, password: str, password_hash: str) -> bool:
-        return self._request("POST", "/auth/verify-password", json={"password": password, "hash": password_hash}).get("valid", False)
+        return self._request("POST", "/auth/verify-password", json={"password": password, "hash": password_hash}).get(
+            "valid", False
+        )
 
     def check_permission(self, payload: dict) -> dict:
         return self._request("POST", "/auth/permission", json=payload)

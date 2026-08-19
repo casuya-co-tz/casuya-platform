@@ -83,4 +83,7 @@ def update_game_route(game_id: str, body: GameUpdate):
 def create_game_route(body: GameCreate):
     # For now, just create a structured game (legacy support)
     from backend.services.game_service import create_structured_game
-    return create_structured_game(lesson_id=body.lesson_id, title=body.title, questions=body.questions, options=body.options)
+
+    return create_structured_game(
+        lesson_id=body.lesson_id, title=body.title, questions=body.questions, options=body.options
+    )

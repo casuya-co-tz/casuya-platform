@@ -3,7 +3,6 @@ import time
 
 from starlette.types import ASGIApp, Receive, Scope, Send
 
-
 ENDPOINT_LIMITS = {
     "/auth/register": 5,
     "/auth/login": 10,
@@ -50,14 +49,16 @@ class RateLimitMiddleware:
             if hits >= limit:
                 ttl = int(redis_client.ttl(redis_key))
                 body = json.dumps({"detail": f"Rate limit exceeded. Try again in {ttl} seconds."}).encode()
-                await send({
-                    "type": "http.response.start",
-                    "status": 429,
-                    "headers": [
-                        [b"content-type", b"application/json"],
-                        [b"content-length", str(len(body)).encode()],
-                    ],
-                })
+                await send(
+                    {
+                        "type": "http.response.start",
+                        "status": 429,
+                        "headers": [
+                            [b"content-type", b"application/json"],
+                            [b"content-length", str(len(body)).encode()],
+                        ],
+                    }
+                )
                 await send({"type": "http.response.body", "body": body})
                 return
 

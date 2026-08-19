@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel
 from fastapi import APIRouter
+from pydantic import BaseModel
 
 from backend.services.ai_service import (
+    analyze_content,
     generate_quiz_questions,
     get_tutoring_response,
-    analyze_content,
     moderate_content,
     translate_content,
 )

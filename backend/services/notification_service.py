@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
-import httpx
 
+import httpx
 from sqlalchemy.orm import Session
 
 from backend.config.database import get_db
@@ -62,7 +62,10 @@ def list_notifications(user_id: str) -> list[dict]:
     db: Session = next(_gen)
     try:
         notifications = (
-            db.query(Notification).filter(Notification.user_id == user_id).order_by(Notification.created_at.desc()).all()
+            db.query(Notification)
+            .filter(Notification.user_id == user_id)
+            .order_by(Notification.created_at.desc())
+            .all()
         )
         return [
             {"id": n.id, "user_id": n.user_id, "channel": n.channel, "message": n.message, "is_read": n.is_read}

@@ -4,6 +4,7 @@ The backend should remain operational (serving reads, auth, lessons) even if
 Redis is down. This wrapper lazily connects and swallows connection errors so
 callers either get a safe fallback value or a no-op instead of an exception.
 """
+
 from __future__ import annotations
 
 from typing import Any

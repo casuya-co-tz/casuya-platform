@@ -96,7 +96,7 @@ def get_platform_overview() -> dict:
 
 
 def get_lesson_distribution() -> list[dict]:
-    from backend.models.lesson import Lesson, Subtopic, Topic, Subject
+    from backend.models.lesson import Lesson, Subject, Subtopic, Topic
 
     gen = get_db()
     db: Session = next(gen)

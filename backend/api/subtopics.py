@@ -49,7 +49,9 @@ def delete_subtopic(subtopic_id: str):
             db.commit()
         except Exception:
             db.rollback()
-            raise HTTPException(status_code=409, detail="Cannot delete: subtopic has related lessons. Delete lessons first.")
+            raise HTTPException(
+                status_code=409, detail="Cannot delete: subtopic has related lessons. Delete lessons first."
+            )
         return {"detail": "Subtopic deleted"}
     finally:
         _gen.close()

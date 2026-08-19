@@ -32,16 +32,20 @@ async def _call_ai_service(endpoint: str, payload: dict) -> dict | None:
 
 # ---------- Question Generation ----------
 
+
 async def generate_quiz_questions(lesson_html: str, count: int = 5) -> list[dict]:
     """Generate quiz questions from lesson HTML.
 
     Tries the casuya-ai service first; falls back to local regex extraction.
     """
-    result = await _call_ai_service("/api/questions/generate", {
-        "content": lesson_html,
-        "count": count,
-        "type": "fill-in-blank",
-    })
+    result = await _call_ai_service(
+        "/api/questions/generate",
+        {
+            "content": lesson_html,
+            "count": count,
+            "type": "fill-in-blank",
+        },
+    )
     if result and "questions" in result:
         return result["questions"]
 
@@ -78,28 +82,33 @@ def _generate_questions_locally(lesson_html: str, count: int = 5) -> list[dict]:
 
 # ---------- AI Tutoring ----------
 
+
 async def get_tutoring_response(question: str, lesson_context: str = "") -> str:
     """Get an AI tutoring response for a student question."""
-    result = await _call_ai_service("/api/tutoring/explain", {
-        "question": question,
-        "context": lesson_context,
-    })
+    result = await _call_ai_service(
+        "/api/tutoring/explain",
+        {
+            "question": question,
+            "context": lesson_context,
+        },
+    )
     if result and "response" in result:
         return result["response"]
 
-    return (
-        "I'm sorry, the AI tutor is currently unavailable. "
-        "Please try again later or ask your teacher for help."
-    )
+    return "I'm sorry, the AI tutor is currently unavailable. Please try again later or ask your teacher for help."
 
 
 # ---------- Content Analysis ----------
 
+
 async def analyze_content(html_content: str) -> dict:
     """Analyze educational content for quality, readability, and completeness."""
-    result = await _call_ai_service("/api/content/analyze", {
-        "content": html_content,
-    })
+    result = await _call_ai_service(
+        "/api/content/analyze",
+        {
+            "content": html_content,
+        },
+    )
     if result:
         return result
 
@@ -119,11 +128,15 @@ async def analyze_content(html_content: str) -> dict:
 
 # ---------- Content Moderation ----------
 
+
 async def moderate_content(text: str) -> dict:
     """Check content for appropriateness and safety."""
-    result = await _call_ai_service("/api/content/moderate", {
-        "content": text,
-    })
+    result = await _call_ai_service(
+        "/api/content/moderate",
+        {
+            "content": text,
+        },
+    )
     if result:
         return result
 
@@ -140,12 +153,16 @@ async def moderate_content(text: str) -> dict:
 
 # ---------- Translation ----------
 
+
 async def translate_content(text: str, target_language: str) -> str:
     """Translate educational content to the target language."""
-    result = await _call_ai_service("/api/content/translate", {
-        "content": text,
-        "target_language": target_language,
-    })
+    result = await _call_ai_service(
+        "/api/content/translate",
+        {
+            "content": text,
+            "target_language": target_language,
+        },
+    )
     if result and "translated" in result:
         return result["translated"]
 
@@ -154,12 +171,16 @@ async def translate_content(text: str, target_language: str) -> str:
 
 # ---------- Math/STEM ----------
 
+
 async def solve_equation(formula: str, variables: dict) -> dict:
     """Solve a physics/math equation given variable values."""
-    result = await _call_ai_service("/api/math/solve", {
-        "formula": formula,
-        "variables": variables,
-    })
+    result = await _call_ai_service(
+        "/api/math/solve",
+        {
+            "formula": formula,
+            "variables": variables,
+        },
+    )
     if result:
         return result
 
@@ -167,8 +188,8 @@ async def solve_equation(formula: str, variables: dict) -> dict:
     try:
         expr = formula
         for name, val in variables.items():
-            if isinstance(val, dict) and 'value' in val and val['value'] is not None:
-                expr = expr.replace(name, str(val['value']))
+            if isinstance(val, dict) and "value" in val and val["value"] is not None:
+                expr = expr.replace(name, str(val["value"]))
         result_val = eval(expr, {"__builtins__": {}}, {})
         return {"result": float(result_val), "formula": formula}
     except Exception:
@@ -177,10 +198,13 @@ async def solve_equation(formula: str, variables: dict) -> dict:
 
 async def generate_math_steps(expression: str, target: str = "") -> list[str]:
     """Generate step-by-step solution for a math problem."""
-    result = await _call_ai_service("/api/math/steps", {
-        "expression": expression,
-        "target": target,
-    })
+    result = await _call_ai_service(
+        "/api/math/steps",
+        {
+            "expression": expression,
+            "target": target,
+        },
+    )
     if result and "steps" in result:
         return result["steps"]
 
@@ -189,30 +213,33 @@ async def generate_math_steps(expression: str, target: str = "") -> list[str]:
 
 async def convert_units(value: float, from_unit: str, to_unit: str) -> dict:
     """Convert between measurement units."""
-    result = await _call_ai_service("/api/math/convert", {
-        "value": value,
-        "from": from_unit,
-        "to": to_unit,
-    })
+    result = await _call_ai_service(
+        "/api/math/convert",
+        {
+            "value": value,
+            "from": from_unit,
+            "to": to_unit,
+        },
+    )
     if result:
         return result
 
     # Fallback: common conversions
-    CONVERSIONS = {
+    conversions = {
         ("km", "mi"): 0.621371,
         ("mi", "km"): 1.60934,
         ("kg", "lb"): 2.20462,
         ("lb", "kg"): 0.453592,
         ("m", "ft"): 3.28084,
         ("ft", "m"): 0.3048,
-        ("c", "f"): lambda c: c * 9/5 + 32,
-        ("f", "c"): lambda f: (f - 32) * 5/9,
+        ("c", "f"): lambda c: c * 9 / 5 + 32,
+        ("f", "c"): lambda f: (f - 32) * 5 / 9,
         ("l", "gal"): 0.264172,
         ("gal", "l"): 3.78541,
     }
     key = (from_unit.lower(), to_unit.lower())
-    if key in CONVERSIONS:
-        factor = CONVERSIONS[key]
+    if key in conversions:
+        factor = conversions[key]
         converted = factor(value) if callable(factor) else value * factor
         return {"value": value, "from": from_unit, "to": to_unit, "result": round(converted, 6)}
 
@@ -221,10 +248,13 @@ async def convert_units(value: float, from_unit: str, to_unit: str) -> dict:
 
 async def generate_physics_problem(topic: str, difficulty: str = "medium") -> dict:
     """Generate a physics practice problem."""
-    result = await _call_ai_service("/api/math/physics-problem", {
-        "topic": topic,
-        "difficulty": difficulty,
-    })
+    result = await _call_ai_service(
+        "/api/math/physics-problem",
+        {
+            "topic": topic,
+            "difficulty": difficulty,
+        },
+    )
     if result:
         return result
 

@@ -31,13 +31,15 @@ def _scan_files() -> list[dict]:
             continue
         for f in kind_dir.iterdir():
             if f.is_file() and not f.name.startswith("."):
-                files.append({
-                    "filename": f.name,
-                    "path": f"{kind_dir.name}/{f.name}",
-                    "kind": kind_dir.name,
-                    "size": f.stat().st_size,
-                    "uploaded_at": f.stat().st_mtime,
-                })
+                files.append(
+                    {
+                        "filename": f.name,
+                        "path": f"{kind_dir.name}/{f.name}",
+                        "kind": kind_dir.name,
+                        "size": f.stat().st_size,
+                        "uploaded_at": f.stat().st_mtime,
+                    }
+                )
     files.sort(key=lambda x: x.get("uploaded_at", 0), reverse=True)
     return files
 
@@ -83,11 +85,21 @@ async def upload_file(file: UploadFile, current_user=Depends(require_role("admin
         raise HTTPException(status_code=400, detail="No filename provided")
     ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else ""
     kind = {
-        "png": "images", "jpg": "images", "jpeg": "images",
-        "gif": "images", "svg": "images", "webp": "images",
-        "pdf": "documents", "doc": "documents", "docx": "documents", "txt": "documents",
-        "mp4": "videos", "webm": "videos",
-        "mp3": "audio", "wav": "audio", "ogg": "audio",
+        "png": "images",
+        "jpg": "images",
+        "jpeg": "images",
+        "gif": "images",
+        "svg": "images",
+        "webp": "images",
+        "pdf": "documents",
+        "doc": "documents",
+        "docx": "documents",
+        "txt": "documents",
+        "mp4": "videos",
+        "webm": "videos",
+        "mp3": "audio",
+        "wav": "audio",
+        "ogg": "audio",
     }.get(ext, "images")
     content = await file.read()
     stored_name = store_upload(content, file.filename, kind)

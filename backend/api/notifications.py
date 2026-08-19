@@ -2,10 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from backend.config.database import get_db
 from backend.middleware.auth import get_current_user
 from backend.middleware.permissions import require_role
 from backend.models.user import User
-from backend.config.database import get_db
 from backend.services.notification_service import list_notifications, mark_notification_read, send_notification
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
@@ -32,7 +32,7 @@ def send_notification_route(body: SendNotificationRequest):
     _gen = get_db()
     db: Session = next(_gen)
     try:
-        users = db.query(User).filter(User.role == body.role, User.is_active == True).all()
+        users = db.query(User).filter(User.role == body.role, User.is_active.is_(True)).all()
         if not users:
             raise HTTPException(status_code=404, detail=f"No active {body.role}s found")
         results = []
@@ -50,7 +50,7 @@ def send_bulk_notification_route(body: SendNotificationRequest):
     _gen = get_db()
     db: Session = next(_gen)
     try:
-        users = db.query(User).filter(User.role == body.role, User.is_active == True).all()
+        users = db.query(User).filter(User.role == body.role, User.is_active.is_(True)).all()
         if not users:
             raise HTTPException(status_code=404, detail=f"No active {body.role}s found")
         results = []

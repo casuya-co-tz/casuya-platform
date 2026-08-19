@@ -17,6 +17,7 @@ class SubmitAssignmentRequest(BaseModel):
     student_id: str
     elements_json: str
 
+
 router = APIRouter(prefix="/assignments", tags=["assignments"])
 
 

@@ -86,15 +86,12 @@ def _has_latex(html: str) -> bool:
 
 
 def _has_mathjax(html: str) -> bool:
-    return any(
-        marker in html
-        for marker in ["mathjax", "MathJax", "tex-mml-chtml", "cdn.jsdelivr.net/npm/mathjax"]
-    )
+    return any(marker in html for marker in ["mathjax", "MathJax", "tex-mml-chtml", "cdn.jsdelivr.net/npm/mathjax"])
 
 
 def _clean_mathjax_broken_katex(html: str) -> str:
-    html = re.sub(r'<link[^>]*katex[^>]*>', '', html)
-    html = re.sub(r'<script[^>]*katex[^>]*>.*?</script>', '', html, flags=re.DOTALL)
+    html = re.sub(r"<link[^>]*katex[^>]*>", "", html)
+    html = re.sub(r"<script[^>]*katex[^>]*>.*?</script>", "", html, flags=re.DOTALL)
     return html
 
 
@@ -106,21 +103,21 @@ def _optimize_math_injection(html: str) -> str:
         return _clean_mathjax_broken_katex(html)
 
     katex_css = '<link rel="stylesheet" href="/static/lib/katex/katex.min.css" crossorigin="anonymous">'
-    katex_js = '<script src="/static/lib/katex/katex.min.js" crossorigin="anonymous"><\/script>'
-    auto_render_js = '<script src="/static/lib/katex/contrib/auto-render.min.js" crossorigin="anonymous"><\/script>'
+    katex_js = '<script src="/static/lib/katex/katex.min.js" crossorigin="anonymous"></script>'
+    auto_render_js = '<script src="/static/lib/katex/contrib/auto-render.min.js" crossorigin="anonymous"></script>'
     render_call = (
-        '<script>'
+        "<script>"
         'document.addEventListener("DOMContentLoaded",function(){'
         'if(typeof renderMathInElement==="function"){'
-        'renderMathInElement(document.body,{delimiters:['
+        "renderMathInElement(document.body,{delimiters:["
         '{left:"$$",right:"$$",display:true},'
         '{left:"$",right:"$",display:false},'
         '{left:"\\\\[",right:"\\\\]",display:true},'
         '{left:"\\\\(",right:"\\\\)",display:false}'
-        ']});'
-        '}'
-        '});'
-        '<\/script>'
+        "]});"
+        "}"
+        "});"
+        "</script>"
     )
 
     has_head = "<head>" in html.lower()
@@ -132,18 +129,17 @@ def _optimize_math_injection(html: str) -> str:
             "<!DOCTYPE html><html><head>"
             "<meta charset='UTF-8'>"
             "<meta name='viewport' content='width=device-width, initial-scale=1.0'>"
-            + katex_css +
-            "</head><body>"
-            + html +
-            katex_js + auto_render_js + render_call +
-            "</body></html>"
+            + katex_css
+            + "</head><body>"
+            + html
+            + katex_js
+            + auto_render_js
+            + render_call
+            + "</body></html>"
         )
         return html
 
-    if has_head:
-        html = html.replace("<head>", "<head>" + katex_css, 1)
-    else:
-        html = katex_css + html
+    html = html.replace("<head>", "<head>" + katex_css, 1) if has_head else katex_css + html
 
     katex_scripts = katex_js + auto_render_js + render_call
 
@@ -239,8 +235,13 @@ def delete_lesson(lesson_id: str) -> dict:
             raise ValueError("Lesson not found")
         slug = row[0]
 
-        cur.execute("DELETE FROM quiz_options WHERE question_id IN (SELECT id FROM quiz_questions WHERE quiz_id IN (SELECT id FROM quizzes WHERE lesson_id = %s))", (lesson_id,))
-        cur.execute("DELETE FROM quiz_questions WHERE quiz_id IN (SELECT id FROM quizzes WHERE lesson_id = %s)", (lesson_id,))
+        cur.execute(
+            "DELETE FROM quiz_options WHERE question_id IN (SELECT id FROM quiz_questions WHERE quiz_id IN (SELECT id FROM quizzes WHERE lesson_id = %s))",
+            (lesson_id,),
+        )
+        cur.execute(
+            "DELETE FROM quiz_questions WHERE quiz_id IN (SELECT id FROM quizzes WHERE lesson_id = %s)", (lesson_id,)
+        )
         cur.execute("DELETE FROM quizzes WHERE lesson_id = %s", (lesson_id,))
         cur.execute("DELETE FROM lesson_versions WHERE lesson_id = %s", (lesson_id,))
         cur.execute("DELETE FROM progress_records WHERE lesson_id = %s", (lesson_id,))
@@ -314,7 +315,9 @@ def update_lesson(lesson_id: str, title: str | None = None, html: str | None = N
         _gen.close()
 
 
-def list_lessons(subtopic_id: str | None = None, status: str | None = None, skip: int = 0, limit: int = 100) -> list[dict]:
+def list_lessons(
+    subtopic_id: str | None = None, status: str | None = None, skip: int = 0, limit: int = 100
+) -> list[dict]:
     _gen = get_db()
     db: Session = next(_gen)
     try:

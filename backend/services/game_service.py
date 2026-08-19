@@ -23,15 +23,17 @@ def get_games_for_lesson(lesson_id: str) -> list[dict]:
     games = db.query(Game).filter(Game.lesson_id == lesson_id).all()
     result = []
     for g in games:
-        result.append({
-            "id": g.id,
-            "lesson_id": g.lesson_id,
-            "title": g.title,
-            "package_path": g.package_path,
-            "slug": g.slug,
-            "content_hash": g.content_hash,
-            "status": g.status,
-        })
+        result.append(
+            {
+                "id": g.id,
+                "lesson_id": g.lesson_id,
+                "title": g.title,
+                "package_path": g.package_path,
+                "slug": g.slug,
+                "content_hash": g.content_hash,
+                "status": g.status,
+            }
+        )
     return result
 
 
@@ -79,7 +81,9 @@ def create_game_from_html(lesson_id: str | None, title: str, html: str) -> dict:
     content_hash = hashlib.sha256(html.encode()).hexdigest()
     pkg_path = _get_game_pkg_path(slug)
     resolved_lesson_id = lesson_id or None
-    game = Game(lesson_id=resolved_lesson_id, title=title, slug=slug, package_path=str(pkg_path), content_hash=content_hash)
+    game = Game(
+        lesson_id=resolved_lesson_id, title=title, slug=slug, package_path=str(pkg_path), content_hash=content_hash
+    )
     db.add(game)
     db.flush()
     pkg_path.parent.mkdir(parents=True, exist_ok=True)

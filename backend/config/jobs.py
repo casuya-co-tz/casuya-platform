@@ -3,6 +3,7 @@
 Degrades gracefully when Redis is unavailable: queue access is deferred until
 first use, and enqueue attempts are skipped (returning None) if Redis is down.
 """
+
 from __future__ import annotations
 
 from typing import Any

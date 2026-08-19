@@ -7,8 +7,8 @@ After writes, cache is immediately refreshed.
 
 from __future__ import annotations
 
-from backend.services.payments_client import get_payments_client
 from backend.services import payment_cache
+from backend.services.payments_client import get_payments_client
 
 
 def initiate_checkout(
@@ -47,6 +47,7 @@ def get_user_payment_stats(user_id: str) -> dict:
 
 # ── Subscriptions ────────────────────────────────────────────────────────
 
+
 def list_user_subscriptions(user_id: str) -> list[dict]:
     return payment_cache.get_subscriptions(user_id=user_id)
 
@@ -67,6 +68,7 @@ def cancel_subscription(subscription_id: str, immediate: bool = False) -> dict:
 
 # ── Invoices ─────────────────────────────────────────────────────────────
 
+
 def list_user_invoices(user_id: str) -> list[dict]:
     return payment_cache.get_invoices(user_id=user_id)
 
@@ -84,6 +86,7 @@ def pay_invoice(invoice_id: str) -> dict:
 
 
 # ── Refunds ──────────────────────────────────────────────────────────────
+
 
 def process_refund(payment_id: str, amount: float | None = None, reason: str = "") -> dict:
     client = get_payments_client()

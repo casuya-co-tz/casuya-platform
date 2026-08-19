@@ -39,6 +39,7 @@ def create_topic(body: TopicCreate):
 @router.delete("/{topic_id}", dependencies=[Depends(require_role("admin"))])
 def delete_topic(topic_id: str):
     from fastapi import HTTPException
+
     _gen = get_db()
     db: Session = next(_gen)
     try:
@@ -50,7 +51,9 @@ def delete_topic(topic_id: str):
             db.commit()
         except Exception:
             db.rollback()
-            raise HTTPException(status_code=409, detail="Cannot delete: topic has related subtopics. Delete subtopics first.")
+            raise HTTPException(
+                status_code=409, detail="Cannot delete: topic has related subtopics. Delete subtopics first."
+            )
         return {"detail": "Topic deleted"}
     finally:
         _gen.close()

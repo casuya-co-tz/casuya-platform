@@ -31,8 +31,8 @@ def _optimize_math_injection(html: str) -> str:
         return _clean_mathjax_broken_katex(html)
 
     katex_css = '<link rel="stylesheet" href="/static/lib/katex/katex.min.css" crossorigin="anonymous">'
-    katex_js = '<script src="/static/lib/katex/katex.min.js" crossorigin="anonymous"><\/script>'
-    auto_render_js = '<script src="/static/lib/katex/contrib/auto-render.min.js" crossorigin="anonymous"><\/script>'
+    katex_js = '<script src="/static/lib/katex/katex.min.js" crossorigin="anonymous"></script>'
+    auto_render_js = '<script src="/static/lib/katex/contrib/auto-render.min.js" crossorigin="anonymous"></script>'
     render_call = (
         '<script>'
         'document.addEventListener("DOMContentLoaded",function(){'
@@ -45,7 +45,7 @@ def _optimize_math_injection(html: str) -> str:
         ']});'
         '}'
         '});'
-        '<\/script>'
+        '</script>'
     )
 
     if "<head>" not in html.lower():

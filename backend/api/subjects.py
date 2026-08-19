@@ -48,7 +48,9 @@ def delete_subject(subject_id: str):
             db.commit()
         except Exception:
             db.rollback()
-            raise HTTPException(status_code=409, detail="Cannot delete: subject has related topics. Delete topics first.")
+            raise HTTPException(
+                status_code=409, detail="Cannot delete: subject has related topics. Delete topics first."
+            )
         return {"detail": "Subject deleted"}
     finally:
         _gen.close()

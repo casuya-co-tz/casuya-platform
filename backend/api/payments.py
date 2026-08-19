@@ -4,19 +4,19 @@ from pydantic import BaseModel
 from backend.middleware.auth import get_current_user
 from backend.schemas.payments import CheckoutRequest, PaymentResponse
 from backend.services.payment_service import (
-    initiate_checkout,
-    handle_webhook_payload,
-    list_user_payments,
-    list_all_payments,
-    get_user_payment_stats,
-    list_user_subscriptions,
-    create_subscription,
     cancel_subscription,
-    list_user_invoices,
+    create_subscription,
     get_invoice,
+    get_user_payment_stats,
+    handle_webhook_payload,
+    initiate_checkout,
+    list_all_payments,
+    list_user_invoices,
+    list_user_payments,
+    list_user_refunds,
+    list_user_subscriptions,
     pay_invoice,
     process_refund,
-    list_user_refunds,
 )
 
 router = APIRouter(prefix="/payments", tags=["payments"])
@@ -30,6 +30,7 @@ def _service_unavailable():
 
 
 # ── Checkout / Webhook ───────────────────────────────────────────────────────
+
 
 @router.post("/checkout", response_model=PaymentResponse)
 def create_checkout(body: CheckoutRequest, current_user=Depends(get_current_user)):
@@ -65,6 +66,7 @@ async def azampay_webhook(request: Request):
 
 # ── Transactions ─────────────────────────────────────────────────────────────
 
+
 @router.get("/transactions")
 def list_transactions(current_user=Depends(get_current_user)):
     try:
@@ -92,6 +94,7 @@ def my_payment_history(current_user=Depends(get_current_user)):
 
 
 # ── Subscriptions ────────────────────────────────────────────────────────────
+
 
 class SubscriptionRequest(BaseModel):
     plan_id: str
@@ -133,12 +136,14 @@ def cancel_sub(subscription_id: str, immediate: bool = False, current_user=Depen
 
 # ── Invoices ─────────────────────────────────────────────────────────────────
 
+
 @router.get("/invoices")
 def list_invoices(status: str | None = None, current_user=Depends(get_current_user)):
     try:
         role = current_user.get("role", "student")
         if role == "admin":
             from backend.services.payment_cache import get_invoices
+
             return get_invoices()
         return list_user_invoices(current_user["sub"])
     except ConnectionError:
@@ -170,6 +175,7 @@ def pay_inv(invoice_id: str, current_user=Depends(get_current_user)):
 
 
 # ── Refunds ──────────────────────────────────────────────────────────────────
+
 
 class RefundRequest(BaseModel):
     payment_id: str

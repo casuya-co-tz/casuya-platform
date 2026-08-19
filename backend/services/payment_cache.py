@@ -72,6 +72,7 @@ def invalidate() -> None:
 
 # ── Read functions (served from memory) ────────────────────────────────────
 
+
 def get_payments(user_id: str | None = None, status: str | None = None) -> list[dict]:
     with _lock:
         result = _payments

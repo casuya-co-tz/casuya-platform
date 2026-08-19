@@ -10,9 +10,7 @@ def get_note(user_id: str, lesson_id: str) -> dict | None:
     gen = get_db()
     db: Session = next(gen)
     try:
-        note = db.query(Note).filter(
-            Note.user_id == user_id, Note.lesson_id == lesson_id
-        ).first()
+        note = db.query(Note).filter(Note.user_id == user_id, Note.lesson_id == lesson_id).first()
         if not note:
             return None
         return {
@@ -31,9 +29,7 @@ def save_note(user_id: str, lesson_id: str, content: str) -> dict:
     gen = get_db()
     db: Session = next(gen)
     try:
-        note = db.query(Note).filter(
-            Note.user_id == user_id, Note.lesson_id == lesson_id
-        ).first()
+        note = db.query(Note).filter(Note.user_id == user_id, Note.lesson_id == lesson_id).first()
         now = datetime.now(timezone.utc)
         if note:
             note.content = content

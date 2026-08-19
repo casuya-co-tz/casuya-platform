@@ -77,6 +77,7 @@ def _callback_url(provider: str) -> str:
 
 # ── Step 1: Redirect to the authorization URL ────────────────────────────
 
+
 @router.get("/oauth/{provider}")
 def oauth_initiate(provider: str):
     if provider not in PROVIDERS:
@@ -105,6 +106,7 @@ def oauth_initiate(provider: str):
 
 
 # ── Step 2: Handle the callback, exchange code, create/find user ─────────
+
 
 @router.get("/callback/{provider}")
 def oauth_callback(provider: str, request: Request):
@@ -170,10 +172,12 @@ def oauth_callback(provider: str, request: Request):
         return RedirectResponse(f"{settings.oauth_redirect_base}/login.html?error=account_creation_failed")
 
     # Redirect to frontend with tokens in the URL fragment
-    fragment = urlencode({
-        "access_token": result["access_token"],
-        "refresh_token": result["refresh_token"],
-        "role": result["role"],
-        "user_id": result["user_id"],
-    })
+    fragment = urlencode(
+        {
+            "access_token": result["access_token"],
+            "refresh_token": result["refresh_token"],
+            "role": result["role"],
+            "user_id": result["user_id"],
+        }
+    )
     return RedirectResponse(f"{settings.oauth_redirect_base}/login.html?oauth=success#{fragment}")

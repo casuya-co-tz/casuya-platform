@@ -68,9 +68,9 @@ def delete_assignment(assignment_id: str) -> bool:
         row = db.get(Assignment, assignment_id)
         if not row:
             return False
-        db.query(AssignmentSubmission).filter(
-            AssignmentSubmission.assignment_id == assignment_id
-        ).delete(synchronize_session=False)
+        db.query(AssignmentSubmission).filter(AssignmentSubmission.assignment_id == assignment_id).delete(
+            synchronize_session=False
+        )
         db.delete(row)
         db.commit()
         return True

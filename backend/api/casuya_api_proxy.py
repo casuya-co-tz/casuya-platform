@@ -17,9 +17,7 @@ async def proxy_casuya_api(request: Request, path: str):
     target = f"{settings.casuya_api_url.rstrip('/')}/api/{path}"
     body = await request.body()
     headers = {
-        k: v
-        for k, v in request.headers.items()
-        if k.lower() not in ("host", "content-length", "transfer-encoding")
+        k: v for k, v in request.headers.items() if k.lower() not in ("host", "content-length", "transfer-encoding")
     }
     async with httpx.AsyncClient(timeout=30) as client:
         resp = await client.request(

@@ -66,6 +66,7 @@ async def lifespan(app: FastAPI):
         print(f"WARNING: init_db failed, continuing without DB: {exc}")
 
     from backend.services.payment_cache import start_cache_sync, stop_cache_sync
+
     start_cache_sync()
     yield
     stop_cache_sync()

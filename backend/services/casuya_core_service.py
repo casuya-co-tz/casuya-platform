@@ -11,16 +11,6 @@ import shutil
 import tempfile
 from pathlib import Path
 
-from casuya_core import (
-    CompilerConfig,
-    LessonCompiler,
-    LessonValidator,
-    SecurityValidator,
-    generate_signatures,
-    verify_package_integrity,
-)
-from casuya_core.compiler import DEFAULT_CONFIG
-
 from backend.config.settings import get_settings
 
 
@@ -31,12 +21,18 @@ def _storage_dir() -> Path:
     return d
 
 
-def compile_lesson(html: str, *, lesson_id: str | None = None, validate: bool = True,
-                   security: bool = True) -> dict:
+def compile_lesson(html: str, *, lesson_id: str | None = None, validate: bool = True, security: bool = True) -> dict:
     """Compile raw HTML into a signed Casuya lesson package.
 
     Returns a dict describing the produced package: id, path, size, integrity_ok.
     """
+    from casuya_core import (
+        CompilerConfig,
+        LessonCompiler,
+        generate_signatures,
+        verify_package_integrity,
+    )
+
     settings = get_settings()
     cfg = CompilerConfig(
         validate_schema=validate,
@@ -78,6 +74,8 @@ def validate_lesson_html(html: str) -> dict:
 
     Returns {"valid": bool, "errors": [...]}.
     """
+    from casuya_core import LessonValidator
+
     validator = LessonValidator()
     with tempfile.TemporaryDirectory() as tmp:
         src = Path(tmp) / "lesson.html"
@@ -85,6 +83,7 @@ def validate_lesson_html(html: str) -> dict:
         try:
             from casuya_core.manifest import create_manifest
             from casuya_core.metadata import create_metadata
+
             metadata = create_metadata(src)
             manifest = create_manifest(src, metadata)
             validator.validate_lesson(src, manifest, metadata)
@@ -95,12 +94,15 @@ def validate_lesson_html(html: str) -> dict:
 
 def security_scan(html: str) -> dict:
     """Run casuya-core security validation on raw lesson HTML."""
+    from casuya_core import SecurityValidator
+
     sec = SecurityValidator()
     with tempfile.TemporaryDirectory() as tmp:
         src = Path(tmp) / "lesson.html"
         src.write_text(html, encoding="utf-8")
         from casuya_core.manifest import create_manifest
         from casuya_core.metadata import create_metadata
+
         metadata = create_metadata(src)
         manifest = create_manifest(src, metadata)
         try:

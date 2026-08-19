@@ -8,8 +8,8 @@ from pydantic import BaseModel
 from backend.middleware.auth import get_current_user
 from backend.services.casuya_core_service import (
     compile_lesson,
-    validate_lesson_html,
     security_scan,
+    validate_lesson_html,
 )
 
 router = APIRouter(prefix="/core", tags=["casuya-core"])

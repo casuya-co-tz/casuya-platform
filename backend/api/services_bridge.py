@@ -215,7 +215,9 @@ def add_exam_section(exam_id: str, payload: dict, _=Depends(get_current_user)):
 
 
 @router.post("/exams/{exam_id}/autofill")
-def autofill_section(exam_id: str, section_id: str = Query(...), criteria: dict | None = None, _=Depends(get_current_user)):
+def autofill_section(
+    exam_id: str, section_id: str = Query(...), criteria: dict | None = None, _=Depends(get_current_user)
+):
     return _guard(lambda: _bridge.autofill_section(exam_id, section_id, criteria))
 
 
@@ -270,7 +272,8 @@ def exam_analytics(exam_id: str = Query(...), _=Depends(get_current_user)):
 
 
 @router.post("/exams/security")
-def exam_security(action: str = Query(...), payload: dict = {}, _=Depends(get_current_user)):
+def exam_security(action: str = Query(...), payload: dict | None = None, _=Depends(get_current_user)):
+    payload = payload or {}
     return _guard(lambda: _bridge.exam_security(action, payload))
 
 
@@ -353,7 +356,8 @@ def bridge_policy(payload: dict):
 
 # ─── Analytics ─────────────────────────────────────────────────────────────
 @router.post("/analytics/ingest")
-def analytics_ingest(metric: str = Query(...), value: dict = {}, _=Depends(get_current_user)):
+def analytics_ingest(metric: str = Query(...), value: dict | None = None, _=Depends(get_current_user)):
+    value = value or {}
     return _guard(lambda: _bridge.ingest_metric(metric, value))
 
 
@@ -363,12 +367,14 @@ def analytics_aggregate(payload: dict, _=Depends(get_current_user)):
 
 
 @router.post("/analytics/event")
-def analytics_event(event: str = Query(...), data: dict = {}, _=Depends(get_current_user)):
+def analytics_event(event: str = Query(...), data: dict | None = None, _=Depends(get_current_user)):
+    data = data or {}
     return _guard(lambda: _bridge.emit_event(event, data))
 
 
 @router.post("/analytics/metric")
-def analytics_metric(value: dict = {}, _=Depends(get_current_user)):
+def analytics_metric(value: dict | None = None, _=Depends(get_current_user)):
+    value = value or {}
     return _guard(lambda: _bridge.record_metric(value))
 
 
@@ -399,7 +405,8 @@ def search_index(payload: dict, _=Depends(get_current_user)):
 
 
 @router.post("/search/index-batch")
-def search_index_batch(documents: list = [], _=Depends(get_current_user)):
+def search_index_batch(documents: list | None = None, _=Depends(get_current_user)):
+    documents = documents or []
     return _guard(lambda: _bridge.index_documents(documents))
 
 

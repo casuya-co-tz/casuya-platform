@@ -18,8 +18,7 @@ def _get_signing_key() -> bytes:
     settings = get_settings()
     if not settings.casuya_core_signing_key:
         raise RuntimeError(
-            "CASUYA_CORE_SIGNING_KEY is not configured. "
-            "Set it in your .env file to enable lesson package signing."
+            "CASUYA_CORE_SIGNING_KEY is not configured. Set it in your .env file to enable lesson package signing."
         )
     return settings.casuya_core_signing_key.encode()
 
