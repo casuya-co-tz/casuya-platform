@@ -64,8 +64,8 @@ async def lifespan(app: FastAPI):
         
         # Auto-provision admin if env vars are present (useful for Render Free tier w/o shell)
         import os
-        admin_email = os.environ.get("CASUYA_ADMIN_EMAIL")
-        admin_password = os.environ.get("CASUYA_ADMIN_PASSWORD")
+        admin_email = os.environ.get("CASUYA_ADMIN_EMAIL", "").strip()
+        admin_password = os.environ.get("CASUYA_ADMIN_PASSWORD", "").strip()
         if admin_email and admin_password:
             from database.seeds.create_admin import create_admin
             admin_name = os.environ.get("CASUYA_ADMIN_NAME", "Platform Admin")
