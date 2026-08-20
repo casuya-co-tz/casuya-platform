@@ -35,7 +35,7 @@ class RateLimitMiddleware:
         settings = get_settings()
         client = scope.get("client")
         client_ip = client[0] if client else "unknown"
-        
+
         if client_ip == "testclient":
             await self.app(scope, receive, send)
             return
