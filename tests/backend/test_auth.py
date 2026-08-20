@@ -93,6 +93,7 @@ def test_refresh_preserves_role():
         if reg.status_code == 409:
             # Already registered from a prior run — authenticate instead.
             reg = client.post("/auth/login", json={"email": email, "password": "test123"})
+        assert reg.status_code == 200, f"Failed to register/login {role}: {reg.text}"
         refresh_token = reg.json()["refresh_token"]
         resp = client.post("/auth/refresh", json={"refresh_token": refresh_token})
         assert resp.status_code == 200, f"refresh failed for {role}"

@@ -28,6 +28,7 @@ class SafeRedis:
 
     def _get(self) -> Redis | None:
         import time
+
         if self._client is None:
             now = time.time()
             if now - self._last_attempt < 10.0:

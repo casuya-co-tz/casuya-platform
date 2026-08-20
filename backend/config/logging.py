@@ -24,6 +24,5 @@ def configure_logging() -> None:
         logging.getLogger(noisy).setLevel(logging.WARNING)
 
 
-
 def get_logger(name: str) -> logging.Logger:
     return logging.getLogger(name)
