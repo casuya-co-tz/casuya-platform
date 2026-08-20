@@ -24,11 +24,17 @@ class SafeRedis:
         self._url = url
         self._client: Redis | None = None
         self._available = False
+        self._last_attempt = 0.0
 
     def _get(self) -> Redis | None:
+        import time
         if self._client is None:
+            now = time.time()
+            if now - self._last_attempt < 10.0:
+                return None
+            self._last_attempt = now
             try:
-                self._client = Redis.from_url(self._url, socket_connect_timeout=2)
+                self._client = Redis.from_url(self._url, socket_connect_timeout=1)
                 self._client.ping()
                 self._available = True
             except RedisError:
