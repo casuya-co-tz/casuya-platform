@@ -2510,9 +2510,9 @@ async function renderStudentDashboard() {
         <div class="content">
           <h2>⚙️ Settings</h2>
           <div class="tab-bar">
-            <button class="tab-btn student-settings-tab" data-tab="profile" ${activeTab === "profile" ? 'class="tab-btn student-settings-tab active"' : ''}>👤 Profile</button>
-            <button class="tab-btn student-settings-tab" data-tab="password" ${activeTab === "password" ? 'class="tab-btn student-settings-tab active"' : ''}>🔒 Password</button>
-            <button class="tab-btn student-settings-tab" data-tab="appearance" ${activeTab === "appearance" ? 'class="tab-btn student-settings-tab active"' : ''}>🎨 Appearance</button>
+            <button class="tab-btn student-settings-tab${activeTab === "profile" ? " active" : ""}" data-tab="profile">👤 Profile</button>
+            <button class="tab-btn student-settings-tab${activeTab === "password" ? " active" : ""}" data-tab="password">🔒 Password</button>
+            <button class="tab-btn student-settings-tab${activeTab === "appearance" ? " active" : ""}" data-tab="appearance">🎨 Appearance</button>
           </div>
           <div id="student-settings-panel"></div>
         </div>
@@ -4907,11 +4907,11 @@ async function renderAdminDashboard() {
         <div class="content">
           <h2>Settings</h2>
           <div class="tab-bar">
-            <button class="tab-btn settings-tab-btn" data-tab="profile" ${activeTab === "profile" ? 'class="tab-btn settings-tab-btn active"' : ''}>👤 Profile</button>
-            <button class="tab-btn settings-tab-btn" data-tab="security" ${activeTab === "security" ? 'class="tab-btn settings-tab-btn active"' : ''}>🔒 Security</button>
-            <button class="tab-btn settings-tab-btn" data-tab="notifications" ${activeTab === "notifications" ? 'class="tab-btn settings-tab-btn active"' : ''}>🔔 Notifications</button>
-            <button class="tab-btn settings-tab-btn" data-tab="platform" ${activeTab === "platform" ? 'class="tab-btn settings-tab-btn active"' : ''}>⚙️ Platform</button>
-            <button class="tab-btn settings-tab-btn" data-tab="appearance" ${activeTab === "appearance" ? 'class="tab-btn settings-tab-btn active"' : ''}>🎨 Appearance</button>
+            <button class="tab-btn settings-tab-btn${activeTab === "profile" ? " active" : ""}" data-tab="profile">👤 Profile</button>
+            <button class="tab-btn settings-tab-btn${activeTab === "security" ? " active" : ""}" data-tab="security">🔒 Security</button>
+            <button class="tab-btn settings-tab-btn${activeTab === "notifications" ? " active" : ""}" data-tab="notifications">🔔 Notifications</button>
+            <button class="tab-btn settings-tab-btn${activeTab === "platform" ? " active" : ""}" data-tab="platform">⚙️ Platform</button>
+            <button class="tab-btn settings-tab-btn${activeTab === "appearance" ? " active" : ""}" data-tab="appearance">🎨 Appearance</button>
           </div>
           <div id="settings-panel"></div>
         </div>
@@ -6215,9 +6215,9 @@ async function renderTeacherDashboard() {
         <div class="content">
           <h2>⚙️ Settings</h2>
           <div class="tab-bar">
-            <button class="tab-btn teacher-settings-tab" data-tab="profile" ${activeTab === "profile" ? 'class="tab-btn teacher-settings-tab active"' : ''}>👤 Profile</button>
-            <button class="tab-btn teacher-settings-tab" data-tab="password" ${activeTab === "password" ? 'class="tab-btn teacher-settings-tab active"' : ''}>🔒 Password</button>
-            <button class="tab-btn teacher-settings-tab" data-tab="appearance" ${activeTab === "appearance" ? 'class="tab-btn teacher-settings-tab active"' : ''}>🎨 Appearance</button>
+            <button class="tab-btn teacher-settings-tab${activeTab === "profile" ? " active" : ""}" data-tab="profile">👤 Profile</button>
+            <button class="tab-btn teacher-settings-tab${activeTab === "password" ? " active" : ""}" data-tab="password">🔒 Password</button>
+            <button class="tab-btn teacher-settings-tab${activeTab === "appearance" ? " active" : ""}" data-tab="appearance">🎨 Appearance</button>
           </div>
           <div id="teacher-settings-panel"></div>
         </div>
