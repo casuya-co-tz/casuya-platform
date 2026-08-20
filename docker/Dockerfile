@@ -14,6 +14,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY backend/ backend/
 COPY integrations/ integrations/
+COPY database/ database/
 COPY storage/ storage/
 COPY --from=frontend /app/build/ frontend/
 
