@@ -6,6 +6,7 @@ Run locally with:
 
 from __future__ import annotations
 
+import asyncio
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -59,7 +60,7 @@ init_sentry()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
-        init_db()
+        await asyncio.to_thread(init_db)
     except Exception as exc:  # noqa: BLE001
         # Tolerate an unreachable/unconfigured database in local dev so the
         # API still serves health/readiness and static routes.

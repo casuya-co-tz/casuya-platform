@@ -55,7 +55,6 @@ def start_cache_sync() -> None:
     if _running:
         return
     _running = True
-    _sync_from_microservice()  # initial sync
     t = threading.Thread(target=_background_sync, daemon=True)
     t.start()
 
