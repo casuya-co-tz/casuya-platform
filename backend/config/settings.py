@@ -30,9 +30,7 @@ class Settings(BaseSettings):
         "https://casuya-backend.onrender.com",
     ]
 
-    cors_origin_regex: str | None = (
-        r"https://.*\.vercel\.app|http://(localhost|127\.0\.0\.1):[0-9]+"
-    )
+    cors_origin_regex: str | None = r"https://.*\.vercel\.app|http://(localhost|127\.0\.0\.1):[0-9]+"
 
     casuya_core_signing_key: str | None = None
     casuya_ai_url: str = "http://localhost:3000"
