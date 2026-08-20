@@ -61,6 +61,16 @@ init_sentry()
 async def lifespan(app: FastAPI):
     try:
         await asyncio.to_thread(init_db)
+        
+        # Auto-provision admin if env vars are present (useful for Render Free tier w/o shell)
+        import os
+        admin_email = os.environ.get("CASUYA_ADMIN_EMAIL")
+        admin_password = os.environ.get("CASUYA_ADMIN_PASSWORD")
+        if admin_email and admin_password:
+            from database.seeds.create_admin import create_admin
+            admin_name = os.environ.get("CASUYA_ADMIN_NAME", "Platform Admin")
+            await asyncio.to_thread(create_admin, admin_email, admin_password, admin_name)
+            
     except Exception as exc:  # noqa: BLE001
         # Tolerate an unreachable/unconfigured database in local dev so the
         # API still serves health/readiness and static routes.
