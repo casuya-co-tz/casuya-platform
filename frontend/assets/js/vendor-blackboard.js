@@ -784,6 +784,8 @@ var CasuyaBlackboard = (() => {
     dirtySinceSave = false;
     boundBeforeUnload = null;
     toastTimeout = null;
+    usePressure = false;
+    contextMenuKeyHandler = null;
     constructor(options) {
       this.container = options.container;
       this.width = options.width || this.container.clientWidth || 800;
@@ -1054,6 +1056,12 @@ var CasuyaBlackboard = (() => {
         c2.getContext("2d").scale(this.dpr, this.dpr);
       });
     }
+    onScrollDismiss = () => {
+      this.dismissContextMenu();
+    };
+    onResizeDismiss = () => {
+      this.dismissContextMenu();
+    };
     attachEvents() {
       this.liveCanvas.addEventListener("pointerdown", this.onPointerDown);
       this.liveCanvas.addEventListener("pointermove", this.onPointerMove);
@@ -1068,6 +1076,8 @@ var CasuyaBlackboard = (() => {
       window.addEventListener("click", this.onWindowClick);
       window.addEventListener("keydown", this.onKeyDown);
       window.addEventListener("keyup", this.onKeyUp);
+      window.addEventListener("scroll", this.onScrollDismiss, { capture: true, passive: true });
+      window.addEventListener("resize", this.onResizeDismiss);
     }
     detachEvents() {
       this.liveCanvas.removeEventListener("pointerdown", this.onPointerDown);
@@ -1083,6 +1093,8 @@ var CasuyaBlackboard = (() => {
       window.removeEventListener("click", this.onWindowClick);
       window.removeEventListener("keydown", this.onKeyDown);
       window.removeEventListener("keyup", this.onKeyUp);
+      window.removeEventListener("scroll", this.onScrollDismiss);
+      window.removeEventListener("resize", this.onResizeDismiss);
     }
     getPoint = (e2) => {
       const rect = this.liveCanvas.getBoundingClientRect();
@@ -1098,8 +1110,11 @@ var CasuyaBlackboard = (() => {
         if (worldPoint.x >= bounds.x - pad && worldPoint.x <= bounds.x + bounds.w + pad && worldPoint.y >= bounds.y - pad && worldPoint.y <= bounds.y + bounds.h + pad) {
           if ((el.tool === "pen" || el.tool === "highlighter") && "points" in el) {
             const hitDist = Math.max(el.width * 2, 10) / this.camera.zoom;
+            const rotation = el.rotation ?? 0;
+            const center = this.getRotationCenter(el);
+            const testPoint = rotation !== 0 ? this.rotatePoint(worldPoint, center, -rotation) : worldPoint;
             const hit = el.points.some(
-              (p2) => Math.hypot(p2.x - worldPoint.x, p2.y - worldPoint.y) < hitDist
+              (p2) => Math.hypot(p2.x - testPoint.x, p2.y - testPoint.y) < hitDist
             );
             if (hit) return el;
             continue;
@@ -1281,6 +1296,7 @@ var CasuyaBlackboard = (() => {
         return;
       }
       this.isDrawing = true;
+      if (e2.pointerType === "pen") this.usePressure = true;
       if (this.activeTool === "pen" || this.activeTool === "highlighter") {
         this.currentElement = {
           id: uid(),
@@ -1636,18 +1652,10 @@ var CasuyaBlackboard = (() => {
         const events = e2.getCoalescedEvents?.() ?? [e2];
         for (const ce of events) {
           const p2 = this.getPoint(ce);
-          const last = this.currentElement.points[this.currentElement.points.length - 1];
+          const pts = this.currentElement.points;
+          const last = pts[pts.length - 1];
           if (Math.hypot(p2.x - last.x, p2.y - last.y) >= 1) {
-            this.currentElement.points.push(p2);
-          }
-        }
-        if (this.currentElement.points.length >= 3) {
-          const rawPoints = this.currentElement.points;
-          const lastFew = rawPoints.slice(Math.max(0, rawPoints.length - 4));
-          const interpolated = this.catmullRomInterpolate(lastFew, 0.5);
-          if (interpolated.length > 2) {
-            const existing = rawPoints.slice(0, rawPoints.length - lastFew.length + 1);
-            this.currentElement.points = [...existing, ...interpolated.slice(1)];
+            pts.push(p2);
           }
         }
       } else {
@@ -1737,6 +1745,8 @@ var CasuyaBlackboard = (() => {
             { x: p2.x, y: p2.y, pressure: 0.5 },
             { x: p2.x + 0.5, y: p2.y + 0.5, pressure: 0.5 }
           ];
+        } else {
+          this.currentElement.points = this.catmullRomInterpolate(this.currentElement.points, 0.5);
         }
       }
       this.commitUndo();
@@ -1954,8 +1964,8 @@ var CasuyaBlackboard = (() => {
           this.selectedIds.add(hit.id);
           this.renderAll();
         }
-        this.showContextMenu(e2.clientX, e2.clientY);
       }
+      this.showContextMenu(e2.clientX, e2.clientY);
     };
     showContextMenu(clientX, clientY) {
       this.dismissContextMenu();
@@ -1963,31 +1973,36 @@ var CasuyaBlackboard = (() => {
       const vw = window.innerWidth;
       const vh = window.innerHeight;
       const menuW = mobile ? 150 : 160;
-      const menuH = mobile ? 200 : 280;
       let left = clientX;
       let top = clientY;
       if (left + menuW > vw) left = vw - menuW - 8;
-      if (top + menuH > vh) top = vh - menuH - 8;
       if (left < 8) left = 8;
       if (top < 8) top = 8;
+      const hasSelection = this.selectedIds.size > 0;
+      const hasOne = this.selectedIds.size === 1;
       const menu = document.createElement("div");
+      menu.setAttribute("role", "menu");
       menu.style.cssText = `
       position: fixed; left: ${left}px; top: ${top}px;
       background: ${THEMES[this.theme].canvasBg}; border: 1px solid ${THEMES[this.theme].gridColor};
       border-radius: 8px; padding: 4px; z-index: 1000; min-width: ${menuW}px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-family: system-ui, sans-serif;
+      max-height: ${vh - 16}px; overflow-y: auto;
     `;
       const items = [
-        { label: "Delete", shortcut: "Del", action: () => this.deleteSelected() },
-        { label: "Duplicate", shortcut: "Ctrl+D", action: () => this.duplicateSelected() },
-        { label: "Group", shortcut: "Ctrl+G", action: () => this.groupSelected() },
-        { label: "Ungroup", shortcut: "Ctrl+Shift+G", action: () => this.ungroupSelected() },
+        { label: "Delete", shortcut: "Del", action: () => this.deleteSelected(), disabled: !hasSelection },
+        { label: "Duplicate", shortcut: "Ctrl+D", action: () => this.duplicateSelected(), disabled: !hasSelection },
+        { label: "Group", shortcut: "Ctrl+G", action: () => this.groupSelected(), disabled: this.selectedIds.size < 2 },
+        { label: "Ungroup", shortcut: "Ctrl+Shift+G", action: () => this.ungroupSelected(), disabled: !hasSelection },
         { type: "separator" },
-        { label: "Bring Forward", shortcut: "]", action: () => this.bringForward() },
-        { label: "Send Backward", shortcut: "[", action: () => this.sendBackward() },
-        { label: "Bring to Front", shortcut: "Ctrl+]", action: () => this.bringToFront() },
-        { label: "Send to Back", shortcut: "Ctrl+[", action: () => this.sendToBack() }
+        { label: "Bring Forward", shortcut: "]", action: () => this.bringForward(), disabled: !hasOne },
+        { label: "Send Backward", shortcut: "[", action: () => this.sendBackward(), disabled: !hasOne },
+        { label: "Bring to Front", shortcut: "Ctrl+]", action: () => this.bringToFront(), disabled: !hasOne },
+        { label: "Send to Back", shortcut: "Ctrl+[", action: () => this.sendToBack(), disabled: !hasOne },
+        { type: "separator" },
+        { label: "Select All", shortcut: "Ctrl+A", action: () => this.selectAll(), disabled: this.elements.length === 0 }
       ];
+      let firstItem = null;
       for (const item of items) {
         if (item.type === "separator") {
           const sep2 = document.createElement("div");
@@ -1996,31 +2011,71 @@ var CasuyaBlackboard = (() => {
           continue;
         }
         const btn = document.createElement("button");
-        btn.style.cssText = `
-        display: flex; justify-content: space-between; align-items: center;
-        width: 100%; padding: ${mobile ? 10 : 6}px 12px; border: none; background: transparent;
-        cursor: pointer; font-size: ${mobile ? 15 : 13}px; border-radius: 4px; color: ${THEMES[this.theme].gridLabelColor};
-        font-family: inherit;
-      `;
+        btn.setAttribute("role", "menuitem");
+        if (item.disabled) {
+          btn.disabled = true;
+          btn.style.cssText = `
+          display: flex; justify-content: space-between; align-items: center;
+          width: 100%; padding: ${mobile ? 10 : 6}px 12px; border: none; background: transparent;
+          cursor: default; font-size: ${mobile ? 15 : 13}px; border-radius: 4px;
+          color: ${THEMES[this.theme].gridLabelColor}; opacity: 0.35; font-family: inherit;
+        `;
+        } else {
+          btn.style.cssText = `
+          display: flex; justify-content: space-between; align-items: center;
+          width: 100%; padding: ${mobile ? 10 : 6}px 12px; border: none; background: transparent;
+          cursor: pointer; font-size: ${mobile ? 15 : 13}px; border-radius: 4px;
+          color: ${THEMES[this.theme].gridLabelColor}; font-family: inherit;
+        `;
+          btn.addEventListener("mouseenter", () => {
+            btn.style.background = THEMES[this.theme].gridColor;
+          });
+          btn.addEventListener("mouseleave", () => {
+            btn.style.background = "transparent";
+          });
+          btn.addEventListener("click", (ev) => {
+            ev.stopPropagation();
+            item.action();
+            this.dismissContextMenu();
+          });
+          if (!firstItem) firstItem = btn;
+        }
         btn.innerHTML = `<span>${item.label}</span><span style="font-size: 11px; opacity: 0.5;">${item.shortcut}</span>`;
-        btn.addEventListener("mouseenter", () => {
-          btn.style.background = THEMES[this.theme].gridColor;
-        });
-        btn.addEventListener("mouseleave", () => {
-          btn.style.background = "transparent";
-        });
-        btn.addEventListener("click", (ev) => {
-          ev.stopPropagation();
-          item.action();
-          this.dismissContextMenu();
-        });
         menu.appendChild(btn);
       }
       document.body.appendChild(menu);
       this.contextMenu = menu;
+      const menuRect = menu.getBoundingClientRect();
+      if (menuRect.bottom > vh - 8) {
+        menu.style.top = Math.max(8, vh - menuRect.height - 8) + "px";
+      }
+      if (!firstItem) firstItem = menu.querySelector("button:not([disabled])");
+      if (firstItem) firstItem.focus();
+      const onKey = (e2) => {
+        if (e2.key === "Escape") {
+          this.dismissContextMenu();
+          return;
+        }
+        const btns = [...menu.querySelectorAll("button:not([disabled])")];
+        const idx = btns.indexOf(document.activeElement);
+        if (e2.key === "ArrowDown") {
+          e2.preventDefault();
+          btns[(idx + 1) % btns.length]?.focus();
+        }
+        if (e2.key === "ArrowUp") {
+          e2.preventDefault();
+          btns[(idx - 1 + btns.length) % btns.length]?.focus();
+        }
+      };
+      menu.addEventListener("keydown", onKey);
+      this.contextMenuKeyHandler = onKey;
     }
     dismissContextMenu() {
       if (this.contextMenu) {
+        if (this.contextMenuKeyHandler) {
+          this.contextMenu.removeEventListener("keydown", this.contextMenuKeyHandler);
+          this.contextMenuKeyHandler = null;
+        }
         this.contextMenu.remove();
         this.contextMenu = null;
       }
@@ -2155,6 +2210,7 @@ var CasuyaBlackboard = (() => {
       this.renderStatic();
       this.flushLive();
     }
+    hintEl = null;
     renderStatic() {
       const ctx = this.staticCtx;
       const t2 = THEMES[this.theme];
@@ -2168,12 +2224,18 @@ var CasuyaBlackboard = (() => {
       for (const el of this.elements) this.drawElement(ctx, el);
       ctx.restore();
       if (this.elements.length === 0 && !this.currentElement) {
-        ctx.fillStyle = t2.hintColor;
+        if (!this.hintEl) {
+          this.hintEl = document.createElement("div");
+          this.hintEl.className = "casuya-hint";
+          this.hintEl.style.cssText = `position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;user-select:none;font-family:system-ui,sans-serif;`;
+          this.canvasWrapper.appendChild(this.hintEl);
+        }
         const hintSize = IS_MOBILE() ? 11 : 14;
-        ctx.font = `${hintSize}px system-ui, -apple-system, sans-serif`;
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(IS_MOBILE() ? "Tap a tool to start" : "Choose a tool and start drawing", this.width / 2, this.height / 2);
+        this.hintEl.textContent = IS_MOBILE() ? "Tap a tool to start" : "Choose a tool and start drawing";
+        this.hintEl.style.cssText = `position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;user-select:none;font-family:system-ui,sans-serif;font-size:${hintSize}px;color:${t2.hintColor};`;
+        this.hintEl.style.display = "";
+      } else if (this.hintEl) {
+        this.hintEl.style.display = "none";
       }
     }
     flushLive() {
@@ -2248,16 +2310,19 @@ var CasuyaBlackboard = (() => {
         if (showLabels) {
           ctx.fillStyle = t2.gridLabelColor;
           ctx.font = `${10 / this.camera.zoom}px system-ui, sans-serif`;
+          const labelOffset = spacing;
           ctx.textAlign = "center";
           if (0 >= vt && 0 <= vb) {
             for (let x2 = startX; x2 <= endX; x2 += spacing * 2) {
-              if (x2 !== 0) ctx.fillText(String(x2 / spacing), x2, 14 / this.camera.zoom);
+              if (Math.abs(x2) < labelOffset) continue;
+              ctx.fillText(String(x2 / spacing), x2, 14 / this.camera.zoom);
             }
           }
           ctx.textAlign = "right";
           if (0 >= vl && 0 <= vr) {
             for (let y2 = startY; y2 <= endY; y2 += spacing * 2) {
-              if (y2 !== 0) ctx.fillText(String(-y2 / spacing), -6 / this.camera.zoom, y2 + 4 / this.camera.zoom);
+              if (Math.abs(y2) < labelOffset) continue;
+              ctx.fillText(String(-y2 / spacing), -6 / this.camera.zoom, y2 + 4 / this.camera.zoom);
             }
           }
         }
@@ -2298,7 +2363,7 @@ var CasuyaBlackboard = (() => {
       }
       const outlinePoints = R(
         points.map((p2) => [p2.x, p2.y, p2.pressure ?? 0.5]),
-        { size: width, thinning: tool === "highlighter" ? 0 : 0.5, smoothing: 0.5, streamline: 0.5, simulatePressure: tool !== "highlighter" }
+        { size: width, thinning: tool === "highlighter" ? 0 : 0.5, smoothing: 0.5, streamline: 0.5, simulatePressure: tool === "highlighter" ? false : !this.usePressure }
       );
       const pathData = getSvgPathFromStroke(outlinePoints);
       if (pathData) ctx.fill(new Path2D(pathData));
@@ -2912,10 +2977,42 @@ var CasuyaBlackboard = (() => {
     rotateSelected(angle) {
       if (this.selectedIds.size === 0) return;
       this.pushUndo();
-      for (const id of this.selectedIds) {
-        const el = this.elements.find((e2) => e2.id === id);
-        if (!el) continue;
-        el.rotation = ((el.rotation ?? 0) + angle) % (Math.PI * 2);
+      const ids = [...this.selectedIds];
+      if (ids.length === 1) {
+        const el = this.elements.find((e2) => e2.id === ids[0]);
+        if (el) el.rotation = ((el.rotation ?? 0) + angle) % (Math.PI * 2);
+      } else {
+        let cx = 0, cy = 0, count = 0;
+        for (const id of ids) {
+          const el = this.elements.find((e2) => e2.id === id);
+          if (!el) continue;
+          const b2 = this.getLocalBounds(el);
+          cx += b2.x + b2.w / 2;
+          cy += b2.y + b2.h / 2;
+          count++;
+        }
+        if (count > 0) {
+          cx /= count;
+          cy /= count;
+        }
+        const center = { x: cx, y: cy };
+        for (const id of ids) {
+          const el = this.elements.find((e2) => e2.id === id);
+          if (!el) continue;
+          if (el.tool === "pen" || el.tool === "eraser" || el.tool === "highlighter") {
+            const s2 = el;
+            s2.points = s2.points.map((p2) => this.rotatePoint(p2, center, angle));
+          } else if (el.tool === "text") {
+            el.position = this.rotatePoint(el.position, center, angle);
+          } else if (el.tool === "image") {
+            el.position = this.rotatePoint(el.position, center, angle);
+          } else {
+            const s2 = el;
+            s2.start = this.rotatePoint(s2.start, center, angle);
+            s2.end = this.rotatePoint(s2.end, center, angle);
+          }
+          el.rotation = ((el.rotation ?? 0) + angle) % (Math.PI * 2);
+        }
       }
       this.renderAll();
       this.emit("change");
