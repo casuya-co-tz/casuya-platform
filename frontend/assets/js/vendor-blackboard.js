@@ -1159,6 +1159,9 @@ var CasuyaBlackboard = (() => {
           return;
         }
       }
+      if (e.pointerType === "touch" && this.activePointerType === "pen" && this.isDrawing) {
+        return;
+      }
       e.preventDefault();
       try {
         this.liveCanvas.setPointerCapture(e.pointerId);
@@ -2498,20 +2501,34 @@ var CasuyaBlackboard = (() => {
         ctx.globalCompositeOperation = "source-over";
         ctx.strokeStyle = color;
       }
-      ctx.lineWidth = width;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
-      ctx.beginPath();
-      ctx.moveTo(points[0].x, points[0].y);
-      for (let i = 1; i < points.length; i++) {
-        const prev = points[i - 1];
-        const curr = points[i];
-        const mx = (prev.x + curr.x) / 2;
-        const my = (prev.y + curr.y) / 2;
-        ctx.quadraticCurveTo(prev.x, prev.y, mx, my);
+      const hasPressure = points.some((p) => p.pressure !== void 0 && p.pressure !== 0.5);
+      if (hasPressure && tool === "pen") {
+        for (let i = 1; i < points.length; i++) {
+          const prev = points[i - 1];
+          const curr = points[i];
+          const pressure = curr.pressure ?? 0.5;
+          ctx.lineWidth = width * (0.3 + pressure * 1.4);
+          ctx.beginPath();
+          ctx.moveTo(prev.x, prev.y);
+          ctx.lineTo(curr.x, curr.y);
+          ctx.stroke();
+        }
+      } else {
+        ctx.lineWidth = width;
+        ctx.beginPath();
+        ctx.moveTo(points[0].x, points[0].y);
+        for (let i = 1; i < points.length; i++) {
+          const prev = points[i - 1];
+          const curr = points[i];
+          const mx = (prev.x + curr.x) / 2;
+          const my = (prev.y + curr.y) / 2;
+          ctx.quadraticCurveTo(prev.x, prev.y, mx, my);
+        }
+        ctx.lineTo(points[points.length - 1].x, points[points.length - 1].y);
+        ctx.stroke();
       }
-      ctx.lineTo(points[points.length - 1].x, points[points.length - 1].y);
-      ctx.stroke();
       ctx.globalCompositeOperation = "source-over";
     }
     drawText(ctx, el) {
