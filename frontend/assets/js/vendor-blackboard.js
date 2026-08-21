@@ -658,6 +658,20 @@ var CasuyaBlackboard = (() => {
   }
 
   // src/Blackboard.ts
+  var IS_MOBILE = () => window.innerWidth <= 640;
+  var MOBILE_STYLES = `
+.casuya-blackboard { border-radius: 8px !important; box-shadow: 0 2px 8px rgba(0,0,0,0.06) !important; }
+.casuya-blackboard .casuya-toast { font-size: 11px !important; padding: 6px 12px !important; bottom: 8px !important; }
+.casuya-blackboard .casuya-hint { font-size: 11px !important; }
+.casuya-blackboard textarea { font-size: 16px !important; }
+`;
+  function injectMobileStyles() {
+    if (document.getElementById("casuya-blackboard-mobile")) return;
+    const style = document.createElement("style");
+    style.id = "casuya-blackboard-mobile";
+    style.textContent = MOBILE_STYLES;
+    document.head.appendChild(style);
+  }
   var THEMES = {
     light: { canvasBg: "#ffffff", gridColor: "#e2e8f0", gridAxisColor: "#94a3b8", gridLabelColor: "#64748b", hintColor: "#cbd5e1", selectionColor: "#3b82f6", selectionFill: "rgba(59, 130, 246, 0.1)" },
     dark: { canvasBg: "#1e1e2e", gridColor: "#313244", gridAxisColor: "#585b70", gridLabelColor: "#6c7086", hintColor: "#45475a", selectionColor: "#89b4fa", selectionFill: "rgba(137, 180, 250, 0.1)" }
@@ -740,6 +754,7 @@ var CasuyaBlackboard = (() => {
       this.strokeColor = options.color || "#1e293b";
       this.strokeWidth = options.strokeWidth || 2;
       this.theme = options.theme || "light";
+      injectMobileStyles();
       this.boundHandleImagePaste = this.handleImagePaste.bind(this);
       this.boundHandleDragOver = this.handleDragOver.bind(this);
       this.boundHandleFileDrop = this.handleFileDrop.bind(this);
@@ -750,19 +765,23 @@ var CasuyaBlackboard = (() => {
         showAxes: options.graph?.showAxes ?? true,
         showLabels: options.graph?.showLabels ?? true
       };
+      const mobile = IS_MOBILE();
       this.root = document.createElement("div");
       this.root.className = "casuya-blackboard";
       this.root.style.cssText = `
       display: flex;
       flex-direction: column;
-      border-radius: 12px;
+      border-radius: ${mobile ? 8 : 12}px;
       overflow: hidden;
-      box-shadow: 0 4px 24px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04);
+      box-shadow: ${mobile ? "0 2px 8px rgba(0,0,0,0.06)" : "0 4px 24px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04)"};
       background: ${THEMES[this.theme].canvasBg};
       font-family: system-ui, -apple-system, sans-serif;
       user-select: none;
+      -webkit-user-select: none;
       width: 100%;
       height: 100%;
+      touch-action: none;
+      -webkit-touch-callout: none;
     `;
       this.canvasWrapper = document.createElement("div");
       this.canvasWrapper.style.cssText = "position: relative; overflow: hidden; flex: 1;";
@@ -1017,7 +1036,7 @@ var CasuyaBlackboard = (() => {
       for (let i2 = this.elements.length - 1; i2 >= 0; i2--) {
         const el = this.elements[i2];
         const bounds = this.getElementBounds(el);
-        const pad = 8 / this.camera.zoom;
+        const pad = (IS_MOBILE() ? 12 : 8) / this.camera.zoom;
         if (worldPoint.x >= bounds.x - pad && worldPoint.x <= bounds.x + bounds.w + pad && worldPoint.y >= bounds.y - pad && worldPoint.y <= bounds.y + bounds.h + pad) {
           if (el.tool === "pen" && "points" in el) {
             const hitDist = Math.max(el.width * 2, 10) / this.camera.zoom;
@@ -1041,7 +1060,7 @@ var CasuyaBlackboard = (() => {
       const local = this.getLocalBounds(el);
       const rotation = el.rotation ?? 0;
       const pad = 6 / this.camera.zoom;
-      const handleSize = 10 / this.camera.zoom;
+      const handleSize = (IS_MOBILE() ? 14 : 10) / this.camera.zoom;
       let handleDefs;
       if (rotation !== 0) {
         const corners = this.getRotatedCorners({ x: local.x - pad, y: local.y - pad, w: local.w + pad * 2, h: local.h + pad * 2 }, rotation);
@@ -1487,7 +1506,7 @@ var CasuyaBlackboard = (() => {
       if (this.activeTool === "eraser" && this.isDrawing) {
         const point = this.getPoint(e2);
         this.lastPointerWorld = point;
-        const hitDist = this.strokeWidth * 2.5;
+        const hitDist = IS_MOBILE() ? this.strokeWidth * 4 : this.strokeWidth * 2.5;
         const toRemove = [];
         for (const el of this.elements) {
           if (el.tool === "pen" || el.tool === "eraser") {
@@ -1756,11 +1775,22 @@ var CasuyaBlackboard = (() => {
     };
     showContextMenu(clientX, clientY) {
       this.dismissContextMenu();
+      const mobile = IS_MOBILE();
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const menuW = mobile ? 150 : 160;
+      const menuH = mobile ? 200 : 280;
+      let left = clientX;
+      let top = clientY;
+      if (left + menuW > vw) left = vw - menuW - 8;
+      if (top + menuH > vh) top = vh - menuH - 8;
+      if (left < 8) left = 8;
+      if (top < 8) top = 8;
       const menu = document.createElement("div");
       menu.style.cssText = `
-      position: fixed; left: ${clientX}px; top: ${clientY}px;
+      position: fixed; left: ${left}px; top: ${top}px;
       background: ${THEMES[this.theme].canvasBg}; border: 1px solid ${THEMES[this.theme].gridColor};
-      border-radius: 8px; padding: 4px; z-index: 1000; min-width: 160px;
+      border-radius: 8px; padding: 4px; z-index: 1000; min-width: ${menuW}px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-family: system-ui, sans-serif;
     `;
       const items = [
@@ -1784,8 +1814,8 @@ var CasuyaBlackboard = (() => {
         const btn = document.createElement("button");
         btn.style.cssText = `
         display: flex; justify-content: space-between; align-items: center;
-        width: 100%; padding: 6px 12px; border: none; background: transparent;
-        cursor: pointer; font-size: 13px; border-radius: 4px; color: ${THEMES[this.theme].gridLabelColor};
+        width: 100%; padding: ${mobile ? 10 : 6}px 12px; border: none; background: transparent;
+        cursor: pointer; font-size: ${mobile ? 15 : 13}px; border-radius: 4px; color: ${THEMES[this.theme].gridLabelColor};
         font-family: inherit;
       `;
         btn.innerHTML = `<span>${item.label}</span><span style="font-size: 11px; opacity: 0.5;">${item.shortcut}</span>`;
@@ -1841,12 +1871,14 @@ var CasuyaBlackboard = (() => {
       this.commitText();
       const screen = this.worldToScreen(worldX, worldY);
       const ta = document.createElement("textarea");
+      const mobile = IS_MOBILE();
+      const taFontSize = Math.max(mobile ? 16 : 0, (existing?.fontSize ?? this.fontSize) * this.camera.zoom);
       ta.style.cssText = `
       position: absolute; left: ${screen.x}px; top: ${screen.y}px;
-      min-width: 60px; min-height: 28px;
+      min-width: ${mobile ? 80 : 60}px; min-height: 28px;
       background: transparent; border: 2px solid ${THEMES[this.theme].selectionColor};
       border-radius: 4px; padding: 4px 6px;
-      font-size: ${(existing?.fontSize ?? this.fontSize) * this.camera.zoom}px;
+      font-size: ${taFontSize}px;
       font-family: ${existing?.fontFamily ?? "system-ui, -apple-system, sans-serif"};
       color: ${existing?.color ?? this.strokeColor};
       outline: none; resize: none; overflow: hidden;
@@ -1931,10 +1963,11 @@ var CasuyaBlackboard = (() => {
       ctx.restore();
       if (this.elements.length === 0 && !this.currentElement) {
         ctx.fillStyle = t2.hintColor;
-        ctx.font = "14px system-ui, -apple-system, sans-serif";
+        const hintSize = IS_MOBILE() ? 11 : 14;
+        ctx.font = `${hintSize}px system-ui, -apple-system, sans-serif`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText("Choose a tool and start drawing", this.width / 2, this.height / 2);
+        ctx.fillText(IS_MOBILE() ? "Tap a tool to start" : "Choose a tool and start drawing", this.width / 2, this.height / 2);
       }
     }
     flushLive() {
@@ -1947,8 +1980,9 @@ var CasuyaBlackboard = (() => {
       this.drawSelectionIndicators(ctx);
       this.drawAlignmentGuides(ctx);
       if (this.activeTool === "eraser" && this.lastPointerWorld) {
+        const eraserRadius = IS_MOBILE() ? this.strokeWidth * 3.5 : this.strokeWidth * 2.5;
         ctx.beginPath();
-        ctx.arc(this.lastPointerWorld.x, this.lastPointerWorld.y, this.strokeWidth * 2.5, 0, Math.PI * 2);
+        ctx.arc(this.lastPointerWorld.x, this.lastPointerWorld.y, eraserRadius, 0, Math.PI * 2);
         ctx.strokeStyle = THEMES[this.theme].selectionColor;
         ctx.lineWidth = 1 / this.camera.zoom;
         ctx.stroke();
@@ -2323,7 +2357,7 @@ var CasuyaBlackboard = (() => {
             corners[3],
             { x: (corners[3].x + corners[0].x) / 2, y: (corners[3].y + corners[0].y) / 2 }
           ];
-          const handleSize = 8 / this.camera.zoom;
+          const handleSize = (IS_MOBILE() ? 12 : 8) / this.camera.zoom;
           ctx.fillStyle = "#ffffff";
           ctx.strokeStyle = t2.selectionColor;
           ctx.lineWidth = 1.5 / this.camera.zoom;
@@ -2336,7 +2370,7 @@ var CasuyaBlackboard = (() => {
           ctx.fillRect(bounds.x - pad, bounds.y - pad, bounds.w + pad * 2, bounds.h + pad * 2);
           ctx.strokeRect(bounds.x - pad, bounds.y - pad, bounds.w + pad * 2, bounds.h + pad * 2);
           ctx.setLineDash([]);
-          const handleSize = 8 / this.camera.zoom;
+          const handleSize = (IS_MOBILE() ? 12 : 8) / this.camera.zoom;
           ctx.fillStyle = "#ffffff";
           ctx.strokeStyle = t2.selectionColor;
           ctx.lineWidth = 1.5 / this.camera.zoom;
@@ -2696,12 +2730,14 @@ var CasuyaBlackboard = (() => {
       }
     }
     showToast(msg) {
+      const mobile = IS_MOBILE();
       const toast = document.createElement("div");
+      toast.className = "casuya-toast";
       toast.textContent = msg;
       toast.style.cssText = `
-      position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
-      background: #1e293b; color: white; padding: 8px 16px; border-radius: 8px;
-      font-size: 13px; z-index: 100; pointer-events: none; white-space: nowrap;
+      position: absolute; bottom: ${mobile ? 8 : 16}px; left: 50%; transform: translateX(-50%);
+      background: #1e293b; color: white; padding: ${mobile ? 6 : 8}px ${mobile ? 12 : 16}px; border-radius: ${mobile ? 6 : 8}px;
+      font-size: ${mobile ? 11 : 13}px; z-index: 100; pointer-events: none; white-space: nowrap;
       animation: fadeInOut 2s ease forwards;
     `;
       const style = document.createElement("style");

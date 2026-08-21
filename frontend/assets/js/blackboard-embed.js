@@ -21,6 +21,12 @@
       return;
     }
 
+    const isMobile = window.innerWidth <= 640;
+    if (isMobile) {
+      container.style.touchAction = 'none';
+      container.style.webkitOverflowScrolling = 'touch';
+    }
+
     const lessonId = opts.lessonId || container.dataset.lessonId || "demo";
     let studentId = opts.studentId || null;
     const token = localStorage.getItem("casuya_token");

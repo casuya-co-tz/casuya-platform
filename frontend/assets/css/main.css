@@ -1207,6 +1207,7 @@ a:hover { text-decoration: underline; }
   .tab-bar { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .tab-btn { flex-shrink: 0; }
   [style*="grid-template-columns: 1fr 1fr"] { grid-template-columns: 1fr !important; }
+  [data-blackboard] { height: min(360px, 55vh) !important; min-height: 220px; border-radius: var(--radius) !important; }
 }
 
 @media (max-width: 480px) {
