@@ -489,6 +489,28 @@ var CasuyaBlackboard = (() => {
       a2.click();
       URL.revokeObjectURL(url);
     }, board);
+    const pngBtn = createActionBtn("\u{1F5BC}", "Export PNG", tooltipEl, () => {
+      board.exportPNG();
+    }, board);
+    const dashBtn = createActionBtn("\u2506", "Toggle dashed lines", tooltipEl, () => {
+      board.setDashEnabled(!board.getDashEnabled());
+    }, board);
+    const opacityGroup = document.createElement("div");
+    opacityGroup.style.cssText = "display: flex; align-items: center; gap: 4px;";
+    const opacityLabel = document.createElement("span");
+    opacityLabel.style.cssText = "font-size: 10px; white-space: nowrap;";
+    opacityLabel.textContent = "\u25D1";
+    opacityLabel.title = "Opacity";
+    const opacitySlider = document.createElement("input");
+    opacitySlider.type = "range";
+    opacitySlider.min = "0.05";
+    opacitySlider.max = "1";
+    opacitySlider.step = "0.05";
+    opacitySlider.value = String(board.getOpacity());
+    opacitySlider.style.cssText = "width: 50px; height: 3px; -webkit-appearance: none; appearance: none; border-radius: 2px; outline: none; cursor: pointer;";
+    opacitySlider.addEventListener("input", () => board.setOpacity(Number(opacitySlider.value)));
+    opacityGroup.appendChild(opacityLabel);
+    opacityGroup.appendChild(opacitySlider);
     const themeBtn = createActionBtn(board.getTheme() === "light" ? "\u263E" : "\u2600", "Toggle Theme", tooltipEl, () => {
       board.setTheme(board.getTheme() === "light" ? "dark" : "light");
     }, board);
@@ -512,6 +534,9 @@ var CasuyaBlackboard = (() => {
     actionGroup.appendChild(ungroupBtn);
     actionGroup.appendChild(rotateBtn);
     actionGroup.appendChild(svgBtn);
+    actionGroup.appendChild(pngBtn);
+    actionGroup.appendChild(dashBtn);
+    actionGroup.appendChild(opacityGroup);
     actionGroup.appendChild(themeBtn);
     actionGroup.appendChild(saveBtn);
     actionGroup.appendChild(applyStyleBtn);
@@ -543,7 +568,7 @@ var CasuyaBlackboard = (() => {
     row.appendChild(zoomGroup);
     bar.appendChild(row);
     bar.appendChild(tooltipEl);
-    return { bar, toolButtons, undoBtn, redoBtn, graphBtn, fillBtn, themeBtn, roughnessBtn, groupBtn, ungroupBtn, rotateBtn, svgBtn, widthLabel, widthDot, colorInput, zoomLabel, applyStyleBtn };
+    return { bar, toolButtons, undoBtn, redoBtn, graphBtn, fillBtn, themeBtn, roughnessBtn, groupBtn, ungroupBtn, rotateBtn, svgBtn, pngBtn, dashBtn, opacitySlider, widthLabel, widthDot, colorInput, zoomLabel, applyStyleBtn };
   }
   function bindActionHover(btn, title, tooltipEl, board) {
     btn.addEventListener("mouseenter", () => {
@@ -578,7 +603,7 @@ var CasuyaBlackboard = (() => {
     btn.addEventListener("click", onClick);
     return btn;
   }
-  function updateToolbarState(tb, activeTool, color, width, fillEnabled, theme, zoom, fontSize, roughness, graphEnabled) {
+  function updateToolbarState(tb, activeTool, color, width, fillEnabled, theme, zoom, fontSize, roughness, graphEnabled, dashEnabled, opacity) {
     const themeDef = TOOLBAR_THEMES[theme];
     tb.bar.style.background = themeDef.barBg;
     tb.bar.style.borderColor = themeDef.barBorder;
@@ -654,13 +679,26 @@ var CasuyaBlackboard = (() => {
       b2.style.color = themeDef.btnColor;
       b2.style.background = "transparent";
     });
-    const actionBtns = [tb.undoBtn, tb.redoBtn, tb.graphBtn, tb.fillBtn, tb.roughnessBtn, tb.groupBtn, tb.ungroupBtn, tb.rotateBtn, tb.svgBtn, tb.themeBtn, tb.applyStyleBtn];
+    const actionBtns = [tb.undoBtn, tb.redoBtn, tb.graphBtn, tb.fillBtn, tb.roughnessBtn, tb.groupBtn, tb.ungroupBtn, tb.rotateBtn, tb.svgBtn, tb.pngBtn, tb.dashBtn, tb.themeBtn, tb.applyStyleBtn];
     for (const btn of actionBtns) {
       if (!btn) continue;
       if (!btn.dataset.active) {
         btn.style.color = themeDef.btnColor;
         btn.style.background = "transparent";
       }
+    }
+    if (dashEnabled) {
+      tb.dashBtn.style.background = themeDef.activeBg;
+      tb.dashBtn.style.color = themeDef.activeColor;
+      tb.dashBtn.dataset.active = "true";
+    } else {
+      tb.dashBtn.style.background = "transparent";
+      tb.dashBtn.style.color = themeDef.btnColor;
+      delete tb.dashBtn.dataset.active;
+    }
+    if (opacity !== void 0) {
+      tb.opacitySlider.value = String(opacity);
+      tb.opacitySlider.style.background = themeDef.sep;
     }
     const seps = tb.bar.querySelectorAll(".casuya-toolbar-sep");
     seps.forEach((s2) => {
@@ -735,6 +773,7 @@ var CasuyaBlackboard = (() => {
     strokeWidth = 2;
     strokeOpacity = 1;
     fillEnabled = false;
+    dashEnabled = false;
     elements = [];
     undoStack = [];
     redoStack = [];
@@ -766,6 +805,7 @@ var CasuyaBlackboard = (() => {
     pinchCenter = { x: 0, y: 0 };
     pinchStartCamera = { x: 0, y: 0 };
     contextMenu = null;
+    helpOverlay = null;
     longPressTimer = null;
     longPressStart = null;
     boundHandleImagePaste;
@@ -857,7 +897,7 @@ var CasuyaBlackboard = (() => {
             }
           }
         });
-        this.resizeObserver.observe(this.container);
+        this.resizeObserver.observe(this.canvasWrapper);
       }
       this.staticCtx = this.staticCanvas.getContext("2d");
       this.liveCtx = this.liveCanvas.getContext("2d");
@@ -887,8 +927,6 @@ var CasuyaBlackboard = (() => {
       this.undoStack.push(JSON.parse(JSON.stringify(this.elements)));
       if (this.undoStack.length > _Blackboard.MAX_UNDO) this.undoStack.shift();
       this.redoStack = [];
-    }
-    commitUndo() {
     }
     screenToWorld(screenX, screenY) {
       return { x: screenX / this.camera.zoom + this.camera.x, y: screenY / this.camera.zoom + this.camera.y };
@@ -1317,7 +1355,8 @@ var CasuyaBlackboard = (() => {
           width: this.strokeWidth,
           opacity: this.strokeOpacity,
           filled: this.fillEnabled,
-          roughness: this.roughness
+          roughness: this.roughness,
+          ...this.dashEnabled ? { dashPattern: [8, 4] } : {}
         };
       }
     };
@@ -1533,17 +1572,17 @@ var CasuyaBlackboard = (() => {
       };
     }
     onPointerMove = (e2) => {
-      if (this.activePointers.has(e2.pointerId)) {
-        this.activePointers.set(e2.pointerId, { x: e2.clientX, y: e2.clientY, type: e2.pointerType });
-      }
       if (this.longPressTimer && this.longPressStart) {
-        const dx = e2.clientX - (this.activePointers.get(e2.pointerId)?.x ?? e2.clientX);
-        const dy = e2.clientY - (this.activePointers.get(e2.pointerId)?.y ?? e2.clientY);
+        const dx = e2.clientX - this.longPressStart.x;
+        const dy = e2.clientY - this.longPressStart.y;
         if (Math.hypot(dx, dy) > 10) {
           clearTimeout(this.longPressTimer);
           this.longPressTimer = null;
           this.longPressStart = null;
         }
+      }
+      if (this.activePointers.has(e2.pointerId)) {
+        this.activePointers.set(e2.pointerId, { x: e2.clientX, y: e2.clientY, type: e2.pointerType });
       }
       if (this.activePointers.size === 2) {
         const pts = Array.from(this.activePointers.values());
@@ -1619,7 +1658,7 @@ var CasuyaBlackboard = (() => {
       if (this.activeTool === "eraser" && this.isDrawing) {
         const point = this.getPoint(e2);
         this.lastPointerWorld = point;
-        const hitDist = IS_MOBILE() ? this.strokeWidth * 4 : this.strokeWidth * 2.5;
+        const hitDist = IS_MOBILE() ? this.strokeWidth * 3.5 : this.strokeWidth * 2.5;
         const toRemove = [];
         for (const el of this.elements) {
           if (el.tool === "pen" || el.tool === "eraser" || el.tool === "highlighter") {
@@ -1691,6 +1730,7 @@ var CasuyaBlackboard = (() => {
     };
     onPointerUp = (e2) => {
       this.activePointers.delete(e2.pointerId);
+      if (e2.pointerType === "pen") this.usePressure = false;
       if (this.longPressTimer) {
         clearTimeout(this.longPressTimer);
         this.longPressTimer = null;
@@ -1749,7 +1789,6 @@ var CasuyaBlackboard = (() => {
           this.currentElement.points = this.catmullRomInterpolate(this.currentElement.points, 0.5);
         }
       }
-      this.commitUndo();
       this.elements.push(this.currentElement);
       this.currentElement = null;
       this.flushLive();
@@ -1910,6 +1949,11 @@ var CasuyaBlackboard = (() => {
         a2.download = "blackboard.svg";
         a2.click();
         URL.revokeObjectURL(url);
+        return;
+      }
+      if ((e2.ctrlKey || e2.metaKey) && e2.shiftKey && e2.key === "P") {
+        e2.preventDefault();
+        this.exportPNG();
         return;
       }
       if ((e2.ctrlKey || e2.metaKey) && e2.shiftKey && e2.key === "F") {
@@ -2091,7 +2135,6 @@ var CasuyaBlackboard = (() => {
     deleteSelected() {
       if (this.selectedIds.size === 0) return;
       this.pushUndo();
-      this.commitUndo();
       for (const id of this.selectedIds) {
         const el = this.elements.find((e2) => e2.id === id);
         if (el && el.tool === "image") this.imageCache.delete(el.src);
@@ -2149,6 +2192,7 @@ var CasuyaBlackboard = (() => {
       this.textInput = ta;
       this.editingTextId = existing?.id ?? null;
       if (existing) {
+        this.pushUndo();
         this.elements = this.elements.filter((e2) => e2.id !== existing.id);
         this.renderStatic();
       }
@@ -2174,6 +2218,7 @@ var CasuyaBlackboard = (() => {
       if (!this.textInput) return;
       const ta = this.textInput;
       const content = ta.value.trim();
+      const orig = this.editingTextOriginal;
       this.textInput = null;
       ta.remove();
       this.editingTextOriginal = null;
@@ -2181,19 +2226,18 @@ var CasuyaBlackboard = (() => {
         const screenX = parseFloat(ta.style.left);
         const screenY = parseFloat(ta.style.top);
         const world = this.screenToWorld(screenX, screenY);
-        const prevEl = this.editingTextId ? this.elements.find((e2) => e2.id === this.editingTextId) : null;
         const el = {
           id: this.editingTextId ?? uid(),
           tool: "text",
           position: world,
           content,
-          fontSize: prevEl && "fontSize" in prevEl ? prevEl.fontSize : this.fontSize,
-          fontFamily: "system-ui, -apple-system, sans-serif",
-          color: ta.style.color,
-          width: 1,
-          opacity: this.strokeOpacity
+          fontSize: orig?.fontSize ?? this.fontSize,
+          fontFamily: orig?.fontFamily ?? "system-ui, -apple-system, sans-serif",
+          color: orig?.color ?? ta.style.color,
+          width: orig?.width ?? 1,
+          opacity: orig?.opacity ?? this.strokeOpacity
         };
-        this.commitUndo();
+        this.pushUndo();
         this.elements.push(el);
         this.renderStatic();
         this.emit("change");
@@ -2415,7 +2459,8 @@ var CasuyaBlackboard = (() => {
       ctx.closePath();
     }
     drawShape(ctx, shape) {
-      if (shape.roughness !== void 0 && shape.roughness > 0 || this.roughness > 0) {
+      const effectiveRoughness = shape.roughness !== void 0 ? shape.roughness : this.roughness;
+      if (effectiveRoughness > 0) {
         this.drawRoughShape(ctx, shape);
         return;
       }
@@ -2681,7 +2726,7 @@ var CasuyaBlackboard = (() => {
       }
     }
     updateToolbar() {
-      updateToolbarState(this.toolbar, this.activeTool, this.strokeColor, this.strokeWidth, this.fillEnabled, this.theme, this.camera.zoom, this.fontSize, this.roughness, this.graph.enabled);
+      updateToolbarState(this.toolbar, this.activeTool, this.strokeColor, this.strokeWidth, this.fillEnabled, this.theme, this.camera.zoom, this.fontSize, this.roughness, this.graph.enabled, this.dashEnabled, this.strokeOpacity);
     }
     setTool(tool) {
       this.commitText();
@@ -2733,6 +2778,31 @@ var CasuyaBlackboard = (() => {
     }
     getFill() {
       return this.fillEnabled;
+    }
+    getDashEnabled() {
+      return this.dashEnabled;
+    }
+    setDashEnabled(enabled) {
+      this.dashEnabled = enabled;
+      this.updateToolbar();
+    }
+    getOpacity() {
+      return this.strokeOpacity;
+    }
+    setOpacity(opacity) {
+      this.strokeOpacity = Math.max(0.05, Math.min(1, opacity));
+      this.updateToolbar();
+    }
+    exportPNG() {
+      this.toBlob("image/png").then((blob) => {
+        if (!blob) return;
+        const url = URL.createObjectURL(blob);
+        const a2 = document.createElement("a");
+        a2.href = url;
+        a2.download = "blackboard.png";
+        a2.click();
+        URL.revokeObjectURL(url);
+      });
     }
     getTheme() {
       return this.theme;
@@ -2891,15 +2961,19 @@ var CasuyaBlackboard = (() => {
       this.emit("change");
     }
     showShortcutHelp() {
-      if (this.contextMenu) {
-        this.dismissContextMenu();
+      if (this.helpOverlay) {
+        this.helpOverlay.remove();
+        this.helpOverlay = null;
         return;
       }
       const t2 = THEMES[this.theme];
       const overlay = document.createElement("div");
       overlay.style.cssText = `position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2000;display:flex;align-items:center;justify-content:center;`;
       overlay.addEventListener("click", (ev) => {
-        if (ev.target === overlay) overlay.remove();
+        if (ev.target === overlay) {
+          overlay.remove();
+          this.helpOverlay = null;
+        }
       });
       const panel = document.createElement("div");
       panel.style.cssText = `background:${t2.canvasBg};color:${t2.gridLabelColor};border:1px solid ${t2.gridColor};border-radius:12px;padding:20px 24px;max-width:420px;width:90%;max-height:80vh;overflow-y:auto;font-family:system-ui,sans-serif;font-size:13px;line-height:1.6;`;
@@ -2931,6 +3005,7 @@ var CasuyaBlackboard = (() => {
         ["Ctrl+[", "Send backward"],
         ["Shift+R", "Rotate 15\xB0"],
         ["Ctrl+Shift+S", "Export SVG"],
+        ["Ctrl+Shift+P", "Export PNG"],
         ["Ctrl+Shift+F", "Apply style to selection"],
         ["?", "This help"]
       ];
@@ -2939,7 +3014,7 @@ var CasuyaBlackboard = (() => {
       panel.innerHTML = html;
       overlay.appendChild(panel);
       document.body.appendChild(overlay);
-      this.contextMenu = overlay;
+      this.helpOverlay = overlay;
     }
     duplicateSelected() {
       if (this.selectedIds.size === 0) return;
@@ -3011,7 +3086,6 @@ var CasuyaBlackboard = (() => {
             s2.start = this.rotatePoint(s2.start, center, angle);
             s2.end = this.rotatePoint(s2.end, center, angle);
           }
-          el.rotation = ((el.rotation ?? 0) + angle) % (Math.PI * 2);
         }
       }
       this.renderAll();
@@ -3103,7 +3177,7 @@ var CasuyaBlackboard = (() => {
       });
     }
     exportJSON() {
-      return { elements: JSON.parse(JSON.stringify(this.elements)), width: this.width, height: this.height, camera: { ...this.camera } };
+      return { elements: JSON.parse(JSON.stringify(this.elements)), width: this.width, height: this.height, camera: { ...this.camera }, graph: { ...this.graph }, theme: this.theme };
     }
     importJSON(snapshot) {
       if (!snapshot || !Array.isArray(snapshot.elements)) {
@@ -3119,12 +3193,13 @@ var CasuyaBlackboard = (() => {
         if (el.tool === "image" && (!el.position || typeof el.src !== "string")) return false;
         return true;
       });
-      this.pushUndo();
       this.elements = valid;
       this.undoStack = [];
       this.redoStack = [];
       this.imageCache.clear();
       if (snapshot.camera) this.camera = snapshot.camera;
+      if (snapshot.graph) this.graph = { ...this.graph, ...snapshot.graph };
+      if (snapshot.theme) this.setTheme(snapshot.theme);
       this.selectedIds.clear();
       this.renderAll();
       this.emit("load");
