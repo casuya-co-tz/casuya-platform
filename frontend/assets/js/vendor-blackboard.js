@@ -205,6 +205,18 @@ var CasuyaBlackboard = (() => {
     return P(L(e2, t2), t2);
   }
 
+  // src/types.ts
+  var FONT_FAMILIES = [
+    "system-ui, -apple-system, sans-serif",
+    "Georgia, serif",
+    '"Courier New", monospace',
+    '"Trebuchet MS", sans-serif',
+    "Impact, sans-serif",
+    '"Comic Sans MS", cursive',
+    "Verdana, sans-serif",
+    "Arial, sans-serif"
+  ];
+
   // src/toolbar.ts
   var TOOLBAR_THEMES = {
     light: { barBg: "#f8fafc", barBorder: "#e2e8f0", btnColor: "#64748b", btnHover: "#334155", btnHoverBg: "#e2e8f0", activeBg: "#dbeafe", activeColor: "#2563eb", activeBorder: "#93c5fd", sep: "#e2e8f0", tipBg: "#f1f5f9", tipBorder: "#e2e8f0", tipColor: "#64748b" },
@@ -511,6 +523,35 @@ var CasuyaBlackboard = (() => {
     opacitySlider.addEventListener("input", () => board.setOpacity(Number(opacitySlider.value)));
     opacityGroup.appendChild(opacityLabel);
     opacityGroup.appendChild(opacitySlider);
+    const fontFamilySelect = document.createElement("select");
+    fontFamilySelect.style.cssText = "font-size: 11px; border: 1px solid; border-radius: 4px; padding: 2px 4px; cursor: pointer; max-width: 120px; background: transparent; outline: none;";
+    fontFamilySelect.title = "Font Family";
+    for (const ff of FONT_FAMILIES) {
+      const opt = document.createElement("option");
+      opt.value = ff;
+      opt.textContent = ff.split(",")[0].replace(/"/g, "");
+      fontFamilySelect.appendChild(opt);
+    }
+    fontFamilySelect.value = board.getFontFamily();
+    fontFamilySelect.addEventListener("change", () => board.setFontFamily(fontFamilySelect.value));
+    const cornerGroup = document.createElement("div");
+    cornerGroup.style.cssText = "display: flex; align-items: center; gap: 4px;";
+    const cornerLabel = document.createElement("span");
+    cornerLabel.style.cssText = "font-size: 10px; white-space: nowrap;";
+    cornerLabel.textContent = "\u25CC";
+    cornerLabel.title = "Corner Radius";
+    const cornerSlider = document.createElement("input");
+    cornerSlider.type = "range";
+    cornerSlider.min = "0";
+    cornerSlider.max = "50";
+    cornerSlider.value = String(board.getCornerRadius());
+    cornerSlider.style.cssText = "width: 40px; height: 3px; -webkit-appearance: none; appearance: none; border-radius: 2px; outline: none; cursor: pointer;";
+    cornerSlider.addEventListener("input", () => board.setCornerRadius(Number(cornerSlider.value)));
+    cornerGroup.appendChild(cornerLabel);
+    cornerGroup.appendChild(cornerSlider);
+    const pixelEraseBtn = createActionBtn("\u232B", "Toggle pixel eraser", tooltipEl, () => {
+      board.setPixelEraser(!board.getPixelEraser());
+    }, board);
     const themeBtn = createActionBtn(board.getTheme() === "light" ? "\u263E" : "\u2600", "Toggle Theme", tooltipEl, () => {
       board.setTheme(board.getTheme() === "light" ? "dark" : "light");
     }, board);
@@ -536,7 +577,10 @@ var CasuyaBlackboard = (() => {
     actionGroup.appendChild(svgBtn);
     actionGroup.appendChild(pngBtn);
     actionGroup.appendChild(dashBtn);
+    actionGroup.appendChild(pixelEraseBtn);
     actionGroup.appendChild(opacityGroup);
+    actionGroup.appendChild(fontFamilySelect);
+    actionGroup.appendChild(cornerGroup);
     actionGroup.appendChild(themeBtn);
     actionGroup.appendChild(saveBtn);
     actionGroup.appendChild(applyStyleBtn);
@@ -568,7 +612,7 @@ var CasuyaBlackboard = (() => {
     row.appendChild(zoomGroup);
     bar.appendChild(row);
     bar.appendChild(tooltipEl);
-    return { bar, toolButtons, undoBtn, redoBtn, graphBtn, fillBtn, themeBtn, roughnessBtn, groupBtn, ungroupBtn, rotateBtn, svgBtn, pngBtn, dashBtn, opacitySlider, widthLabel, widthDot, colorInput, zoomLabel, applyStyleBtn };
+    return { bar, toolButtons, undoBtn, redoBtn, graphBtn, fillBtn, themeBtn, roughnessBtn, groupBtn, ungroupBtn, rotateBtn, svgBtn, pngBtn, dashBtn, pixelEraseBtn, opacitySlider, fontFamilySelect, cornerRadiusSlider: cornerSlider, widthLabel, widthDot, colorInput, zoomLabel, applyStyleBtn };
   }
   function bindActionHover(btn, title, tooltipEl, board) {
     btn.addEventListener("mouseenter", () => {
@@ -603,7 +647,7 @@ var CasuyaBlackboard = (() => {
     btn.addEventListener("click", onClick);
     return btn;
   }
-  function updateToolbarState(tb, activeTool, color, width, fillEnabled, theme, zoom, fontSize, roughness, graphEnabled, dashEnabled, opacity) {
+  function updateToolbarState(tb, activeTool, color, width, fillEnabled, theme, zoom, fontSize, roughness, graphEnabled, dashEnabled, opacity, fontFamily, cornerRadius, pixelEraser) {
     const themeDef = TOOLBAR_THEMES[theme];
     tb.bar.style.background = themeDef.barBg;
     tb.bar.style.borderColor = themeDef.barBorder;
@@ -679,7 +723,7 @@ var CasuyaBlackboard = (() => {
       b2.style.color = themeDef.btnColor;
       b2.style.background = "transparent";
     });
-    const actionBtns = [tb.undoBtn, tb.redoBtn, tb.graphBtn, tb.fillBtn, tb.roughnessBtn, tb.groupBtn, tb.ungroupBtn, tb.rotateBtn, tb.svgBtn, tb.pngBtn, tb.dashBtn, tb.themeBtn, tb.applyStyleBtn];
+    const actionBtns = [tb.undoBtn, tb.redoBtn, tb.graphBtn, tb.fillBtn, tb.roughnessBtn, tb.groupBtn, tb.ungroupBtn, tb.rotateBtn, tb.svgBtn, tb.pngBtn, tb.dashBtn, tb.pixelEraseBtn, tb.themeBtn, tb.applyStyleBtn];
     for (const btn of actionBtns) {
       if (!btn) continue;
       if (!btn.dataset.active) {
@@ -696,9 +740,27 @@ var CasuyaBlackboard = (() => {
       tb.dashBtn.style.color = themeDef.btnColor;
       delete tb.dashBtn.dataset.active;
     }
+    if (pixelEraser) {
+      tb.pixelEraseBtn.style.background = themeDef.activeBg;
+      tb.pixelEraseBtn.style.color = themeDef.activeColor;
+      tb.pixelEraseBtn.dataset.active = "true";
+    } else {
+      tb.pixelEraseBtn.style.background = "transparent";
+      tb.pixelEraseBtn.style.color = themeDef.btnColor;
+      delete tb.pixelEraseBtn.dataset.active;
+    }
     if (opacity !== void 0) {
       tb.opacitySlider.value = String(opacity);
       tb.opacitySlider.style.background = themeDef.sep;
+    }
+    if (fontFamily !== void 0 && tb.fontFamilySelect) {
+      tb.fontFamilySelect.value = fontFamily;
+      tb.fontFamilySelect.style.borderColor = themeDef.sep;
+      tb.fontFamilySelect.style.color = themeDef.btnColor;
+    }
+    if (cornerRadius !== void 0 && tb.cornerRadiusSlider) {
+      tb.cornerRadiusSlider.value = String(cornerRadius);
+      tb.cornerRadiusSlider.style.background = themeDef.sep;
     }
     const seps = tb.bar.querySelectorAll(".casuya-toolbar-sep");
     seps.forEach((s2) => {
@@ -774,6 +836,13 @@ var CasuyaBlackboard = (() => {
     strokeOpacity = 1;
     fillEnabled = false;
     dashEnabled = false;
+    pixelEraser = false;
+    fontFamily = "system-ui, -apple-system, sans-serif";
+    cornerRadius = 0;
+    clipboardData = "";
+    static instanceCount = 0;
+    imagePool = [];
+    imageSrcToIdx = /* @__PURE__ */ new Map();
     elements = [];
     undoStack = [];
     redoStack = [];
@@ -827,7 +896,9 @@ var CasuyaBlackboard = (() => {
     usePressure = false;
     contextMenuKeyHandler = null;
     constructor(options) {
+      _Blackboard.instanceCount++;
       this.container = options.container;
+      this.autosaveKey = `casuya-blackboard-${_Blackboard.instanceCount}`;
       this.width = options.width || this.container.clientWidth || 800;
       this.height = options.height || this.container.clientHeight || 600;
       this.dpr = window.devicePixelRatio || 1;
@@ -924,9 +995,35 @@ var CasuyaBlackboard = (() => {
       setTimeout(() => this.showToast("Select a tool and start drawing"), 600);
     }
     pushUndo() {
-      this.undoStack.push(JSON.parse(JSON.stringify(this.elements)));
+      const snapshot = this.elements.map((el) => {
+        if (el.tool === "image") {
+          const img = el;
+          let idx = this.imageSrcToIdx.get(img.src);
+          if (idx === void 0) {
+            idx = this.imagePool.length;
+            this.imagePool.push(img.src);
+            this.imageSrcToIdx.set(img.src, idx);
+          }
+          return { ...img, src: `__img:${idx}` };
+        }
+        return JSON.parse(JSON.stringify(el));
+      });
+      this.undoStack.push(snapshot);
       if (this.undoStack.length > _Blackboard.MAX_UNDO) this.undoStack.shift();
       this.redoStack = [];
+    }
+    resolveSnapshot(elements) {
+      return elements.map((el) => {
+        if (el.tool === "image") {
+          const img = { ...el };
+          if (img.src.startsWith("__img:")) {
+            const idx = parseInt(img.src.slice(6));
+            img.src = this.imagePool[idx] ?? "";
+          }
+          return img;
+        }
+        return el;
+      });
     }
     screenToWorld(screenX, screenY) {
       return { x: screenX / this.camera.zoom + this.camera.x, y: screenY / this.camera.zoom + this.camera.y };
@@ -1143,20 +1240,20 @@ var CasuyaBlackboard = (() => {
     hitTest(worldPoint) {
       for (let i2 = this.elements.length - 1; i2 >= 0; i2--) {
         const el = this.elements[i2];
+        const rotation = el.rotation ?? 0;
+        if ((el.tool === "pen" || el.tool === "highlighter" || el.tool === "eraser") && "points" in el) {
+          const hitDist = Math.max(el.width * 2, 10) / this.camera.zoom;
+          const center = this.getRotationCenter(el);
+          const testPoint = rotation !== 0 ? this.rotatePoint(worldPoint, center, -rotation) : worldPoint;
+          const hit = el.points.some(
+            (p2) => Math.hypot(p2.x - testPoint.x, p2.y - testPoint.y) < hitDist
+          );
+          if (hit) return el;
+          continue;
+        }
         const bounds = this.getElementBounds(el);
         const pad = (IS_MOBILE() ? 12 : 8) / this.camera.zoom;
         if (worldPoint.x >= bounds.x - pad && worldPoint.x <= bounds.x + bounds.w + pad && worldPoint.y >= bounds.y - pad && worldPoint.y <= bounds.y + bounds.h + pad) {
-          if ((el.tool === "pen" || el.tool === "highlighter") && "points" in el) {
-            const hitDist = Math.max(el.width * 2, 10) / this.camera.zoom;
-            const rotation = el.rotation ?? 0;
-            const center = this.getRotationCenter(el);
-            const testPoint = rotation !== 0 ? this.rotatePoint(worldPoint, center, -rotation) : worldPoint;
-            const hit = el.points.some(
-              (p2) => Math.hypot(p2.x - testPoint.x, p2.y - testPoint.y) < hitDist
-            );
-            if (hit) return el;
-            continue;
-          }
           return el;
         }
       }
@@ -1327,6 +1424,19 @@ var CasuyaBlackboard = (() => {
         return;
       }
       if (this.activeTool === "eraser") {
+        if (this.pixelEraser) {
+          this.pushUndo();
+          this.isDrawing = true;
+          this.currentElement = {
+            id: uid(),
+            tool: "eraser",
+            points: [point],
+            color: "#000000",
+            width: this.strokeWidth * 3,
+            opacity: 1
+          };
+          return;
+        }
         this.pushUndo();
         this.isDrawing = true;
         this.lastPointerWorld = point;
@@ -1356,7 +1466,8 @@ var CasuyaBlackboard = (() => {
           opacity: this.strokeOpacity,
           filled: this.fillEnabled,
           roughness: this.roughness,
-          ...this.dashEnabled ? { dashPattern: [8, 4] } : {}
+          ...this.dashEnabled ? { dashPattern: [8, 4] } : {},
+          ...this.cornerRadius > 0 ? { cornerRadius: this.cornerRadius } : {}
         };
       }
     };
@@ -1455,30 +1566,25 @@ var CasuyaBlackboard = (() => {
       const origMap = new Map(this.dragState.origElements.map((e2) => [e2.id, e2]));
       const rawDx = currentWorld.x - this.dragState.startWorld.x;
       const rawDy = currentWorld.y - this.dragState.startWorld.y;
-      for (const id of this.selectedIds) {
+      if (this.selectedIds.size === 1) {
+        const id = this.selectedIds.values().next().value;
         const el = this.elements.find((e2) => e2.id === id);
         const orig = origMap.get(id);
-        if (!el || !orig) continue;
+        if (!el || !orig) return;
         const rotation = el.rotation ?? 0;
-        let dx = rawDx;
-        let dy = rawDy;
+        let dx = rawDx, dy = rawDy;
         if (rotation !== 0) {
-          const cos = Math.cos(-rotation);
-          const sin = Math.sin(-rotation);
+          const cos = Math.cos(-rotation), sin = Math.sin(-rotation);
           dx = rawDx * cos - rawDy * sin;
           dy = rawDx * sin + rawDy * cos;
         }
         if (el.tool === "pen" || el.tool === "eraser" || el.tool === "highlighter" || el.tool === "text") {
           this.moveSingleElement(el, orig, dx, dy);
-          continue;
+          return;
         }
         if (el.tool === "image") {
-          const img = el;
-          const o3 = orig;
-          let newX = o3.position.x;
-          let newY = o3.position.y;
-          let newW = o3.width;
-          let newH = o3.height;
+          const img = el, o3 = orig;
+          let newX = o3.position.x, newY = o3.position.y, newW = o3.width, newH = o3.height;
           if (handle === "nw") {
             newX = o3.position.x + dx;
             newY = o3.position.y + dy;
@@ -1511,53 +1617,101 @@ var CasuyaBlackboard = (() => {
             img.width = newW;
             img.height = newH;
           }
-          continue;
+          return;
         }
-        const s2 = el;
-        const o2 = orig;
-        let newStart = { x: o2.start.x, y: o2.start.y };
-        let newEnd = { x: o2.end.x, y: o2.end.y };
+        const s2 = el, o2 = orig;
+        let ns = { x: o2.start.x, y: o2.start.y }, ne2 = { x: o2.end.x, y: o2.end.y };
         if (handle === "nw") {
-          newStart.x = o2.start.x + dx;
-          newStart.y = o2.start.y + dy;
+          ns.x = o2.start.x + dx;
+          ns.y = o2.start.y + dy;
         }
         if (handle === "ne") {
-          newEnd.x = o2.end.x + dx;
-          newStart.y = o2.start.y + dy;
+          ne2.x = o2.end.x + dx;
+          ns.y = o2.start.y + dy;
         }
         if (handle === "sw") {
-          newStart.x = o2.start.x + dx;
-          newEnd.y = o2.end.y + dy;
+          ns.x = o2.start.x + dx;
+          ne2.y = o2.end.y + dy;
         }
         if (handle === "se") {
-          newEnd.x = o2.end.x + dx;
-          newEnd.y = o2.end.y + dy;
+          ne2.x = o2.end.x + dx;
+          ne2.y = o2.end.y + dy;
         }
         if (handle === "n") {
-          newStart.y = o2.start.y + dy;
+          ns.y = o2.start.y + dy;
         }
         if (handle === "s") {
-          newEnd.y = o2.end.y + dy;
+          ne2.y = o2.end.y + dy;
         }
         if (handle === "e") {
-          newEnd.x = o2.end.x + dx;
+          ne2.x = o2.end.x + dx;
         }
         if (handle === "w") {
-          newStart.x = o2.start.x + dx;
+          ns.x = o2.start.x + dx;
         }
-        if (newStart.x > newEnd.x) {
-          const tmp = newStart.x;
-          newStart.x = newEnd.x;
-          newEnd.x = tmp;
+        if (ns.x > ne2.x) {
+          const t2 = ns.x;
+          ns.x = ne2.x;
+          ne2.x = t2;
         }
-        if (newStart.y > newEnd.y) {
-          const tmp = newStart.y;
-          newStart.y = newEnd.y;
-          newEnd.y = tmp;
+        if (ns.y > ne2.y) {
+          const t2 = ns.y;
+          ns.y = ne2.y;
+          ne2.y = t2;
         }
-        if (Math.abs(newEnd.x - newStart.x) < 5 || Math.abs(newEnd.y - newStart.y) < 5) continue;
-        s2.start = newStart;
-        s2.end = newEnd;
+        if (Math.abs(ne2.x - ns.x) < 5 || Math.abs(ne2.y - ns.y) < 5) return;
+        s2.start = ns;
+        s2.end = ne2;
+        return;
+      }
+      let origMinX = Infinity, origMinY = Infinity, origMaxX = -Infinity, origMaxY = -Infinity;
+      for (const id of this.selectedIds) {
+        const orig = origMap.get(id);
+        if (!orig) continue;
+        const b2 = this.getLocalBounds(orig);
+        if (b2.x < origMinX) origMinX = b2.x;
+        if (b2.y < origMinY) origMinY = b2.y;
+        if (b2.x + b2.w > origMaxX) origMaxX = b2.x + b2.w;
+        if (b2.y + b2.h > origMaxY) origMaxY = b2.y + b2.h;
+      }
+      if (origMinX === Infinity) return;
+      const origW = origMaxX - origMinX, origH = origMaxY - origMinY;
+      const origCX = origMinX + origW / 2, origCY = origMinY + origH / 2;
+      let scaleX = 1, scaleY = 1;
+      if (handle.includes("e") || handle === "ne" || handle === "se") scaleX = Math.max(0.1, (origW + rawDx) / origW);
+      if (handle.includes("w") || handle === "nw" || handle === "sw") scaleX = Math.max(0.1, (origW - rawDx) / origW);
+      if (handle === "n" || handle === "nw" || handle === "ne") scaleY = Math.max(0.1, (origH - rawDy) / origH);
+      if (handle === "s" || handle === "sw" || handle === "se") scaleY = Math.max(0.1, (origH + rawDy) / origH);
+      for (const id of this.selectedIds) {
+        const el = this.elements.find((e2) => e2.id === id);
+        const orig = origMap.get(id);
+        if (!el || !orig) continue;
+        const ob = this.getLocalBounds(orig);
+        const newCX = origCX + (ob.x + ob.w / 2 - origCX) * scaleX;
+        const newCY = origCY + (ob.y + ob.h / 2 - origCY) * scaleY;
+        const newW = ob.w * scaleX;
+        const newH = ob.h * scaleY;
+        const dx = newCX - (ob.x + ob.w / 2);
+        const dy = newCY - (ob.y + ob.h / 2);
+        if (el.tool === "pen" || el.tool === "eraser" || el.tool === "highlighter" || el.tool === "text") {
+          this.moveSingleElement(el, orig, dx, dy);
+          continue;
+        }
+        if (el.tool === "image") {
+          const img = el, o3 = orig;
+          const nw = o3.width * scaleX, nh = o3.height * scaleY;
+          if (nw > 0 && nh > 0) {
+            img.position = { x: o3.position.x + dx, y: o3.position.y + dy };
+            img.width = nw;
+            img.height = nh;
+          }
+          continue;
+        }
+        const s2 = el, o2 = orig;
+        const ns = { x: o2.start.x + dx, y: o2.start.y + dy };
+        const ne2 = { x: o2.end.x + dx, y: o2.end.y + dy };
+        s2.start = ns;
+        s2.end = ne2;
       }
     }
     startPinch() {
@@ -1656,6 +1810,20 @@ var CasuyaBlackboard = (() => {
         return;
       }
       if (this.activeTool === "eraser" && this.isDrawing) {
+        if (this.pixelEraser && this.currentElement) {
+          const events = e2.getCoalescedEvents?.() ?? [e2];
+          for (const ce of events) {
+            const p2 = this.getPoint(ce);
+            const pts = this.currentElement.points;
+            const last = pts[pts.length - 1];
+            if (Math.hypot(p2.x - last.x, p2.y - last.y) >= 1) {
+              pts.push(p2);
+            }
+          }
+          this.dirty = true;
+          if (!this.animFrameId) this.animFrameId = requestAnimationFrame(this.flush);
+          return;
+        }
         const point = this.getPoint(e2);
         this.lastPointerWorld = point;
         const hitDist = IS_MOBILE() ? this.strokeWidth * 3.5 : this.strokeWidth * 2.5;
@@ -1770,6 +1938,25 @@ var CasuyaBlackboard = (() => {
       this.marqueeStart = null;
       this.marqueeEnd = null;
       if (this.activeTool === "eraser" && this.isDrawing) {
+        if (this.pixelEraser && this.currentElement) {
+          this.isDrawing = false;
+          if (this.currentElement.points.length < 2) {
+            const p2 = this.currentElement.points[0];
+            this.currentElement.points = [
+              { x: p2.x, y: p2.y, pressure: 0.5 },
+              { x: p2.x + 0.5, y: p2.y + 0.5, pressure: 0.5 }
+            ];
+          } else {
+            this.currentElement.points = this.catmullRomInterpolate(this.currentElement.points, 0.5);
+          }
+          this.elements.push(this.currentElement);
+          this.currentElement = null;
+          this.flushLive();
+          this.renderStatic();
+          this.updateToolbar();
+          this.emit("change");
+          return;
+        }
         this.isDrawing = false;
         this.lastPointerWorld = null;
         this.renderAll();
@@ -2168,7 +2355,7 @@ var CasuyaBlackboard = (() => {
       background: transparent; border: 2px solid ${THEMES[this.theme].selectionColor};
       border-radius: 4px; padding: 4px 6px;
       font-size: ${taFontSize}px;
-      font-family: ${existing?.fontFamily ?? "system-ui, -apple-system, sans-serif"};
+      font-family: ${existing?.fontFamily ?? this.fontFamily};
       color: ${existing?.color ?? this.strokeColor};
       outline: none; resize: none; overflow: hidden;
       z-index: 10; box-sizing: border-box;
@@ -2187,6 +2374,7 @@ var CasuyaBlackboard = (() => {
         ta.style.height = "auto";
         ta.style.height = ta.scrollHeight + "px";
         ta.style.width = Math.max(60, ta.scrollWidth + 10) + "px";
+        this.renderTextPreview(ta.value, worldX, worldY, fontSize, existing?.fontFamily ?? this.fontFamily, existing?.color ?? this.strokeColor);
       });
       this.canvasWrapper.appendChild(ta);
       this.textInput = ta;
@@ -2199,6 +2387,7 @@ var CasuyaBlackboard = (() => {
       setTimeout(() => {
         ta.focus();
         ta.style.height = ta.scrollHeight + "px";
+        this.renderTextPreview(ta.value, worldX, worldY, fontSize, existing?.fontFamily ?? this.fontFamily, existing?.color ?? this.strokeColor);
       }, 0);
     }
     cancelText() {
@@ -2206,6 +2395,7 @@ var CasuyaBlackboard = (() => {
       const ta = this.textInput;
       this.textInput = null;
       ta.remove();
+      this.flushLive();
       if (this.editingTextOriginal) {
         this.elements.push(this.editingTextOriginal);
         this.renderStatic();
@@ -2222,6 +2412,7 @@ var CasuyaBlackboard = (() => {
       this.textInput = null;
       ta.remove();
       this.editingTextOriginal = null;
+      this.flushLive();
       if (content) {
         const screenX = parseFloat(ta.style.left);
         const screenY = parseFloat(ta.style.top);
@@ -2232,7 +2423,7 @@ var CasuyaBlackboard = (() => {
           position: world,
           content,
           fontSize: orig?.fontSize ?? this.fontSize,
-          fontFamily: orig?.fontFamily ?? "system-ui, -apple-system, sans-serif",
+          fontFamily: orig?.fontFamily ?? this.fontFamily,
           color: orig?.color ?? ta.style.color,
           width: orig?.width ?? 1,
           opacity: orig?.opacity ?? this.strokeOpacity
@@ -2725,8 +2916,25 @@ var CasuyaBlackboard = (() => {
         ctx.restore();
       }
     }
+    renderTextPreview(content, worldX, worldY, fontSize, fontFamily, color) {
+      const ctx = this.liveCtx;
+      ctx.clearRect(0, 0, this.width, this.height);
+      ctx.save();
+      ctx.scale(this.camera.zoom, this.camera.zoom);
+      ctx.translate(-this.camera.x, -this.camera.y);
+      ctx.fillStyle = color;
+      ctx.font = `${fontSize}px ${fontFamily}`;
+      ctx.textAlign = "left";
+      ctx.textBaseline = "top";
+      const lines = content.split("\n");
+      const lineHeight = fontSize * 1.4;
+      for (let i2 = 0; i2 < lines.length; i2++) {
+        ctx.fillText(lines[i2], worldX, worldY + i2 * lineHeight);
+      }
+      ctx.restore();
+    }
     updateToolbar() {
-      updateToolbarState(this.toolbar, this.activeTool, this.strokeColor, this.strokeWidth, this.fillEnabled, this.theme, this.camera.zoom, this.fontSize, this.roughness, this.graph.enabled, this.dashEnabled, this.strokeOpacity);
+      updateToolbarState(this.toolbar, this.activeTool, this.strokeColor, this.strokeWidth, this.fillEnabled, this.theme, this.camera.zoom, this.fontSize, this.roughness, this.graph.enabled, this.dashEnabled, this.strokeOpacity, this.fontFamily, this.cornerRadius, this.pixelEraser);
     }
     setTool(tool) {
       this.commitText();
@@ -2804,6 +3012,33 @@ var CasuyaBlackboard = (() => {
         URL.revokeObjectURL(url);
       });
     }
+    getFontFamily() {
+      return this.fontFamily;
+    }
+    setFontFamily(family) {
+      this.fontFamily = family;
+      this.updateToolbar();
+    }
+    getCornerRadius() {
+      return this.cornerRadius;
+    }
+    setCornerRadius(r2) {
+      this.cornerRadius = Math.max(0, Math.min(50, r2));
+      this.updateToolbar();
+    }
+    getPixelEraser() {
+      return this.pixelEraser;
+    }
+    setPixelEraser(enabled) {
+      this.pixelEraser = enabled;
+      this.updateToolbar();
+    }
+    getClipboard() {
+      return this.clipboardData;
+    }
+    setClipboard(data) {
+      this.clipboardData = data;
+    }
     getTheme() {
       return this.theme;
     }
@@ -2845,8 +3080,21 @@ var CasuyaBlackboard = (() => {
     }
     undo() {
       if (this.undoStack.length === 0) return;
-      this.redoStack.push(JSON.parse(JSON.stringify(this.elements)));
-      this.elements = this.undoStack.pop();
+      const currentSnapshot = this.elements.map((el) => {
+        if (el.tool === "image") {
+          const img = el;
+          let idx = this.imageSrcToIdx.get(img.src);
+          if (idx === void 0) {
+            idx = this.imagePool.length;
+            this.imagePool.push(img.src);
+            this.imageSrcToIdx.set(img.src, idx);
+          }
+          return { ...img, src: `__img:${idx}` };
+        }
+        return JSON.parse(JSON.stringify(el));
+      });
+      this.redoStack.push(currentSnapshot);
+      this.elements = this.resolveSnapshot(this.undoStack.pop());
       this.selectedIds.clear();
       this.renderAll();
       this.updateToolbar();
@@ -2855,8 +3103,21 @@ var CasuyaBlackboard = (() => {
     }
     redo() {
       if (this.redoStack.length === 0) return;
-      this.undoStack.push(JSON.parse(JSON.stringify(this.elements)));
-      this.elements = this.redoStack.pop();
+      const currentSnapshot = this.elements.map((el) => {
+        if (el.tool === "image") {
+          const img = el;
+          let idx = this.imageSrcToIdx.get(img.src);
+          if (idx === void 0) {
+            idx = this.imagePool.length;
+            this.imagePool.push(img.src);
+            this.imageSrcToIdx.set(img.src, idx);
+          }
+          return { ...img, src: `__img:${idx}` };
+        }
+        return JSON.parse(JSON.stringify(el));
+      });
+      this.undoStack.push(currentSnapshot);
+      this.elements = this.resolveSnapshot(this.redoStack.pop());
       this.selectedIds.clear();
       this.renderAll();
       this.updateToolbar();
@@ -2893,7 +3154,7 @@ var CasuyaBlackboard = (() => {
       const set = this.listeners.get(event);
       if (!set) return;
       if (event === "change") this.dirtySinceSave = true;
-      const payload = { elements: JSON.parse(JSON.stringify(this.elements)), tool: this.activeTool };
+      const payload = { elements: this.elements, tool: this.activeTool };
       set.forEach((cb) => cb(payload));
     }
     bringForward() {
@@ -3100,16 +3361,49 @@ var CasuyaBlackboard = (() => {
     copySelected() {
       if (this.selectedIds.size === 0) return;
       this.clipboard = [];
+      const data = [];
       for (const id of this.selectedIds) {
         const el = this.elements.find((e2) => e2.id === id);
         if (!el) continue;
         const clone = JSON.parse(JSON.stringify(el));
         clone.id = uid();
         this.clipboard.push(clone);
+        data.push(clone);
+      }
+      this.clipboardData = JSON.stringify(data);
+      try {
+        navigator.clipboard.writeText(this.clipboardData);
+      } catch {
       }
     }
     pasteClipboard() {
-      if (this.clipboard.length === 0) return;
+      if (this.clipboard.length === 0 && this.clipboardData) {
+        try {
+          const parsed = JSON.parse(this.clipboardData);
+          if (Array.isArray(parsed)) {
+            this.clipboard = parsed;
+          }
+        } catch {
+        }
+      }
+      if (this.clipboard.length === 0) {
+        try {
+          navigator.clipboard.readText().then((text) => {
+            if (!text) return;
+            try {
+              const parsed = JSON.parse(text);
+              if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].tool) {
+                this.clipboard = parsed;
+                this.pasteClipboard();
+              }
+            } catch {
+            }
+          }).catch(() => {
+          });
+        } catch {
+        }
+        return;
+      }
       this.pushUndo();
       const newIds = /* @__PURE__ */ new Set();
       const groupMap = /* @__PURE__ */ new Map();
@@ -3266,6 +3560,7 @@ var CasuyaBlackboard = (() => {
       }, 2e3);
     }
     handleImagePaste(e2) {
+      if (this.textInput) return;
       const items = e2.clipboardData?.items;
       if (!items) return;
       for (const item of items) {
