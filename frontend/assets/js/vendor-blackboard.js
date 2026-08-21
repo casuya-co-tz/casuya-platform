@@ -26,185 +26,6 @@ var CasuyaBlackboard = (() => {
     updateToolbarState: () => updateToolbarState
   });
 
-  // ../node_modules/.pnpm/perfect-freehand@1.2.3/node_modules/perfect-freehand/dist/esm/index.mjs
-  var { PI: e } = Math;
-  var t = e + 1e-4;
-  var n = 0.5;
-  var r = [1, 1];
-  function i(e2, t2, n2, r2 = (e3) => e3) {
-    return e2 * r2(0.5 - t2 * (0.5 - n2));
-  }
-  var { min: a } = Math;
-  function o(e2, t2, n2) {
-    let r2 = a(1, t2 / n2);
-    return a(1, e2 + (a(1, 1 - r2) - e2) * (r2 * 0.275));
-  }
-  function s(e2) {
-    return [-e2[0], -e2[1]];
-  }
-  function c(e2, t2) {
-    return [e2[0] + t2[0], e2[1] + t2[1]];
-  }
-  function l(e2, t2, n2) {
-    return e2[0] = t2[0] + n2[0], e2[1] = t2[1] + n2[1], e2;
-  }
-  function u(e2, t2) {
-    return [e2[0] - t2[0], e2[1] - t2[1]];
-  }
-  function d(e2, t2, n2) {
-    return e2[0] = t2[0] - n2[0], e2[1] = t2[1] - n2[1], e2;
-  }
-  function f(e2, t2) {
-    return [e2[0] * t2, e2[1] * t2];
-  }
-  function p(e2, t2, n2) {
-    return e2[0] = t2[0] * n2, e2[1] = t2[1] * n2, e2;
-  }
-  function m(e2, t2) {
-    return [e2[0] / t2, e2[1] / t2];
-  }
-  function h(e2) {
-    return [e2[1], -e2[0]];
-  }
-  function g(e2, t2) {
-    let n2 = t2[0];
-    return e2[0] = t2[1], e2[1] = -n2, e2;
-  }
-  function ee(e2, t2) {
-    return e2[0] * t2[0] + e2[1] * t2[1];
-  }
-  function _(e2, t2) {
-    return e2[0] === t2[0] && e2[1] === t2[1];
-  }
-  function v(e2) {
-    return Math.hypot(e2[0], e2[1]);
-  }
-  function y(e2, t2) {
-    let n2 = e2[0] - t2[0], r2 = e2[1] - t2[1];
-    return n2 * n2 + r2 * r2;
-  }
-  function b(e2) {
-    return m(e2, v(e2));
-  }
-  function x(e2, t2) {
-    return Math.hypot(e2[1] - t2[1], e2[0] - t2[0]);
-  }
-  function S(e2, t2, n2) {
-    let r2 = Math.sin(n2), i2 = Math.cos(n2), a2 = e2[0] - t2[0], o2 = e2[1] - t2[1], s2 = a2 * i2 - o2 * r2, c2 = a2 * r2 + o2 * i2;
-    return [s2 + t2[0], c2 + t2[1]];
-  }
-  function C(e2, t2, n2, r2) {
-    let i2 = Math.sin(r2), a2 = Math.cos(r2), o2 = t2[0] - n2[0], s2 = t2[1] - n2[1], c2 = o2 * a2 - s2 * i2, l2 = o2 * i2 + s2 * a2;
-    return e2[0] = c2 + n2[0], e2[1] = l2 + n2[1], e2;
-  }
-  function w(e2, t2, n2) {
-    return c(e2, f(u(t2, e2), n2));
-  }
-  function te(e2, t2, n2, r2) {
-    let i2 = n2[0] - t2[0], a2 = n2[1] - t2[1];
-    return e2[0] = t2[0] + i2 * r2, e2[1] = t2[1] + a2 * r2, e2;
-  }
-  function T(e2, t2, n2) {
-    return c(e2, f(t2, n2));
-  }
-  var E = [0, 0];
-  var D = [0, 0];
-  var O = [0, 0];
-  function k(e2, n2) {
-    let r2 = T(e2, b(h(u(e2, c(e2, [1, 1])))), -n2), i2 = [], a2 = 1 / 13;
-    for (let n3 = a2; n3 <= 1; n3 += a2) i2.push(S(r2, e2, t * 2 * n3));
-    return i2;
-  }
-  function A(e2, n2, r2) {
-    let i2 = [], a2 = 1 / r2;
-    for (let r3 = a2; r3 <= 1; r3 += a2) i2.push(S(n2, e2, t * r3));
-    return i2;
-  }
-  function j(e2, t2, n2) {
-    let r2 = u(t2, n2), i2 = f(r2, 0.5), a2 = f(r2, 0.51);
-    return [u(e2, i2), u(e2, a2), c(e2, a2), c(e2, i2)];
-  }
-  function M(e2, n2, r2, i2) {
-    let a2 = [], o2 = T(e2, n2, r2), s2 = 1 / i2;
-    for (let n3 = s2; n3 < 1; n3 += s2) a2.push(S(o2, e2, t * 3 * n3));
-    return a2;
-  }
-  function ne(e2, t2, n2) {
-    return [c(e2, f(t2, n2)), c(e2, f(t2, n2 * 0.99)), u(e2, f(t2, n2 * 0.99)), u(e2, f(t2, n2))];
-  }
-  function N(e2, t2, n2) {
-    return e2 === false || e2 === void 0 ? 0 : e2 === true ? Math.max(t2, n2) : e2;
-  }
-  function re(e2, t2, n2) {
-    return e2.slice(0, 10).reduce((e3, r2) => {
-      let i2 = r2.pressure;
-      return t2 && (i2 = o(e3, r2.distance, n2)), (e3 + i2) / 2;
-    }, e2[0].pressure);
-  }
-  function P(e2, n2 = {}) {
-    let { size: r2 = 16, smoothing: a2 = 0.5, thinning: f2 = 0.5, simulatePressure: m2 = true, easing: _2 = (e3) => e3, start: v2 = {}, end: b2 = {}, last: x2 = false } = n2, { cap: S2 = true, easing: w2 = (e3) => e3 * (2 - e3) } = v2, { cap: T2 = true, easing: P2 = (e3) => --e3 * e3 * e3 + 1 } = b2;
-    if (e2.length === 0 || r2 <= 0) return [];
-    let F2 = e2[e2.length - 1].runningLength, I2 = N(v2.taper, r2, F2), L2 = N(b2.taper, r2, F2), R2 = (r2 * a2) ** 2, z = [], B = [], V = re(e2, m2, r2), H = i(r2, f2, e2[e2.length - 1].pressure, _2), U, W = e2[0].vector, G = e2[0].point, K = G, q = G, J = K, Y = false;
-    for (let n3 = 0; n3 < e2.length; n3++) {
-      let { pressure: a3 } = e2[n3], { point: s2, vector: h2, distance: v3, runningLength: b3 } = e2[n3], x3 = n3 === e2.length - 1;
-      if (!x3 && F2 - b3 < 3) continue;
-      f2 ? (m2 && (a3 = o(V, v3, r2)), H = i(r2, f2, a3, _2)) : H = r2 / 2, U === void 0 && (U = H);
-      let S3 = b3 < I2 ? w2(b3 / I2) : 1, T3 = F2 - b3 < L2 ? P2((F2 - b3) / L2) : 1;
-      H = Math.max(0.01, H * Math.min(S3, T3));
-      let k2 = (x3 ? e2[n3] : e2[n3 + 1]).vector, A2 = x3 ? 1 : ee(h2, k2), j2 = ee(h2, W) < 0 && !Y, M2 = A2 !== null && A2 < 0;
-      if (j2 || M2) {
-        g(E, W), p(E, E, H);
-        for (let e3 = 0; e3 <= 1; e3 += 0.07692307692307693) d(D, s2, E), C(D, D, s2, t * e3), q = [D[0], D[1]], z.push(q), l(O, s2, E), C(O, O, s2, t * -e3), J = [O[0], O[1]], B.push(J);
-        G = q, K = J, M2 && (Y = true);
-        continue;
-      }
-      if (Y = false, x3) {
-        g(E, h2), p(E, E, H), z.push(u(s2, E)), B.push(c(s2, E));
-        continue;
-      }
-      te(E, k2, h2, A2), g(E, E), p(E, E, H), d(D, s2, E), q = [D[0], D[1]], (n3 <= 1 || y(G, q) > R2) && (z.push(q), G = q), l(O, s2, E), J = [O[0], O[1]], (n3 <= 1 || y(K, J) > R2) && (B.push(J), K = J), V = a3, W = h2;
-    }
-    let X = [e2[0].point[0], e2[0].point[1]], Z = e2.length > 1 ? [e2[e2.length - 1].point[0], e2[e2.length - 1].point[1]] : c(e2[0].point, [1, 1]), Q = [], $ = [];
-    if (e2.length === 1) {
-      if (!(I2 || L2) || x2) return k(X, U || H);
-    } else {
-      I2 || L2 && e2.length === 1 || (S2 ? Q.push(...A(X, B[0], 13)) : Q.push(...j(X, z[0], B[0])));
-      let t2 = h(s(e2[e2.length - 1].vector));
-      L2 || I2 && e2.length === 1 ? $.push(Z) : T2 ? $.push(...M(Z, t2, H, 29)) : $.push(...ne(Z, t2, H));
-    }
-    return z.concat($, B.reverse(), Q);
-  }
-  var F = [0, 0];
-  function I(e2) {
-    return e2 != null && e2 >= 0;
-  }
-  function L(e2, t2 = {}) {
-    let { streamline: i2 = 0.5, size: a2 = 16, last: o2 = false } = t2;
-    if (e2.length === 0) return [];
-    let s2 = 0.15 + (1 - i2) * 0.85, l2 = Array.isArray(e2[0]) ? e2 : e2.map(({ x: e3, y: t3, pressure: r2 = n }) => [e3, t3, r2]);
-    if (l2.length === 2) {
-      let e3 = l2[1];
-      l2 = l2.slice(0, -1);
-      for (let t3 = 1; t3 < 5; t3++) l2.push(w(l2[0], e3, t3 / 4));
-    }
-    l2.length === 1 && (l2 = [...l2, [...c(l2[0], r), ...l2[0].slice(2)]]);
-    let u2 = [{ point: [l2[0][0], l2[0][1]], pressure: I(l2[0][2]) ? l2[0][2] : 0.25, vector: [...r], distance: 0, runningLength: 0 }], f2 = false, p2 = 0, m2 = u2[0], h2 = l2.length - 1;
-    for (let e3 = 1; e3 < l2.length; e3++) {
-      let t3 = o2 && e3 === h2 ? [l2[e3][0], l2[e3][1]] : w(m2.point, l2[e3], s2);
-      if (_(m2.point, t3)) continue;
-      let r2 = x(t3, m2.point);
-      if (p2 += r2, e3 < h2 && !f2) {
-        if (p2 < a2) continue;
-        f2 = true;
-      }
-      d(F, m2.point, t3), m2 = { point: t3, pressure: I(l2[e3][2]) ? l2[e3][2] : n, vector: b(F), distance: r2, runningLength: p2 }, u2.push(m2);
-    }
-    return u2[0].vector = u2[1]?.vector || [0, 0], u2;
-  }
-  function R(e2, t2 = {}) {
-    return P(L(e2, t2), t2);
-  }
-
   // src/types.ts
   var FONT_FAMILIES = [
     "system-ui, -apple-system, sans-serif",
@@ -355,9 +176,9 @@ var CasuyaBlackboard = (() => {
     document.head.appendChild(style);
   }
   function sep() {
-    const s2 = document.createElement("div");
-    s2.className = "casuya-toolbar-sep casuya-separator";
-    return s2;
+    const s = document.createElement("div");
+    s.className = "casuya-toolbar-sep casuya-separator";
+    return s;
   }
   function createToolbar(board) {
     injectStyles();
@@ -495,10 +316,10 @@ var CasuyaBlackboard = (() => {
       const svg = board.exportSVG();
       const blob = new Blob([svg], { type: "image/svg+xml" });
       const url = URL.createObjectURL(blob);
-      const a2 = document.createElement("a");
-      a2.href = url;
-      a2.download = "blackboard.svg";
-      a2.click();
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "blackboard.svg";
+      a.click();
       URL.revokeObjectURL(url);
     }, board);
     const pngBtn = createActionBtn("\u{1F5BC}", "Export PNG", tooltipEl, () => {
@@ -719,9 +540,9 @@ var CasuyaBlackboard = (() => {
     tb.zoomLabel.textContent = Math.round(zoom * 100) + "%";
     tb.zoomLabel.style.color = themeDef.btnColor;
     const zoomBtns = tb.zoomLabel.parentElement?.querySelectorAll("button") || [];
-    zoomBtns.forEach((b2) => {
-      b2.style.color = themeDef.btnColor;
-      b2.style.background = "transparent";
+    zoomBtns.forEach((b) => {
+      b.style.color = themeDef.btnColor;
+      b.style.background = "transparent";
     });
     const actionBtns = [tb.undoBtn, tb.redoBtn, tb.graphBtn, tb.fillBtn, tb.roughnessBtn, tb.groupBtn, tb.ungroupBtn, tb.rotateBtn, tb.svgBtn, tb.pngBtn, tb.dashBtn, tb.pixelEraseBtn, tb.themeBtn, tb.applyStyleBtn];
     for (const btn of actionBtns) {
@@ -763,8 +584,8 @@ var CasuyaBlackboard = (() => {
       tb.cornerRadiusSlider.style.background = themeDef.sep;
     }
     const seps = tb.bar.querySelectorAll(".casuya-toolbar-sep");
-    seps.forEach((s2) => {
-      s2.style.background = themeDef.sep;
+    seps.forEach((s) => {
+      s.style.background = themeDef.sep;
     });
     const tooltip = tb.bar.querySelector(".casuya-tooltip");
     if (tooltip) {
@@ -804,21 +625,6 @@ var CasuyaBlackboard = (() => {
     light: { canvasBg: "#ffffff", gridColor: "#e2e8f0", gridAxisColor: "#94a3b8", gridLabelColor: "#64748b", hintColor: "#cbd5e1", selectionColor: "#3b82f6", selectionFill: "rgba(59, 130, 246, 0.1)" },
     dark: { canvasBg: "#1e1e2e", gridColor: "#313244", gridAxisColor: "#585b70", gridLabelColor: "#6c7086", hintColor: "#45475a", selectionColor: "#89b4fa", selectionFill: "rgba(137, 180, 250, 0.1)" }
   };
-  function getSvgPathFromStroke(points) {
-    if (points.length < 2) return "";
-    const max = points.length - 1;
-    let d2 = `M${points[0][0].toFixed(2)},${points[0][1].toFixed(2)}`;
-    for (let i2 = 1; i2 < max; i2++) {
-      const p0 = points[i2];
-      const p1 = points[i2 + 1];
-      d2 += ` Q${p0[0].toFixed(2)},${p0[1].toFixed(2)} ${((p0[0] + p1[0]) / 2).toFixed(2)},${((p0[1] + p1[1]) / 2).toFixed(2)}`;
-    }
-    if (points.length > 1) {
-      const last = points[points.length - 1];
-      d2 += ` L${last[0].toFixed(2)},${last[1].toFixed(2)}`;
-    }
-    return d2;
-  }
   var Blackboard = class _Blackboard {
     container;
     root;
@@ -944,8 +750,8 @@ var CasuyaBlackboard = (() => {
       this.canvasWrapper.style.cssText = "position: relative; overflow: hidden; flex: 1;";
       this.staticCanvas = document.createElement("canvas");
       this.liveCanvas = document.createElement("canvas");
-      [this.staticCanvas, this.liveCanvas].forEach((c2) => {
-        c2.style.cssText = `
+      [this.staticCanvas, this.liveCanvas].forEach((c) => {
+        c.style.cssText = `
         position: absolute; top: 0; left: 0;
         width: 100%; height: 100%;
         touch-action: none;
@@ -965,9 +771,9 @@ var CasuyaBlackboard = (() => {
       if (typeof ResizeObserver !== "undefined") {
         this.resizeObserver = new ResizeObserver((entries) => {
           for (const entry of entries) {
-            const { width: w2, height: h2 } = entry.contentRect;
-            if (w2 > 0 && h2 > 0) {
-              this.resize(Math.floor(w2), Math.floor(h2));
+            const { width: w, height: h } = entry.contentRect;
+            if (w > 0 && h > 0) {
+              this.resize(Math.floor(w), Math.floor(h));
             }
           }
         });
@@ -986,11 +792,11 @@ var CasuyaBlackboard = (() => {
           this.dirtySinceSave = false;
         }
       }, 3e4);
-      this.boundBeforeUnload = (e2) => {
+      this.boundBeforeUnload = (e) => {
         if (this.dirtySinceSave) {
           this.saveToStorage(this.autosaveKey);
-          e2.preventDefault();
-          e2.returnValue = "";
+          e.preventDefault();
+          e.returnValue = "";
         }
       };
       window.addEventListener("beforeunload", this.boundBeforeUnload);
@@ -1036,8 +842,8 @@ var CasuyaBlackboard = (() => {
     }
     snapToGrid(point) {
       if (!this.graph.enabled) return point;
-      const s2 = this.graph.spacing;
-      return { x: Math.round(point.x / s2) * s2, y: Math.round(point.y / s2) * s2 };
+      const s = this.graph.spacing;
+      return { x: Math.round(point.x / s) * s, y: Math.round(point.y / s) * s };
     }
     findNearestConnectionPoint(point, excludeId) {
       let bestDist = 30 / this.camera.zoom;
@@ -1055,24 +861,18 @@ var CasuyaBlackboard = (() => {
       }
       return bestPoint;
     }
-    catmullRomInterpolate(points, tension = 0.5) {
+    downsampleStroke(points, minDist) {
       if (points.length < 2) return [...points];
       const result = [points[0]];
-      const alpha = 0.5 + tension * 0.5;
-      for (let i2 = 0; i2 < points.length - 1; i2++) {
-        const p0 = points[Math.max(0, i2 - 1)];
-        const p1 = points[i2];
-        const p2 = points[Math.min(points.length - 1, i2 + 1)];
-        const p3 = points[Math.min(points.length - 1, i2 + 2)];
-        const steps = 3;
-        for (let t2 = 1; t2 <= steps; t2++) {
-          const tt = t2 / steps;
-          const tt2 = tt * tt;
-          const tt3 = tt2 * tt;
-          const x2 = alpha * (2 * p1.x + (-p0.x + p2.x) * tt + (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * tt2 + (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * tt3);
-          const y2 = alpha * (2 * p1.y + (-p0.y + p2.y) * tt + (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * tt2 + (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * tt3);
-          result.push({ x: x2, y: y2 });
+      for (let i = 1; i < points.length; i++) {
+        const prev = result[result.length - 1];
+        const p = points[i];
+        if (Math.hypot(p.x - prev.x, p.y - prev.y) >= minDist) {
+          result.push(p);
         }
+      }
+      if (result.length < 2 && points.length >= 2) {
+        result.push(points[points.length - 1]);
       }
       return result;
     }
@@ -1097,11 +897,11 @@ var CasuyaBlackboard = (() => {
           candidates.push({ x: this.clamp(point.x, rx, rx + rw), y: ry });
           candidates.push({ x: this.clamp(point.x, rx, rx + rw), y: ry + rh });
         }
-        for (const c2 of candidates) {
-          const dist = Math.hypot(point.x - c2.x, point.y - c2.y);
+        for (const c of candidates) {
+          const dist = Math.hypot(point.x - c.x, point.y - c.y);
           if (dist < bestDist) {
             bestDist = dist;
-            bestPoint = c2;
+            bestPoint = c;
           }
         }
       }
@@ -1126,22 +926,22 @@ var CasuyaBlackboard = (() => {
       for (const el of this.elements) {
         if (excludeId && el.id === excludeId) continue;
         if (this.selectedIds.has(el.id) && el.id !== excludeId) continue;
-        const b2 = this.getElementBounds(el);
+        const b = this.getElementBounds(el);
         const otherEdges = {
-          left: b2.x,
-          right: b2.x + b2.w,
-          cx: b2.x + b2.w / 2,
-          top: b2.y,
-          bottom: b2.y + b2.h,
-          cy: b2.y + b2.h / 2
+          left: b.x,
+          right: b.x + b.w,
+          cx: b.x + b.w / 2,
+          top: b.y,
+          bottom: b.y + b.h,
+          cy: b.y + b.h / 2
         };
         const xChecks = [otherEdges.left, otherEdges.right, otherEdges.cx];
         const movingXChecks = [movingEdges.left, movingEdges.right, movingEdges.cx];
         for (const ox of xChecks) {
           for (const mx of movingXChecks) {
-            const d2 = Math.abs(mx - ox);
-            if (d2 < bestXDist) {
-              bestXDist = d2;
+            const d = Math.abs(mx - ox);
+            if (d < bestXDist) {
+              bestXDist = d;
               guides.x = ox - (mx - movingBounds.x);
             }
           }
@@ -1150,9 +950,9 @@ var CasuyaBlackboard = (() => {
         const movingYChecks = [movingEdges.top, movingEdges.bottom, movingEdges.cy];
         for (const oy of yChecks) {
           for (const my of movingYChecks) {
-            const d2 = Math.abs(my - oy);
-            if (d2 < bestYDist) {
-              bestYDist = d2;
+            const d = Math.abs(my - oy);
+            if (d < bestYDist) {
+              bestYDist = d;
               guides.y = oy - (my - movingBounds.y);
             }
           }
@@ -1171,27 +971,27 @@ var CasuyaBlackboard = (() => {
       ctx.lineWidth = 1 / this.camera.zoom;
       ctx.setLineDash([4 / this.camera.zoom, 4 / this.camera.zoom]);
       if (this.alignmentGuides.x !== void 0) {
-        const x2 = this.alignmentGuides.x;
+        const x = this.alignmentGuides.x;
         ctx.beginPath();
-        ctx.moveTo(x2, vt);
-        ctx.lineTo(x2, vb);
+        ctx.moveTo(x, vt);
+        ctx.lineTo(x, vb);
         ctx.stroke();
       }
       if (this.alignmentGuides.y !== void 0) {
-        const y2 = this.alignmentGuides.y;
+        const y = this.alignmentGuides.y;
         ctx.beginPath();
-        ctx.moveTo(vl, y2);
-        ctx.lineTo(vr, y2);
+        ctx.moveTo(vl, y);
+        ctx.lineTo(vr, y);
         ctx.stroke();
       }
       ctx.setLineDash([]);
       ctx.restore();
     }
     setupCanvases() {
-      [this.staticCanvas, this.liveCanvas].forEach((c2) => {
-        c2.width = this.width * this.dpr;
-        c2.height = this.height * this.dpr;
-        c2.getContext("2d").scale(this.dpr, this.dpr);
+      [this.staticCanvas, this.liveCanvas].forEach((c) => {
+        c.width = this.width * this.dpr;
+        c.height = this.height * this.dpr;
+        c.getContext("2d").scale(this.dpr, this.dpr);
       });
     }
     onScrollDismiss = () => {
@@ -1234,22 +1034,22 @@ var CasuyaBlackboard = (() => {
       window.removeEventListener("scroll", this.onScrollDismiss);
       window.removeEventListener("resize", this.onResizeDismiss);
     }
-    getPoint = (e2) => {
+    getPoint = (e) => {
       const rect = this.liveCanvas.getBoundingClientRect();
-      const sx = e2.clientX - rect.left;
-      const sy = e2.clientY - rect.top;
-      return { ...this.screenToWorld(sx, sy), pressure: e2.pressure };
+      const sx = e.clientX - rect.left;
+      const sy = e.clientY - rect.top;
+      return { ...this.screenToWorld(sx, sy), pressure: e.pressure };
     };
     hitTest(worldPoint) {
-      for (let i2 = this.elements.length - 1; i2 >= 0; i2--) {
-        const el = this.elements[i2];
+      for (let i = this.elements.length - 1; i >= 0; i--) {
+        const el = this.elements[i];
         const rotation = el.rotation ?? 0;
         if ((el.tool === "pen" || el.tool === "highlighter" || el.tool === "eraser") && "points" in el) {
           const hitDist = Math.max(el.width * 2, 10) / this.camera.zoom;
           const center = this.getRotationCenter(el);
           const testPoint = rotation !== 0 ? this.rotatePoint(worldPoint, center, -rotation) : worldPoint;
           const hit = el.points.some(
-            (p2) => Math.hypot(p2.x - testPoint.x, p2.y - testPoint.y) < hitDist
+            (p) => Math.hypot(p.x - testPoint.x, p.y - testPoint.y) < hitDist
           );
           if (hit) return el;
           continue;
@@ -1265,7 +1065,7 @@ var CasuyaBlackboard = (() => {
     getHandleAtPoint(worldPoint) {
       if (this.selectedIds.size !== 1) return null;
       const id = this.selectedIds.values().next().value;
-      const el = this.elements.find((e2) => e2.id === id);
+      const el = this.elements.find((e) => e.id === id);
       if (!el) return null;
       const bounds = this.getElementBounds(el);
       const local = this.getLocalBounds(el);
@@ -1311,7 +1111,7 @@ var CasuyaBlackboard = (() => {
     getRotateHandlePos() {
       if (this.selectedIds.size !== 1) return null;
       const id = this.selectedIds.values().next().value;
-      const el = this.elements.find((e2) => e2.id === id);
+      const el = this.elements.find((e) => e.id === id);
       if (!el) return null;
       const bounds = this.getElementBounds(el);
       const rotation = el.rotation ?? 0;
@@ -1329,17 +1129,17 @@ var CasuyaBlackboard = (() => {
       if (rotation === 0) return local;
       const corners = this.getRotatedCorners(local, rotation);
       let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-      for (const p2 of corners) {
-        if (p2.x < minX) minX = p2.x;
-        if (p2.y < minY) minY = p2.y;
-        if (p2.x > maxX) maxX = p2.x;
-        if (p2.y > maxY) maxY = p2.y;
+      for (const p of corners) {
+        if (p.x < minX) minX = p.x;
+        if (p.y < minY) minY = p.y;
+        if (p.x > maxX) maxX = p.x;
+        if (p.y > maxY) maxY = p.y;
       }
       return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
     }
-    onPointerDown = (e2) => {
+    onPointerDown = (e) => {
       this.dismissContextMenu();
-      this.activePointers.set(e2.pointerId, { x: e2.clientX, y: e2.clientY, type: e2.pointerType });
+      this.activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY, type: e.pointerType });
       if (this.activePointers.size === 2) {
         if (this.isDrawing) {
           this.isDrawing = false;
@@ -1352,22 +1152,22 @@ var CasuyaBlackboard = (() => {
       if (this.activePointers.size > 2) {
         return;
       }
-      if (this.activePointerId !== null && this.activePointerId !== e2.pointerId) {
-        if (e2.pointerType === "pen" && this.activePointerType === "touch") {
+      if (this.activePointerId !== null && this.activePointerId !== e.pointerId) {
+        if (e.pointerType === "pen" && this.activePointerType === "touch") {
           this.releasePointerCapture();
         } else {
           return;
         }
       }
-      e2.preventDefault();
+      e.preventDefault();
       try {
-        this.liveCanvas.setPointerCapture(e2.pointerId);
+        this.liveCanvas.setPointerCapture(e.pointerId);
       } catch {
       }
-      this.activePointerId = e2.pointerId;
-      this.activePointerType = e2.pointerType;
-      const point = this.getPoint(e2);
-      if (e2.pointerType === "touch" && this.activeTool === "select") {
+      this.activePointerId = e.pointerId;
+      this.activePointerType = e.pointerType;
+      const point = this.getPoint(e);
+      if (e.pointerType === "touch" && this.activeTool === "select") {
         this.longPressStart = point;
         this.longPressTimer = setTimeout(() => {
           if (this.longPressStart) {
@@ -1380,14 +1180,14 @@ var CasuyaBlackboard = (() => {
               }
               this.isDrawing = false;
               this.currentElement = null;
-              this.showContextMenu(e2.clientX, e2.clientY);
+              this.showContextMenu(e.clientX, e.clientY);
             }
           }
         }, 500);
       }
       if (this.activeTool === "hand" || this.isSpaceDown && !this.isPanning) {
         this.isPanning = true;
-        this.panStart = { x: e2.clientX, y: e2.clientY };
+        this.panStart = { x: e.clientX, y: e.clientY };
         this.panCameraStart = { x: this.camera.x, y: this.camera.y };
         return;
       }
@@ -1407,7 +1207,7 @@ var CasuyaBlackboard = (() => {
         }
         const hit = this.hitTest(point);
         if (hit) {
-          if (e2.shiftKey) {
+          if (e.shiftKey) {
             if (this.selectedIds.has(hit.id)) {
               this.selectedIds.delete(hit.id);
             } else {
@@ -1435,7 +1235,7 @@ var CasuyaBlackboard = (() => {
           this.pushUndo();
           this.dragState = { type: "move", startWorld: point, origElements: JSON.parse(JSON.stringify(this.elements)) };
         } else {
-          if (!e2.shiftKey) this.selectedIds.clear();
+          if (!e.shiftKey) this.selectedIds.clear();
           this.marqueeStart = point;
           this.marqueeEnd = point;
         }
@@ -1472,7 +1272,7 @@ var CasuyaBlackboard = (() => {
         return;
       }
       this.isDrawing = true;
-      if (e2.pointerType === "pen") this.usePressure = true;
+      if (e.pointerType === "pen") this.usePressure = true;
       if (this.activeTool === "pen" || this.activeTool === "highlighter") {
         this.currentElement = {
           id: uid(),
@@ -1501,22 +1301,22 @@ var CasuyaBlackboard = (() => {
     };
     moveSingleElement(el, orig, dx, dy) {
       if (el.tool === "pen" || el.tool === "eraser" || el.tool === "highlighter") {
-        const s2 = el;
-        const o2 = orig;
-        s2.points = o2.points.map((p2) => ({ x: p2.x + dx, y: p2.y + dy, pressure: p2.pressure }));
+        const s = el;
+        const o = orig;
+        s.points = o.points.map((p) => ({ x: p.x + dx, y: p.y + dy, pressure: p.pressure }));
       } else if (el.tool === "text") {
-        const t2 = el;
-        const o2 = orig;
-        t2.position = { x: o2.position.x + dx, y: o2.position.y + dy };
+        const t = el;
+        const o = orig;
+        t.position = { x: o.position.x + dx, y: o.position.y + dy };
       } else if (el.tool === "image") {
         const img = el;
-        const o2 = orig;
-        img.position = { x: o2.position.x + dx, y: o2.position.y + dy };
+        const o = orig;
+        img.position = { x: o.position.x + dx, y: o.position.y + dy };
       } else {
-        const s2 = el;
-        const o2 = orig;
-        s2.start = { x: o2.start.x + dx, y: o2.start.y + dy };
-        s2.end = { x: o2.end.x + dx, y: o2.end.y + dy };
+        const s = el;
+        const o = orig;
+        s.start = { x: o.start.x + dx, y: o.start.y + dy };
+        s.end = { x: o.end.x + dx, y: o.end.y + dy };
       }
     }
     getRotationCenter(el) {
@@ -1535,32 +1335,32 @@ var CasuyaBlackboard = (() => {
         const stroke = el;
         if (stroke.points.length === 0) return { x: 0, y: 0, w: 0, h: 0 };
         let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-        for (const p2 of stroke.points) {
-          if (p2.x < minX) minX = p2.x;
-          if (p2.y < minY) minY = p2.y;
-          if (p2.x > maxX) maxX = p2.x;
-          if (p2.y > maxY) maxY = p2.y;
+        for (const p of stroke.points) {
+          if (p.x < minX) minX = p.x;
+          if (p.y < minY) minY = p.y;
+          if (p.x > maxX) maxX = p.x;
+          if (p.y > maxY) maxY = p.y;
         }
         return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
       }
       if (el.tool === "text") {
-        const t2 = el;
+        const t = el;
         const ctx = this.staticCtx;
-        ctx.font = `${t2.fontSize}px ${t2.fontFamily}`;
-        const lines = t2.content.split("\n");
-        const lineHeight = t2.fontSize * 1.4;
+        ctx.font = `${t.fontSize}px ${t.fontFamily}`;
+        const lines = t.content.split("\n");
+        const lineHeight = t.fontSize * 1.4;
         let maxW = 0;
         for (const line of lines) maxW = Math.max(maxW, ctx.measureText(line).width);
-        return { x: t2.position.x, y: t2.position.y, w: Math.max(maxW, 20), h: Math.max(lines.length * lineHeight, t2.fontSize) };
+        return { x: t.position.x, y: t.position.y, w: Math.max(maxW, 20), h: Math.max(lines.length * lineHeight, t.fontSize) };
       }
       if (el.tool === "image") {
         const img = el;
         return { x: img.position.x, y: img.position.y, w: img.width, h: img.height };
       }
-      const s2 = el;
-      const x2 = Math.min(s2.start.x, s2.end.x);
-      const y2 = Math.min(s2.start.y, s2.end.y);
-      return { x: x2, y: y2, w: Math.abs(s2.end.x - s2.start.x), h: Math.abs(s2.end.y - s2.start.y) };
+      const s = el;
+      const x = Math.min(s.start.x, s.end.x);
+      const y = Math.min(s.start.y, s.end.y);
+      return { x, y, w: Math.abs(s.end.x - s.start.x), h: Math.abs(s.end.y - s.start.y) };
     }
     getRotatedCorners(bounds, rotation) {
       const cx = bounds.x + bounds.w / 2;
@@ -1573,17 +1373,17 @@ var CasuyaBlackboard = (() => {
         { x: bounds.x + bounds.w, y: bounds.y + bounds.h },
         { x: bounds.x, y: bounds.y + bounds.h }
       ];
-      return corners.map((p2) => {
-        const dx = p2.x - cx;
-        const dy = p2.y - cy;
+      return corners.map((p) => {
+        const dx = p.x - cx;
+        const dy = p.y - cy;
         return { x: cx + dx * cos - dy * sin, y: cy + dx * sin + dy * cos };
       });
     }
     moveSelectedElements(dx, dy) {
       if (!this.dragState) return;
-      const origMap = new Map(this.dragState.origElements.map((e2) => [e2.id, e2]));
+      const origMap = new Map(this.dragState.origElements.map((e) => [e.id, e]));
       for (const id of this.selectedIds) {
-        const el = this.elements.find((e2) => e2.id === id);
+        const el = this.elements.find((e) => e.id === id);
         const orig = origMap.get(id);
         if (!el || !orig) continue;
         this.moveSingleElement(el, orig, dx, dy);
@@ -1591,12 +1391,12 @@ var CasuyaBlackboard = (() => {
     }
     resizeSelected(handle, currentWorld) {
       if (!this.dragState) return;
-      const origMap = new Map(this.dragState.origElements.map((e2) => [e2.id, e2]));
+      const origMap = new Map(this.dragState.origElements.map((e) => [e.id, e]));
       const rawDx = currentWorld.x - this.dragState.startWorld.x;
       const rawDy = currentWorld.y - this.dragState.startWorld.y;
       if (this.selectedIds.size === 1) {
         const id = this.selectedIds.values().next().value;
-        const el = this.elements.find((e2) => e2.id === id);
+        const el = this.elements.find((e) => e.id === id);
         const orig = origMap.get(id);
         if (!el || !orig) return;
         const rotation = el.rotation ?? 0;
@@ -1611,34 +1411,34 @@ var CasuyaBlackboard = (() => {
           return;
         }
         if (el.tool === "image") {
-          const img = el, o3 = orig;
-          let newX = o3.position.x, newY = o3.position.y, newW = o3.width, newH = o3.height;
+          const img = el, o2 = orig;
+          let newX = o2.position.x, newY = o2.position.y, newW = o2.width, newH = o2.height;
           if (handle === "nw") {
-            newX = o3.position.x + dx;
-            newY = o3.position.y + dy;
-            newW = o3.width - dx;
-            newH = o3.height - dy;
+            newX = o2.position.x + dx;
+            newY = o2.position.y + dy;
+            newW = o2.width - dx;
+            newH = o2.height - dy;
           } else if (handle === "ne") {
-            newY = o3.position.y + dy;
-            newW = o3.width + dx;
-            newH = o3.height - dy;
+            newY = o2.position.y + dy;
+            newW = o2.width + dx;
+            newH = o2.height - dy;
           } else if (handle === "sw") {
-            newX = o3.position.x + dx;
-            newW = o3.width - dx;
-            newH = o3.height + dy;
+            newX = o2.position.x + dx;
+            newW = o2.width - dx;
+            newH = o2.height + dy;
           } else if (handle === "se") {
-            newW = o3.width + dx;
-            newH = o3.height + dy;
+            newW = o2.width + dx;
+            newH = o2.height + dy;
           } else if (handle === "n") {
-            newY = o3.position.y + dy;
-            newH = o3.height - dy;
+            newY = o2.position.y + dy;
+            newH = o2.height - dy;
           } else if (handle === "s") {
-            newH = o3.height + dy;
+            newH = o2.height + dy;
           } else if (handle === "e") {
-            newW = o3.width + dx;
+            newW = o2.width + dx;
           } else if (handle === "w") {
-            newX = o3.position.x + dx;
-            newW = o3.width - dx;
+            newX = o2.position.x + dx;
+            newW = o2.width - dx;
           }
           if (newW > 0 && newH > 0) {
             img.position = { x: newX, y: newY };
@@ -1647,60 +1447,60 @@ var CasuyaBlackboard = (() => {
           }
           return;
         }
-        const s2 = el, o2 = orig;
-        let ns = { x: o2.start.x, y: o2.start.y }, ne2 = { x: o2.end.x, y: o2.end.y };
+        const s = el, o = orig;
+        let ns = { x: o.start.x, y: o.start.y }, ne = { x: o.end.x, y: o.end.y };
         if (handle === "nw") {
-          ns.x = o2.start.x + dx;
-          ns.y = o2.start.y + dy;
+          ns.x = o.start.x + dx;
+          ns.y = o.start.y + dy;
         }
         if (handle === "ne") {
-          ne2.x = o2.end.x + dx;
-          ns.y = o2.start.y + dy;
+          ne.x = o.end.x + dx;
+          ns.y = o.start.y + dy;
         }
         if (handle === "sw") {
-          ns.x = o2.start.x + dx;
-          ne2.y = o2.end.y + dy;
+          ns.x = o.start.x + dx;
+          ne.y = o.end.y + dy;
         }
         if (handle === "se") {
-          ne2.x = o2.end.x + dx;
-          ne2.y = o2.end.y + dy;
+          ne.x = o.end.x + dx;
+          ne.y = o.end.y + dy;
         }
         if (handle === "n") {
-          ns.y = o2.start.y + dy;
+          ns.y = o.start.y + dy;
         }
         if (handle === "s") {
-          ne2.y = o2.end.y + dy;
+          ne.y = o.end.y + dy;
         }
         if (handle === "e") {
-          ne2.x = o2.end.x + dx;
+          ne.x = o.end.x + dx;
         }
         if (handle === "w") {
-          ns.x = o2.start.x + dx;
+          ns.x = o.start.x + dx;
         }
-        if (ns.x > ne2.x) {
-          const t2 = ns.x;
-          ns.x = ne2.x;
-          ne2.x = t2;
+        if (ns.x > ne.x) {
+          const t = ns.x;
+          ns.x = ne.x;
+          ne.x = t;
         }
-        if (ns.y > ne2.y) {
-          const t2 = ns.y;
-          ns.y = ne2.y;
-          ne2.y = t2;
+        if (ns.y > ne.y) {
+          const t = ns.y;
+          ns.y = ne.y;
+          ne.y = t;
         }
-        if (Math.abs(ne2.x - ns.x) < 5 || Math.abs(ne2.y - ns.y) < 5) return;
-        s2.start = ns;
-        s2.end = ne2;
+        if (Math.abs(ne.x - ns.x) < 5 || Math.abs(ne.y - ns.y) < 5) return;
+        s.start = ns;
+        s.end = ne;
         return;
       }
       let origMinX = Infinity, origMinY = Infinity, origMaxX = -Infinity, origMaxY = -Infinity;
       for (const id of this.selectedIds) {
         const orig = origMap.get(id);
         if (!orig) continue;
-        const b2 = this.getLocalBounds(orig);
-        if (b2.x < origMinX) origMinX = b2.x;
-        if (b2.y < origMinY) origMinY = b2.y;
-        if (b2.x + b2.w > origMaxX) origMaxX = b2.x + b2.w;
-        if (b2.y + b2.h > origMaxY) origMaxY = b2.y + b2.h;
+        const b = this.getLocalBounds(orig);
+        if (b.x < origMinX) origMinX = b.x;
+        if (b.y < origMinY) origMinY = b.y;
+        if (b.x + b.w > origMaxX) origMaxX = b.x + b.w;
+        if (b.y + b.h > origMaxY) origMaxY = b.y + b.h;
       }
       if (origMinX === Infinity) return;
       const origW = origMaxX - origMinX, origH = origMaxY - origMinY;
@@ -1711,7 +1511,7 @@ var CasuyaBlackboard = (() => {
       if (handle === "n" || handle === "nw" || handle === "ne") scaleY = Math.max(0.1, (origH - rawDy) / origH);
       if (handle === "s" || handle === "sw" || handle === "se") scaleY = Math.max(0.1, (origH + rawDy) / origH);
       for (const id of this.selectedIds) {
-        const el = this.elements.find((e2) => e2.id === id);
+        const el = this.elements.find((e) => e.id === id);
         const orig = origMap.get(id);
         if (!el || !orig) continue;
         const ob = this.getLocalBounds(orig);
@@ -1726,20 +1526,20 @@ var CasuyaBlackboard = (() => {
           continue;
         }
         if (el.tool === "image") {
-          const img = el, o3 = orig;
-          const nw = o3.width * scaleX, nh = o3.height * scaleY;
+          const img = el, o2 = orig;
+          const nw = o2.width * scaleX, nh = o2.height * scaleY;
           if (nw > 0 && nh > 0) {
-            img.position = { x: o3.position.x + dx, y: o3.position.y + dy };
+            img.position = { x: o2.position.x + dx, y: o2.position.y + dy };
             img.width = nw;
             img.height = nh;
           }
           continue;
         }
-        const s2 = el, o2 = orig;
-        const ns = { x: o2.start.x + dx, y: o2.start.y + dy };
-        const ne2 = { x: o2.end.x + dx, y: o2.end.y + dy };
-        s2.start = ns;
-        s2.end = ne2;
+        const s = el, o = orig;
+        const ns = { x: o.start.x + dx, y: o.start.y + dy };
+        const ne = { x: o.end.x + dx, y: o.end.y + dy };
+        s.start = ns;
+        s.end = ne;
       }
     }
     startPinch() {
@@ -1753,18 +1553,18 @@ var CasuyaBlackboard = (() => {
         y: (pts[0].y + pts[1].y) / 2 - rect.top
       };
     }
-    onPointerMove = (e2) => {
+    onPointerMove = (e) => {
       if (this.longPressTimer && this.longPressStart) {
-        const dx = e2.clientX - this.longPressStart.x;
-        const dy = e2.clientY - this.longPressStart.y;
+        const dx = e.clientX - this.longPressStart.x;
+        const dy = e.clientY - this.longPressStart.y;
         if (Math.hypot(dx, dy) > 10) {
           clearTimeout(this.longPressTimer);
           this.longPressTimer = null;
           this.longPressStart = null;
         }
       }
-      if (this.activePointers.has(e2.pointerId)) {
-        this.activePointers.set(e2.pointerId, { x: e2.clientX, y: e2.clientY, type: e2.pointerType });
+      if (this.activePointers.has(e.pointerId)) {
+        this.activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY, type: e.pointerType });
       }
       if (this.activePointers.size === 2) {
         const pts = Array.from(this.activePointers.values());
@@ -1787,10 +1587,10 @@ var CasuyaBlackboard = (() => {
         }
         return;
       }
-      if (this.activePointerId !== null && this.activePointerId !== e2.pointerId) return;
+      if (this.activePointerId !== null && this.activePointerId !== e.pointerId) return;
       if (this.isPanning) {
-        const dx = (e2.clientX - this.panStart.x) / this.camera.zoom;
-        const dy = (e2.clientY - this.panStart.y) / this.camera.zoom;
+        const dx = (e.clientX - this.panStart.x) / this.camera.zoom;
+        const dy = (e.clientY - this.panStart.y) / this.camera.zoom;
         this.camera.x = this.panCameraStart.x - dx;
         this.camera.y = this.panCameraStart.y - dy;
         this.graphDirty = true;
@@ -1798,15 +1598,15 @@ var CasuyaBlackboard = (() => {
         return;
       }
       if (this.activeTool === "select" && this.dragState?.type === "rotate") {
-        const point = this.getPoint(e2);
+        const point = this.getPoint(e);
         const id = this.selectedIds.values().next().value;
-        const el = this.elements.find((e3) => e3.id === id);
+        const el = this.elements.find((e2) => e2.id === id);
         if (el) {
           const center = this.getRotationCenter(el);
           const origAngle = Math.atan2(this.dragState.startWorld.y - center.y, this.dragState.startWorld.x - center.x);
           const curAngle = Math.atan2(point.y - center.y, point.x - center.x);
           const deltaAngle = curAngle - origAngle;
-          const origEl = this.dragState.origElements.find((e3) => e3.id === id);
+          const origEl = this.dragState.origElements.find((e2) => e2.id === id);
           if (origEl) {
             el.rotation = ((origEl.rotation ?? 0) + deltaAngle) % (Math.PI * 2);
           }
@@ -1815,33 +1615,33 @@ var CasuyaBlackboard = (() => {
         return;
       }
       if (this.activeTool === "select" && this.dragState?.type === "resize") {
-        const point = this.getPoint(e2);
+        const point = this.getPoint(e);
         this.resizeSelected(this.dragState.handle, point);
         this.renderAll();
         return;
       }
       if (this.activeTool === "select" && this.dragState?.type === "move") {
-        const point = this.getPoint(e2);
+        const point = this.getPoint(e);
         const dx = point.x - this.dragState.startWorld.x;
         const dy = point.y - this.dragState.startWorld.y;
         this.moveSelectedElements(dx, dy);
         let combinedBounds = { x: Infinity, y: Infinity, w: 0, h: 0 };
         let hasBounds = false;
         for (const id of this.selectedIds) {
-          const el = this.elements.find((e3) => e3.id === id);
+          const el = this.elements.find((e2) => e2.id === id);
           if (!el) continue;
-          const b2 = this.getElementBounds(el);
+          const b = this.getElementBounds(el);
           if (!hasBounds) {
-            combinedBounds = { x: b2.x, y: b2.y, w: b2.w, h: b2.h };
+            combinedBounds = { x: b.x, y: b.y, w: b.w, h: b.h };
             hasBounds = true;
           } else {
-            const nx = Math.min(combinedBounds.x, b2.x);
-            const ny = Math.min(combinedBounds.y, b2.y);
+            const nx = Math.min(combinedBounds.x, b.x);
+            const ny = Math.min(combinedBounds.y, b.y);
             combinedBounds = {
               x: nx,
               y: ny,
-              w: Math.max(combinedBounds.x + combinedBounds.w, b2.x + b2.w) - nx,
-              h: Math.max(combinedBounds.y + combinedBounds.h, b2.y + b2.h) - ny
+              w: Math.max(combinedBounds.x + combinedBounds.w, b.x + b.w) - nx,
+              h: Math.max(combinedBounds.y + combinedBounds.h, b.y + b.h) - ny
             };
           }
         }
@@ -1852,26 +1652,26 @@ var CasuyaBlackboard = (() => {
         return;
       }
       if (this.activeTool === "select" && this.marqueeStart) {
-        this.marqueeEnd = this.getPoint(e2);
+        this.marqueeEnd = this.getPoint(e);
         this.renderAll();
         return;
       }
       if (this.activeTool === "eraser" && this.isDrawing) {
         if (this.pixelEraser && this.currentElement) {
-          const events = e2.getCoalescedEvents?.() ?? [e2];
+          const events = e.getCoalescedEvents?.() ?? [e];
           for (const ce of events) {
-            const p2 = this.getPoint(ce);
+            const p = this.getPoint(ce);
             const pts = this.currentElement.points;
             const last = pts[pts.length - 1];
-            if (Math.hypot(p2.x - last.x, p2.y - last.y) >= 1) {
-              pts.push(p2);
+            if (Math.hypot(p.x - last.x, p.y - last.y) >= 1) {
+              pts.push(p);
             }
           }
           this.dirty = true;
           if (!this.animFrameId) this.animFrameId = requestAnimationFrame(this.flush);
           return;
         }
-        const point = this.getPoint(e2);
+        const point = this.getPoint(e);
         this.lastPointerWorld = point;
         const hitDist = IS_MOBILE() ? this.strokeWidth * 3.5 : this.strokeWidth * 2.5;
         const toRemove = [];
@@ -1881,7 +1681,7 @@ var CasuyaBlackboard = (() => {
             const rotation = stroke.rotation ?? 0;
             const center = this.getRotationCenter(stroke);
             const localPoint = rotation !== 0 ? this.rotatePoint(point, center, -rotation) : point;
-            const hit = stroke.points.some((p2) => Math.hypot(p2.x - localPoint.x, p2.y - localPoint.y) < hitDist);
+            const hit = stroke.points.some((p) => Math.hypot(p.x - localPoint.x, p.y - localPoint.y) < hitDist);
             if (hit) toRemove.push(el.id);
           } else {
             const bounds = this.getElementBounds(el);
@@ -1892,7 +1692,7 @@ var CasuyaBlackboard = (() => {
           }
         }
         if (toRemove.length > 0) {
-          this.elements = this.elements.filter((e3) => !toRemove.includes(e3.id));
+          this.elements = this.elements.filter((e2) => !toRemove.includes(e2.id));
           this.renderStatic();
           this.emit("change");
         }
@@ -1901,19 +1701,19 @@ var CasuyaBlackboard = (() => {
         return;
       }
       if (!this.isDrawing || !this.currentElement) return;
-      e2.preventDefault();
+      e.preventDefault();
       if (this.currentElement.tool === "pen" || this.currentElement.tool === "highlighter") {
-        const events = e2.getCoalescedEvents?.() ?? [e2];
+        const events = e.getCoalescedEvents?.() ?? [e];
         for (const ce of events) {
-          const p2 = this.getPoint(ce);
+          const p = this.getPoint(ce);
           const pts = this.currentElement.points;
           const last = pts[pts.length - 1];
-          if (Math.hypot(p2.x - last.x, p2.y - last.y) >= 1) {
-            pts.push(p2);
+          if (Math.hypot(p.x - last.x, p.y - last.y) >= 1) {
+            pts.push(p);
           }
         }
       } else {
-        const point = this.getPoint(e2);
+        const point = this.getPoint(e);
         const shape = this.currentElement;
         let endPoint = this.snapToGrid(point);
         if (shape.tool === "arrow") {
@@ -1921,7 +1721,7 @@ var CasuyaBlackboard = (() => {
           if (conn) endPoint = conn;
         }
         shape.end = endPoint;
-        if (e2.shiftKey && "start" in this.currentElement) {
+        if (e.shiftKey && "start" in this.currentElement) {
           const dx = shape.end.x - shape.start.x;
           const dy = shape.end.y - shape.start.y;
           if (shape.tool === "rect") {
@@ -1943,15 +1743,15 @@ var CasuyaBlackboard = (() => {
         this.animFrameId = requestAnimationFrame(this.flush);
       }
     };
-    onPointerUp = (e2) => {
-      this.activePointers.delete(e2.pointerId);
-      if (e2.pointerType === "pen") this.usePressure = false;
+    onPointerUp = (e) => {
+      this.activePointers.delete(e.pointerId);
+      if (e.pointerType === "pen") this.usePressure = false;
       if (this.longPressTimer) {
         clearTimeout(this.longPressTimer);
         this.longPressTimer = null;
       }
       this.longPressStart = null;
-      if (this.activePointerId !== null && this.activePointerId !== e2.pointerId) return;
+      if (this.activePointerId !== null && this.activePointerId !== e.pointerId) return;
       this.activePointerId = null;
       this.activePointerType = "mouse";
       if (this.isPanning) {
@@ -1971,8 +1771,8 @@ var CasuyaBlackboard = (() => {
         const mh = Math.abs(this.marqueeEnd.y - this.marqueeStart.y);
         if (mw > 2 / this.camera.zoom || mh > 2 / this.camera.zoom) {
           for (const el of this.elements) {
-            const b2 = this.getElementBounds(el);
-            if (b2.x >= mx && b2.y >= my && b2.x + b2.w <= mx + mw && b2.y + b2.h <= my + mh) {
+            const b = this.getElementBounds(el);
+            if (b.x >= mx && b.y >= my && b.x + b.w <= mx + mw && b.y + b.h <= my + mh) {
               this.selectedIds.add(el.id);
             }
           }
@@ -1988,13 +1788,13 @@ var CasuyaBlackboard = (() => {
         if (this.pixelEraser && this.currentElement) {
           this.isDrawing = false;
           if (this.currentElement.points.length < 2) {
-            const p2 = this.currentElement.points[0];
+            const p = this.currentElement.points[0];
             this.currentElement.points = [
-              { x: p2.x, y: p2.y, pressure: 0.5 },
-              { x: p2.x + 0.5, y: p2.y + 0.5, pressure: 0.5 }
+              { x: p.x, y: p.y, pressure: 0.5 },
+              { x: p.x + 0.5, y: p.y + 0.5, pressure: 0.5 }
             ];
           } else {
-            this.currentElement.points = this.catmullRomInterpolate(this.currentElement.points, 0.5);
+            this.currentElement.points = this.downsampleStroke(this.currentElement.points, 2);
           }
           this.elements.push(this.currentElement);
           this.currentElement = null;
@@ -2014,13 +1814,13 @@ var CasuyaBlackboard = (() => {
       this.isDrawing = false;
       if (this.currentElement.tool === "pen" || this.currentElement.tool === "highlighter") {
         if (this.currentElement.points.length < 2) {
-          const p2 = this.currentElement.points[0];
+          const p = this.currentElement.points[0];
           this.currentElement.points = [
-            { x: p2.x, y: p2.y, pressure: 0.5 },
-            { x: p2.x + 0.5, y: p2.y + 0.5, pressure: 0.5 }
+            { x: p.x, y: p.y, pressure: 0.5 },
+            { x: p.x + 0.5, y: p.y + 0.5, pressure: 0.5 }
           ];
         } else {
-          this.currentElement.points = this.catmullRomInterpolate(this.currentElement.points, 0.5);
+          this.currentElement.points = this.downsampleStroke(this.currentElement.points, 2);
         }
       }
       this.elements.push(this.currentElement);
@@ -2030,13 +1830,13 @@ var CasuyaBlackboard = (() => {
       this.updateToolbar();
       this.emit("change");
     };
-    onWheel = (e2) => {
-      e2.preventDefault();
+    onWheel = (e) => {
+      e.preventDefault();
       const rect = this.liveCanvas.getBoundingClientRect();
-      const sx = e2.clientX - rect.left;
-      const sy = e2.clientY - rect.top;
+      const sx = e.clientX - rect.left;
+      const sy = e.clientY - rect.top;
       const worldBefore = this.screenToWorld(sx, sy);
-      const delta = -e2.deltaY;
+      const delta = -e.deltaY;
       const factor = Math.pow(1.001, delta);
       this.camera.zoom = Math.max(0.1, Math.min(10, this.camera.zoom * factor));
       const worldAfter = this.screenToWorld(sx, sy);
@@ -2046,62 +1846,62 @@ var CasuyaBlackboard = (() => {
       this.renderAll();
       this.updateToolbar();
     };
-    onKeyDown = (e2) => {
+    onKeyDown = (e) => {
       if (this.textInput) return;
-      if (isInInput(e2.target)) return;
-      if ((e2.ctrlKey || e2.metaKey) && e2.key === "z") {
-        e2.preventDefault();
-        e2.shiftKey ? this.redo() : this.undo();
+      if (isInInput(e.target)) return;
+      if ((e.ctrlKey || e.metaKey) && e.key === "z") {
+        e.preventDefault();
+        e.shiftKey ? this.redo() : this.undo();
         return;
       }
-      if ((e2.ctrlKey || e2.metaKey) && e2.key === "y") {
-        e2.preventDefault();
+      if ((e.ctrlKey || e.metaKey) && e.key === "y") {
+        e.preventDefault();
         this.redo();
         return;
       }
-      if ((e2.ctrlKey || e2.metaKey) && (e2.key === "=" || e2.key === "+")) {
-        e2.preventDefault();
+      if ((e.ctrlKey || e.metaKey) && (e.key === "=" || e.key === "+")) {
+        e.preventDefault();
         this.zoomTo(this.camera.zoom * 1.1);
         return;
       }
-      if ((e2.ctrlKey || e2.metaKey) && e2.key === "-") {
-        e2.preventDefault();
+      if ((e.ctrlKey || e.metaKey) && e.key === "-") {
+        e.preventDefault();
         this.zoomTo(this.camera.zoom * 0.9);
         return;
       }
-      if ((e2.ctrlKey || e2.metaKey) && e2.key === "0") {
-        e2.preventDefault();
+      if ((e.ctrlKey || e.metaKey) && e.key === "0") {
+        e.preventDefault();
         this.resetView();
         return;
       }
-      if ((e2.ctrlKey || e2.metaKey) && e2.key === "d") {
-        e2.preventDefault();
+      if ((e.ctrlKey || e.metaKey) && e.key === "d") {
+        e.preventDefault();
         this.duplicateSelected();
         return;
       }
-      if ((e2.ctrlKey || e2.metaKey) && e2.key === "c") {
-        e2.preventDefault();
+      if ((e.ctrlKey || e.metaKey) && e.key === "c") {
+        e.preventDefault();
         this.copySelected();
         return;
       }
-      if ((e2.ctrlKey || e2.metaKey) && e2.key === "v") {
-        e2.preventDefault();
+      if ((e.ctrlKey || e.metaKey) && e.key === "v") {
+        e.preventDefault();
         this.pasteClipboard();
         return;
       }
-      if ((e2.ctrlKey || e2.metaKey) && e2.key === "x") {
-        e2.preventDefault();
+      if ((e.ctrlKey || e.metaKey) && e.key === "x") {
+        e.preventDefault();
         this.copySelected();
         this.deleteSelected();
         return;
       }
-      if ((e2.ctrlKey || e2.metaKey) && e2.key === "a") {
-        e2.preventDefault();
+      if ((e.ctrlKey || e.metaKey) && e.key === "a") {
+        e.preventDefault();
         this.selectAll();
         return;
       }
-      if (e2.key === "Escape") {
-        e2.preventDefault();
+      if (e.key === "Escape") {
+        e.preventDefault();
         if (this.contextMenu) {
           this.dismissContextMenu();
           return;
@@ -2116,105 +1916,105 @@ var CasuyaBlackboard = (() => {
         }
         return;
       }
-      if (e2.key === " ") {
-        e2.preventDefault();
+      if (e.key === " ") {
+        e.preventDefault();
         if (!this.isSpaceDown) {
           this.isSpaceDown = true;
           this.liveCanvas.style.cursor = "grab";
         }
         return;
       }
-      if (e2.key === "Delete" || e2.key === "Backspace") {
-        e2.preventDefault();
+      if (e.key === "Delete" || e.key === "Backspace") {
+        e.preventDefault();
         this.deleteSelected();
         return;
       }
-      if (!e2.ctrlKey && !e2.metaKey && !e2.altKey) {
-        const nudge = e2.shiftKey ? 10 : 1;
-        if (e2.key === "ArrowLeft") {
-          e2.preventDefault();
+      if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+        const nudge = e.shiftKey ? 10 : 1;
+        if (e.key === "ArrowLeft") {
+          e.preventDefault();
           this.nudgeSelected(-nudge, 0);
           return;
         }
-        if (e2.key === "ArrowRight") {
-          e2.preventDefault();
+        if (e.key === "ArrowRight") {
+          e.preventDefault();
           this.nudgeSelected(nudge, 0);
           return;
         }
-        if (e2.key === "ArrowUp") {
-          e2.preventDefault();
+        if (e.key === "ArrowUp") {
+          e.preventDefault();
           this.nudgeSelected(0, -nudge);
           return;
         }
-        if (e2.key === "ArrowDown") {
-          e2.preventDefault();
+        if (e.key === "ArrowDown") {
+          e.preventDefault();
           this.nudgeSelected(0, nudge);
           return;
         }
       }
-      if ((e2.ctrlKey || e2.metaKey) && e2.key === "]") {
-        e2.preventDefault();
-        if (e2.shiftKey) this.bringToFront();
+      if ((e.ctrlKey || e.metaKey) && e.key === "]") {
+        e.preventDefault();
+        if (e.shiftKey) this.bringToFront();
         else this.bringForward();
         return;
       }
-      if ((e2.ctrlKey || e2.metaKey) && e2.key === "[") {
-        e2.preventDefault();
-        if (e2.shiftKey) this.sendToBack();
+      if ((e.ctrlKey || e.metaKey) && e.key === "[") {
+        e.preventDefault();
+        if (e.shiftKey) this.sendToBack();
         else this.sendBackward();
         return;
       }
-      if (!e2.ctrlKey && !e2.metaKey && !e2.altKey && e2.key === "]") {
-        e2.preventDefault();
+      if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key === "]") {
+        e.preventDefault();
         if (this.activeTool === "text") this.setFontSize(this.fontSize + 2);
         else this.setWidth(this.strokeWidth + 1);
         return;
       }
-      if (!e2.ctrlKey && !e2.metaKey && !e2.altKey && e2.key === "[") {
-        e2.preventDefault();
+      if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key === "[") {
+        e.preventDefault();
         if (this.activeTool === "text") this.setFontSize(this.fontSize - 2);
         else this.setWidth(this.strokeWidth - 1);
         return;
       }
-      if ((e2.ctrlKey || e2.metaKey) && e2.key === "g" && !e2.shiftKey) {
-        e2.preventDefault();
+      if ((e.ctrlKey || e.metaKey) && e.key === "g" && !e.shiftKey) {
+        e.preventDefault();
         this.groupSelected();
         return;
       }
-      if ((e2.ctrlKey || e2.metaKey) && e2.shiftKey && e2.key === "G") {
-        e2.preventDefault();
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "G") {
+        e.preventDefault();
         this.ungroupSelected();
         return;
       }
-      if ((e2.ctrlKey || e2.metaKey) && e2.shiftKey && e2.key === "S") {
-        e2.preventDefault();
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "S") {
+        e.preventDefault();
         const svg = this.exportSVG();
         const blob = new Blob([svg], { type: "image/svg+xml" });
         const url = URL.createObjectURL(blob);
-        const a2 = document.createElement("a");
-        a2.href = url;
-        a2.download = "blackboard.svg";
-        a2.click();
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "blackboard.svg";
+        a.click();
         URL.revokeObjectURL(url);
         return;
       }
-      if ((e2.ctrlKey || e2.metaKey) && e2.shiftKey && e2.key === "P") {
-        e2.preventDefault();
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "P") {
+        e.preventDefault();
         this.exportPNG();
         return;
       }
-      if ((e2.ctrlKey || e2.metaKey) && e2.shiftKey && e2.key === "F") {
-        e2.preventDefault();
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "F") {
+        e.preventDefault();
         this.applyStyleToSelected();
         return;
       }
-      if (e2.shiftKey && e2.key === "R") {
-        e2.preventDefault();
+      if (e.shiftKey && e.key === "R") {
+        e.preventDefault();
         this.rotateSelected(Math.PI / 12);
         return;
       }
-      if (e2.key === "?") {
-        e2.preventDefault();
+      if (e.key === "?") {
+        e.preventDefault();
         this.showShortcutHelp();
         return;
       }
@@ -2230,24 +2030,24 @@ var CasuyaBlackboard = (() => {
         "a": "arrow",
         "e": "eraser"
       };
-      if ((e2.ctrlKey || e2.metaKey) && !["z", "+", "-", "0", "d", "c", "v", "x", "a", "g", "]", "["].includes(e2.key.toLowerCase())) {
+      if ((e.ctrlKey || e.metaKey) && !["z", "+", "-", "0", "d", "c", "v", "x", "a", "g", "]", "["].includes(e.key.toLowerCase())) {
         return;
       }
-      const tool = keyToolMap[e2.key.toLowerCase()];
+      const tool = keyToolMap[e.key.toLowerCase()];
       if (tool) {
         this.commitText();
         this.setTool(tool);
       }
     };
-    onKeyUp = (e2) => {
-      if (e2.key === " ") {
+    onKeyUp = (e) => {
+      if (e.key === " ") {
         this.isSpaceDown = false;
         this.setTool(this.activeTool);
       }
     };
-    onContextMenu = (e2) => {
-      e2.preventDefault();
-      const point = this.getPoint(e2);
+    onContextMenu = (e) => {
+      e.preventDefault();
+      const point = this.getPoint(e);
       const hit = this.hitTest(point);
       if (hit) {
         if (!this.selectedIds.has(hit.id)) {
@@ -2256,7 +2056,7 @@ var CasuyaBlackboard = (() => {
           this.renderAll();
         }
       }
-      this.showContextMenu(e2.clientX, e2.clientY);
+      this.showContextMenu(e.clientX, e.clientY);
     };
     showContextMenu(clientX, clientY) {
       this.dismissContextMenu();
@@ -2300,10 +2100,10 @@ var CasuyaBlackboard = (() => {
             const svg = this.exportSelectedSVG();
             const blob = new Blob([svg], { type: "image/svg+xml" });
             const url = URL.createObjectURL(blob);
-            const a2 = document.createElement("a");
-            a2.href = url;
-            a2.download = "selection.svg";
-            a2.click();
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "selection.svg";
+            a.click();
             URL.revokeObjectURL(url);
           }, disabled: false },
           { label: "Export Selected PNG", shortcut: "", action: () => this.exportSelectedPNG(), disabled: false }
@@ -2358,19 +2158,19 @@ var CasuyaBlackboard = (() => {
       }
       if (!firstItem) firstItem = menu.querySelector("button:not([disabled])");
       if (firstItem) firstItem.focus();
-      const onKey = (e2) => {
-        if (e2.key === "Escape") {
+      const onKey = (e) => {
+        if (e.key === "Escape") {
           this.dismissContextMenu();
           return;
         }
         const btns = [...menu.querySelectorAll("button:not([disabled])")];
         const idx = btns.indexOf(document.activeElement);
-        if (e2.key === "ArrowDown") {
-          e2.preventDefault();
+        if (e.key === "ArrowDown") {
+          e.preventDefault();
           btns[(idx + 1) % btns.length]?.focus();
         }
-        if (e2.key === "ArrowUp") {
-          e2.preventDefault();
+        if (e.key === "ArrowUp") {
+          e.preventDefault();
           btns[(idx - 1 + btns.length) % btns.length]?.focus();
         }
       };
@@ -2399,10 +2199,10 @@ var CasuyaBlackboard = (() => {
       if (this.selectedIds.size === 0) return;
       this.pushUndo();
       for (const id of this.selectedIds) {
-        const el = this.elements.find((e2) => e2.id === id);
+        const el = this.elements.find((e) => e.id === id);
         if (el && el.tool === "image") this.imageCache.delete(el.src);
       }
-      this.elements = this.elements.filter((e2) => !this.selectedIds.has(e2.id));
+      this.elements = this.elements.filter((e) => !this.selectedIds.has(e.id));
       this.selectedIds.clear();
       this.renderAll();
       this.emit("change");
@@ -2457,7 +2257,7 @@ var CasuyaBlackboard = (() => {
       this.editingTextId = existing?.id ?? null;
       if (existing) {
         this.pushUndo();
-        this.elements = this.elements.filter((e2) => e2.id !== existing.id);
+        this.elements = this.elements.filter((e) => e.id !== existing.id);
         this.renderStatic();
       }
       setTimeout(() => {
@@ -2524,9 +2324,9 @@ var CasuyaBlackboard = (() => {
     hintEl = null;
     renderStatic() {
       const ctx = this.staticCtx;
-      const t2 = THEMES[this.theme];
+      const t = THEMES[this.theme];
       ctx.clearRect(0, 0, this.width, this.height);
-      ctx.fillStyle = t2.canvasBg;
+      ctx.fillStyle = t.canvasBg;
       ctx.fillRect(0, 0, this.width, this.height);
       ctx.save();
       ctx.scale(this.camera.zoom, this.camera.zoom);
@@ -2549,7 +2349,7 @@ var CasuyaBlackboard = (() => {
         }
         const hintSize = IS_MOBILE() ? 11 : 14;
         this.hintEl.textContent = IS_MOBILE() ? "Tap a tool to start" : "Choose a tool and start drawing";
-        this.hintEl.style.cssText = `position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;user-select:none;font-family:system-ui,sans-serif;font-size:${hintSize}px;color:${t2.hintColor};`;
+        this.hintEl.style.cssText = `position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;user-select:none;font-family:system-ui,sans-serif;font-size:${hintSize}px;color:${t.hintColor};`;
         this.hintEl.style.display = "";
       } else if (this.hintEl) {
         this.hintEl.style.display = "none";
@@ -2569,7 +2369,7 @@ var CasuyaBlackboard = (() => {
     }
     renderGraphToOffscreen() {
       const ctx = this.graphCtx;
-      const t2 = THEMES[this.theme];
+      const t = THEMES[this.theme];
       ctx.clearRect(0, 0, this.width, this.height);
       this.drawGraph(ctx);
       this.graphDirty = false;
@@ -2584,17 +2384,17 @@ var CasuyaBlackboard = (() => {
       this.drawSelectionIndicators(ctx);
       this.drawAlignmentGuides(ctx);
       if (this.marqueeStart && this.marqueeEnd) {
-        const t2 = THEMES[this.theme];
-        const x2 = Math.min(this.marqueeStart.x, this.marqueeEnd.x);
-        const y2 = Math.min(this.marqueeStart.y, this.marqueeEnd.y);
-        const w2 = Math.abs(this.marqueeEnd.x - this.marqueeStart.x);
-        const h2 = Math.abs(this.marqueeEnd.y - this.marqueeStart.y);
-        ctx.fillStyle = t2.selectionFill;
-        ctx.fillRect(x2, y2, w2, h2);
-        ctx.strokeStyle = t2.selectionColor;
+        const t = THEMES[this.theme];
+        const x = Math.min(this.marqueeStart.x, this.marqueeEnd.x);
+        const y = Math.min(this.marqueeStart.y, this.marqueeEnd.y);
+        const w = Math.abs(this.marqueeEnd.x - this.marqueeStart.x);
+        const h = Math.abs(this.marqueeEnd.y - this.marqueeStart.y);
+        ctx.fillStyle = t.selectionFill;
+        ctx.fillRect(x, y, w, h);
+        ctx.strokeStyle = t.selectionColor;
         ctx.lineWidth = 1 / this.camera.zoom;
         ctx.setLineDash([4 / this.camera.zoom, 4 / this.camera.zoom]);
-        ctx.strokeRect(x2, y2, w2, h2);
+        ctx.strokeRect(x, y, w, h);
         ctx.setLineDash([]);
       }
       if (this.activeTool === "eraser" && this.lastPointerWorld) {
@@ -2609,7 +2409,7 @@ var CasuyaBlackboard = (() => {
     }
     drawGraph(ctx) {
       const { spacing, showAxes, showLabels } = this.graph;
-      const t2 = THEMES[this.theme];
+      const t = THEMES[this.theme];
       const vl = this.camera.x;
       const vt = this.camera.y;
       const vr = this.camera.x + this.width / this.camera.zoom;
@@ -2618,20 +2418,20 @@ var CasuyaBlackboard = (() => {
       const endX = Math.ceil(vr / spacing) * spacing;
       const startY = Math.floor(vt / spacing) * spacing;
       const endY = Math.ceil(vb / spacing) * spacing;
-      ctx.strokeStyle = this.graph.color || t2.gridColor;
+      ctx.strokeStyle = this.graph.color || t.gridColor;
       ctx.lineWidth = 0.5 / this.camera.zoom;
       ctx.beginPath();
-      for (let x2 = startX; x2 <= endX; x2 += spacing) {
-        ctx.moveTo(x2, vt);
-        ctx.lineTo(x2, vb);
+      for (let x = startX; x <= endX; x += spacing) {
+        ctx.moveTo(x, vt);
+        ctx.lineTo(x, vb);
       }
-      for (let y2 = startY; y2 <= endY; y2 += spacing) {
-        ctx.moveTo(vl, y2);
-        ctx.lineTo(vr, y2);
+      for (let y = startY; y <= endY; y += spacing) {
+        ctx.moveTo(vl, y);
+        ctx.lineTo(vr, y);
       }
       ctx.stroke();
       if (showAxes) {
-        ctx.strokeStyle = t2.gridAxisColor;
+        ctx.strokeStyle = t.gridAxisColor;
         ctx.lineWidth = 1.5 / this.camera.zoom;
         ctx.beginPath();
         if (0 >= vt && 0 <= vb) {
@@ -2644,21 +2444,21 @@ var CasuyaBlackboard = (() => {
         }
         ctx.stroke();
         if (showLabels) {
-          ctx.fillStyle = t2.gridLabelColor;
+          ctx.fillStyle = t.gridLabelColor;
           ctx.font = `${10 / this.camera.zoom}px system-ui, sans-serif`;
           const labelOffset = spacing;
           ctx.textAlign = "center";
           if (0 >= vt && 0 <= vb) {
-            for (let x2 = startX; x2 <= endX; x2 += spacing * 2) {
-              if (Math.abs(x2) < labelOffset) continue;
-              ctx.fillText(String(x2 / spacing), x2, 14 / this.camera.zoom);
+            for (let x = startX; x <= endX; x += spacing * 2) {
+              if (Math.abs(x) < labelOffset) continue;
+              ctx.fillText(String(x / spacing), x, 14 / this.camera.zoom);
             }
           }
           ctx.textAlign = "right";
           if (0 >= vl && 0 <= vr) {
-            for (let y2 = startY; y2 <= endY; y2 += spacing * 2) {
-              if (Math.abs(y2) < labelOffset) continue;
-              ctx.fillText(String(-y2 / spacing), -6 / this.camera.zoom, y2 + 4 / this.camera.zoom);
+            for (let y = startY; y <= endY; y += spacing * 2) {
+              if (Math.abs(y) < labelOffset) continue;
+              ctx.fillText(String(-y / spacing), -6 / this.camera.zoom, y + 4 / this.camera.zoom);
             }
           }
         }
@@ -2687,22 +2487,31 @@ var CasuyaBlackboard = (() => {
     }
     drawFreehand(ctx, stroke) {
       const { points, color, width, tool } = stroke;
+      if (points.length < 2) return;
       if (tool === "eraser") {
         ctx.globalCompositeOperation = "destination-out";
-        ctx.fillStyle = "rgba(0,0,0,1)";
+        ctx.strokeStyle = "rgba(0,0,0,1)";
       } else if (tool === "highlighter") {
         ctx.globalCompositeOperation = "multiply";
-        ctx.fillStyle = color;
+        ctx.strokeStyle = color;
       } else {
         ctx.globalCompositeOperation = "source-over";
-        ctx.fillStyle = color;
+        ctx.strokeStyle = color;
       }
-      const outlinePoints = R(
-        points.map((p2) => [p2.x, p2.y, p2.pressure ?? 0.5]),
-        { size: width, thinning: tool === "highlighter" ? 0 : 0.5, smoothing: 0.5, streamline: 0.5, simulatePressure: tool === "highlighter" ? false : !this.usePressure }
-      );
-      const pathData = getSvgPathFromStroke(outlinePoints);
-      if (pathData) ctx.fill(new Path2D(pathData));
+      ctx.lineWidth = width;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, points[0].y);
+      for (let i = 1; i < points.length; i++) {
+        const prev = points[i - 1];
+        const curr = points[i];
+        const mx = (prev.x + curr.x) / 2;
+        const my = (prev.y + curr.y) / 2;
+        ctx.quadraticCurveTo(prev.x, prev.y, mx, my);
+      }
+      ctx.lineTo(points[points.length - 1].x, points[points.length - 1].y);
+      ctx.stroke();
       ctx.globalCompositeOperation = "source-over";
     }
     drawText(ctx, el) {
@@ -2732,22 +2541,22 @@ var CasuyaBlackboard = (() => {
         wrappedLines.push(currentLine);
       }
       const lineHeight = el.fontSize * 1.4;
-      for (let i2 = 0; i2 < wrappedLines.length; i2++) {
-        ctx.fillText(wrappedLines[i2], el.position.x, el.position.y + i2 * lineHeight);
+      for (let i = 0; i < wrappedLines.length; i++) {
+        ctx.fillText(wrappedLines[i], el.position.x, el.position.y + i * lineHeight);
       }
     }
-    roundRect(ctx, x2, y2, w2, h2, r2) {
-      r2 = Math.min(r2, w2 / 2, h2 / 2);
+    roundRect(ctx, x, y, w, h, r) {
+      r = Math.min(r, w / 2, h / 2);
       ctx.beginPath();
-      ctx.moveTo(x2 + r2, y2);
-      ctx.lineTo(x2 + w2 - r2, y2);
-      ctx.quadraticCurveTo(x2 + w2, y2, x2 + w2, y2 + r2);
-      ctx.lineTo(x2 + w2, y2 + h2 - r2);
-      ctx.quadraticCurveTo(x2 + w2, y2 + h2, x2 + w2 - r2, y2 + h2);
-      ctx.lineTo(x2 + r2, y2 + h2);
-      ctx.quadraticCurveTo(x2, y2 + h2, x2, y2 + h2 - r2);
-      ctx.lineTo(x2, y2 + r2);
-      ctx.quadraticCurveTo(x2, y2, x2 + r2, y2);
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+      ctx.lineTo(x + w, y + h - r);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      ctx.lineTo(x + r, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
       ctx.closePath();
     }
     drawShape(ctx, shape) {
@@ -2835,17 +2644,17 @@ var CasuyaBlackboard = (() => {
       }
     }
     seededRandom(seed) {
-      let s2 = seed;
+      let s = seed;
       return () => {
-        s2 = (s2 * 16807 + 0) % 2147483647;
-        return (s2 - 1) / 2147483646;
+        s = (s * 16807 + 0) % 2147483647;
+        return (s - 1) / 2147483646;
       };
     }
     drawRoughShape(ctx, shape) {
       const roughLevel = shape.roughness ?? this.roughness;
       const maxOffset = roughLevel * 1.5;
       const passes = roughLevel + 1;
-      const seedVal = shape.id.split("").reduce((a2, c2) => a2 + c2.charCodeAt(0), 0);
+      const seedVal = shape.id.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
       const rand = this.seededRandom(seedVal);
       const { start, end, color, width } = shape;
       ctx.save();
@@ -2875,16 +2684,16 @@ var CasuyaBlackboard = (() => {
               { x: rx + rw, y: ry + rh },
               { x: rx, y: ry + rh }
             ];
-            for (let i2 = 0; i2 < 4; i2++) {
-              const a2 = pts[i2];
-              const b2 = pts[(i2 + 1) % 4];
-              ctx.moveTo(a2.x + off(), a2.y + off());
+            for (let i = 0; i < 4; i++) {
+              const a = pts[i];
+              const b = pts[(i + 1) % 4];
+              ctx.moveTo(a.x + off(), a.y + off());
               const segs = 4;
-              for (let s2 = 1; s2 <= segs; s2++) {
-                const t2 = s2 / segs;
+              for (let s = 1; s <= segs; s++) {
+                const t = s / segs;
                 ctx.lineTo(
-                  a2.x + (b2.x - a2.x) * t2 + off(),
-                  a2.y + (b2.y - a2.y) * t2 + off()
+                  a.x + (b.x - a.x) * t + off(),
+                  a.y + (b.y - a.y) * t + off()
                 );
               }
             }
@@ -2905,11 +2714,11 @@ var CasuyaBlackboard = (() => {
             const rrx = Math.abs(end.x - start.x) / 2;
             const rry = Math.abs(end.y - start.y) / 2;
             const segs = 36;
-            for (let i2 = 0; i2 <= segs; i2++) {
-              const a2 = i2 / segs * Math.PI * 2;
-              const px = cx + Math.cos(a2) * rrx + off();
-              const py = cy + Math.sin(a2) * rry + off();
-              if (i2 === 0) ctx.moveTo(px, py);
+            for (let i = 0; i <= segs; i++) {
+              const a = i / segs * Math.PI * 2;
+              const px = cx + Math.cos(a) * rrx + off();
+              const py = cy + Math.sin(a) * rry + off();
+              if (i === 0) ctx.moveTo(px, py);
               else ctx.lineTo(px, py);
             }
             ctx.closePath();
@@ -2948,18 +2757,18 @@ var CasuyaBlackboard = (() => {
     }
     drawSelectionIndicators(ctx) {
       if (this.selectedIds.size === 0) return;
-      const t2 = THEMES[this.theme];
+      const t = THEMES[this.theme];
       for (const id of this.selectedIds) {
-        const el = this.elements.find((e2) => e2.id === id);
+        const el = this.elements.find((e) => e.id === id);
         if (!el) continue;
         const bounds = this.getElementBounds(el);
         const local = this.getLocalBounds(el);
         const rotation = el.rotation ?? 0;
         const pad = 6 / this.camera.zoom;
         ctx.save();
-        ctx.strokeStyle = t2.selectionColor;
+        ctx.strokeStyle = t.selectionColor;
         ctx.lineWidth = 1.5 / this.camera.zoom;
-        ctx.fillStyle = t2.selectionFill;
+        ctx.fillStyle = t.selectionFill;
         if (rotation !== 0) {
           const corners = this.getRotatedCorners({ x: local.x - pad, y: local.y - pad, w: local.w + pad * 2, h: local.h + pad * 2 }, rotation);
           ctx.beginPath();
@@ -2984,11 +2793,11 @@ var CasuyaBlackboard = (() => {
           ];
           const handleSize = (IS_MOBILE() ? 12 : 8) / this.camera.zoom;
           ctx.fillStyle = "#ffffff";
-          ctx.strokeStyle = t2.selectionColor;
+          ctx.strokeStyle = t.selectionColor;
           ctx.lineWidth = 1.5 / this.camera.zoom;
-          for (const c2 of handles) {
-            ctx.fillRect(c2.x - handleSize / 2, c2.y - handleSize / 2, handleSize, handleSize);
-            ctx.strokeRect(c2.x - handleSize / 2, c2.y - handleSize / 2, handleSize, handleSize);
+          for (const c of handles) {
+            ctx.fillRect(c.x - handleSize / 2, c.y - handleSize / 2, handleSize, handleSize);
+            ctx.strokeRect(c.x - handleSize / 2, c.y - handleSize / 2, handleSize, handleSize);
           }
         } else {
           ctx.setLineDash([6 / this.camera.zoom, 4 / this.camera.zoom]);
@@ -2997,7 +2806,7 @@ var CasuyaBlackboard = (() => {
           ctx.setLineDash([]);
           const handleSize = (IS_MOBILE() ? 12 : 8) / this.camera.zoom;
           ctx.fillStyle = "#ffffff";
-          ctx.strokeStyle = t2.selectionColor;
+          ctx.strokeStyle = t.selectionColor;
           ctx.lineWidth = 1.5 / this.camera.zoom;
           const handles = [
             { x: bounds.x - pad, y: bounds.y - pad },
@@ -3009,16 +2818,16 @@ var CasuyaBlackboard = (() => {
             { x: bounds.x - pad, y: bounds.y + bounds.h + pad },
             { x: bounds.x - pad, y: bounds.y + bounds.h / 2 }
           ];
-          for (const c2 of handles) {
-            ctx.fillRect(c2.x - handleSize / 2, c2.y - handleSize / 2, handleSize, handleSize);
-            ctx.strokeRect(c2.x - handleSize / 2, c2.y - handleSize / 2, handleSize, handleSize);
+          for (const c of handles) {
+            ctx.fillRect(c.x - handleSize / 2, c.y - handleSize / 2, handleSize, handleSize);
+            ctx.strokeRect(c.x - handleSize / 2, c.y - handleSize / 2, handleSize, handleSize);
           }
         }
         const rotateHandleDist = 28 / this.camera.zoom;
         const rc = this.getRotateHandlePos();
         if (rc) {
           ctx.save();
-          ctx.strokeStyle = t2.selectionColor;
+          ctx.strokeStyle = t.selectionColor;
           ctx.lineWidth = 1.5 / this.camera.zoom;
           const topCenter = { x: bounds.x + bounds.w / 2, y: bounds.y - pad };
           const from = (el.rotation ?? 0) !== 0 ? this.rotatePoint(topCenter, this.getRotationCenter(el), el.rotation ?? 0) : topCenter;
@@ -3049,8 +2858,8 @@ var CasuyaBlackboard = (() => {
       ctx.textBaseline = "top";
       const lines = content.split("\n");
       const lineHeight = fontSize * 1.4;
-      for (let i2 = 0; i2 < lines.length; i2++) {
-        ctx.fillText(lines[i2], worldX, worldY + i2 * lineHeight);
+      for (let i = 0; i < lines.length; i++) {
+        ctx.fillText(lines[i], worldX, worldY + i * lineHeight);
       }
       ctx.restore();
     }
@@ -3126,10 +2935,10 @@ var CasuyaBlackboard = (() => {
       this.toBlob("image/png").then((blob) => {
         if (!blob) return;
         const url = URL.createObjectURL(blob);
-        const a2 = document.createElement("a");
-        a2.href = url;
-        a2.download = "blackboard.png";
-        a2.click();
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "blackboard.png";
+        a.click();
         URL.revokeObjectURL(url);
       });
     }
@@ -3143,8 +2952,8 @@ var CasuyaBlackboard = (() => {
     getCornerRadius() {
       return this.cornerRadius;
     }
-    setCornerRadius(r2) {
-      this.cornerRadius = Math.max(0, Math.min(50, r2));
+    setCornerRadius(r) {
+      this.cornerRadius = Math.max(0, Math.min(50, r));
       this.updateToolbar();
     }
     getPixelEraser() {
@@ -3284,7 +3093,7 @@ var CasuyaBlackboard = (() => {
     bringForward() {
       if (this.selectedIds.size !== 1) return;
       const id = this.selectedIds.values().next().value;
-      const idx = this.elements.findIndex((e2) => e2.id === id);
+      const idx = this.elements.findIndex((e) => e.id === id);
       if (idx < 0 || idx >= this.elements.length - 1) return;
       this.pushUndo();
       [this.elements[idx], this.elements[idx + 1]] = [this.elements[idx + 1], this.elements[idx]];
@@ -3294,7 +3103,7 @@ var CasuyaBlackboard = (() => {
     sendBackward() {
       if (this.selectedIds.size !== 1) return;
       const id = this.selectedIds.values().next().value;
-      const idx = this.elements.findIndex((e2) => e2.id === id);
+      const idx = this.elements.findIndex((e) => e.id === id);
       if (idx <= 0) return;
       this.pushUndo();
       [this.elements[idx], this.elements[idx - 1]] = [this.elements[idx - 1], this.elements[idx]];
@@ -3304,7 +3113,7 @@ var CasuyaBlackboard = (() => {
     bringToFront() {
       if (this.selectedIds.size !== 1) return;
       const id = this.selectedIds.values().next().value;
-      const idx = this.elements.findIndex((e2) => e2.id === id);
+      const idx = this.elements.findIndex((e) => e.id === id);
       if (idx < 0 || idx >= this.elements.length - 1) return;
       this.pushUndo();
       const [el] = this.elements.splice(idx, 1);
@@ -3315,7 +3124,7 @@ var CasuyaBlackboard = (() => {
     sendToBack() {
       if (this.selectedIds.size !== 1) return;
       const id = this.selectedIds.values().next().value;
-      const idx = this.elements.findIndex((e2) => e2.id === id);
+      const idx = this.elements.findIndex((e) => e.id === id);
       if (idx <= 0) return;
       this.pushUndo();
       const [el] = this.elements.splice(idx, 1);
@@ -3327,19 +3136,19 @@ var CasuyaBlackboard = (() => {
       if (this.selectedIds.size === 0) return;
       this.pushUndo();
       for (const id of this.selectedIds) {
-        const el = this.elements.find((e2) => e2.id === id);
+        const el = this.elements.find((e) => e.id === id);
         if (!el) continue;
         if (el.tool === "pen" || el.tool === "eraser" || el.tool === "highlighter") {
-          const s2 = el;
-          s2.points = s2.points.map((p2) => ({ x: p2.x + dx, y: p2.y + dy, pressure: p2.pressure }));
+          const s = el;
+          s.points = s.points.map((p) => ({ x: p.x + dx, y: p.y + dy, pressure: p.pressure }));
         } else if (el.tool === "text") {
           el.position = { x: el.position.x + dx, y: el.position.y + dy };
         } else if (el.tool === "image") {
           el.position = { x: el.position.x + dx, y: el.position.y + dy };
         } else {
-          const s2 = el;
-          s2.start = { x: s2.start.x + dx, y: s2.start.y + dy };
-          s2.end = { x: s2.end.x + dx, y: s2.end.y + dy };
+          const s = el;
+          s.start = { x: s.start.x + dx, y: s.start.y + dy };
+          s.end = { x: s.end.x + dx, y: s.end.y + dy };
         }
       }
       this.renderAll();
@@ -3351,7 +3160,7 @@ var CasuyaBlackboard = (() => {
         this.helpOverlay = null;
         return;
       }
-      const t2 = THEMES[this.theme];
+      const t = THEMES[this.theme];
       const overlay = document.createElement("div");
       overlay.style.cssText = `position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2000;display:flex;align-items:center;justify-content:center;`;
       overlay.addEventListener("click", (ev) => {
@@ -3361,7 +3170,7 @@ var CasuyaBlackboard = (() => {
         }
       });
       const panel = document.createElement("div");
-      panel.style.cssText = `background:${t2.canvasBg};color:${t2.gridLabelColor};border:1px solid ${t2.gridColor};border-radius:12px;padding:20px 24px;max-width:420px;width:90%;max-height:80vh;overflow-y:auto;font-family:system-ui,sans-serif;font-size:13px;line-height:1.6;`;
+      panel.style.cssText = `background:${t.canvasBg};color:${t.gridLabelColor};border:1px solid ${t.gridColor};border-radius:12px;padding:20px 24px;max-width:420px;width:90%;max-height:80vh;overflow-y:auto;font-family:system-ui,sans-serif;font-size:13px;line-height:1.6;`;
       const shortcuts = [
         ["P", "Pen"],
         ["M", "Highlighter"],
@@ -3395,8 +3204,8 @@ var CasuyaBlackboard = (() => {
         ["Ctrl+Shift+F", "Apply style to selection"],
         ["?", "This help"]
       ];
-      let html = `<div style="font-size:16px;font-weight:600;margin-bottom:12px;color:${t2.gridAxisColor}">Keyboard Shortcuts</div>`;
-      for (const [key, desc] of shortcuts) html += `<div style="display:flex;justify-content:space-between;padding:2px 0"><kbd style="background:${t2.gridColor};padding:1px 6px;border-radius:4px;font-size:12px;min-width:90px;text-align:center">${key}</kbd><span>${desc}</span></div>`;
+      let html = `<div style="font-size:16px;font-weight:600;margin-bottom:12px;color:${t.gridAxisColor}">Keyboard Shortcuts</div>`;
+      for (const [key, desc] of shortcuts) html += `<div style="display:flex;justify-content:space-between;padding:2px 0"><kbd style="background:${t.gridColor};padding:1px 6px;border-radius:4px;font-size:12px;min-width:90px;text-align:center">${key}</kbd><span>${desc}</span></div>`;
       panel.innerHTML = html;
       overlay.appendChild(panel);
       document.body.appendChild(overlay);
@@ -3408,7 +3217,7 @@ var CasuyaBlackboard = (() => {
       const newIds = /* @__PURE__ */ new Set();
       const groupMap = /* @__PURE__ */ new Map();
       for (const id of this.selectedIds) {
-        const el = this.elements.find((e2) => e2.id === id);
+        const el = this.elements.find((e) => e.id === id);
         if (!el) continue;
         const clone = JSON.parse(JSON.stringify(el));
         clone.id = uid();
@@ -3426,7 +3235,7 @@ var CasuyaBlackboard = (() => {
           clone.position = { x: clone.position.x + 20, y: clone.position.y + 20 };
         }
         if ("points" in clone) {
-          clone.points = clone.points.map((p2) => ({ x: p2.x + 20, y: p2.y + 20, pressure: p2.pressure }));
+          clone.points = clone.points.map((p) => ({ x: p.x + 20, y: p.y + 20, pressure: p.pressure }));
         }
         this.elements.push(clone);
         newIds.add(clone.id);
@@ -3440,16 +3249,16 @@ var CasuyaBlackboard = (() => {
       this.pushUndo();
       const ids = [...this.selectedIds];
       if (ids.length === 1) {
-        const el = this.elements.find((e2) => e2.id === ids[0]);
+        const el = this.elements.find((e) => e.id === ids[0]);
         if (el) el.rotation = ((el.rotation ?? 0) + angle) % (Math.PI * 2);
       } else {
         let cx = 0, cy = 0, count = 0;
         for (const id of ids) {
-          const el = this.elements.find((e2) => e2.id === id);
+          const el = this.elements.find((e) => e.id === id);
           if (!el) continue;
-          const b2 = this.getLocalBounds(el);
-          cx += b2.x + b2.w / 2;
-          cy += b2.y + b2.h / 2;
+          const b = this.getLocalBounds(el);
+          cx += b.x + b.w / 2;
+          cy += b.y + b.h / 2;
           count++;
         }
         if (count > 0) {
@@ -3458,19 +3267,19 @@ var CasuyaBlackboard = (() => {
         }
         const center = { x: cx, y: cy };
         for (const id of ids) {
-          const el = this.elements.find((e2) => e2.id === id);
+          const el = this.elements.find((e) => e.id === id);
           if (!el) continue;
           if (el.tool === "pen" || el.tool === "eraser" || el.tool === "highlighter") {
-            const s2 = el;
-            s2.points = s2.points.map((p2) => this.rotatePoint(p2, center, angle));
+            const s = el;
+            s.points = s.points.map((p) => this.rotatePoint(p, center, angle));
           } else if (el.tool === "text") {
             el.position = this.rotatePoint(el.position, center, angle);
           } else if (el.tool === "image") {
             el.position = this.rotatePoint(el.position, center, angle);
           } else {
-            const s2 = el;
-            s2.start = this.rotatePoint(s2.start, center, angle);
-            s2.end = this.rotatePoint(s2.end, center, angle);
+            const s = el;
+            s.start = this.rotatePoint(s.start, center, angle);
+            s.end = this.rotatePoint(s.end, center, angle);
           }
         }
       }
@@ -3480,7 +3289,7 @@ var CasuyaBlackboard = (() => {
     getSelectedRotation() {
       if (this.selectedIds.size !== 1) return 0;
       const id = this.selectedIds.values().next().value;
-      const el = this.elements.find((e2) => e2.id === id);
+      const el = this.elements.find((e) => e.id === id);
       return el ? el.rotation ?? 0 : 0;
     }
     copySelected() {
@@ -3488,7 +3297,7 @@ var CasuyaBlackboard = (() => {
       this.clipboard = [];
       const data = [];
       for (const id of this.selectedIds) {
-        const el = this.elements.find((e2) => e2.id === id);
+        const el = this.elements.find((e) => e.id === id);
         if (!el) continue;
         const clone = JSON.parse(JSON.stringify(el));
         clone.id = uid();
@@ -3547,13 +3356,13 @@ var CasuyaBlackboard = (() => {
           clone.position = { x: clone.position.x + 20, y: clone.position.y + 20 };
         }
         if ("points" in clone) {
-          clone.points = clone.points.map((p2) => ({ x: p2.x + 20, y: p2.y + 20, pressure: p2.pressure }));
+          clone.points = clone.points.map((p) => ({ x: p.x + 20, y: p.y + 20, pressure: p.pressure }));
         }
         this.elements.push(clone);
         newIds.add(clone.id);
       }
       this.selectedIds = newIds;
-      this.clipboard = this.clipboard.map((c2) => JSON.parse(JSON.stringify(c2)));
+      this.clipboard = this.clipboard.map((c) => JSON.parse(JSON.stringify(c)));
       this.renderAll();
       this.emit("change");
     }
@@ -3566,7 +3375,7 @@ var CasuyaBlackboard = (() => {
       if (this.selectedIds.size === 0) return;
       this.pushUndo();
       for (const id of this.selectedIds) {
-        const el = this.elements.find((e2) => e2.id === id);
+        const el = this.elements.find((e) => e.id === id);
         if (!el) continue;
         if (el.tool !== "image") el.color = this.strokeColor;
         el.opacity = this.strokeOpacity;
@@ -3578,21 +3387,21 @@ var CasuyaBlackboard = (() => {
       this.emit("change");
     }
     toDataURL(type = "image/png", quality = 1) {
-      const c2 = document.createElement("canvas");
-      c2.width = this.width * this.dpr;
-      c2.height = this.height * this.dpr;
-      const ctx = c2.getContext("2d");
+      const c = document.createElement("canvas");
+      c.width = this.width * this.dpr;
+      c.height = this.height * this.dpr;
+      const ctx = c.getContext("2d");
       ctx.drawImage(this.staticCanvas, 0, 0);
-      return c2.toDataURL(type, quality);
+      return c.toDataURL(type, quality);
     }
     toBlob(type = "image/png", quality = 1) {
       return new Promise((resolve) => {
-        const c2 = document.createElement("canvas");
-        c2.width = this.width * this.dpr;
-        c2.height = this.height * this.dpr;
-        const ctx = c2.getContext("2d");
+        const c = document.createElement("canvas");
+        c.width = this.width * this.dpr;
+        c.height = this.height * this.dpr;
+        const ctx = c.getContext("2d");
         ctx.drawImage(this.staticCanvas, 0, 0);
-        c2.toBlob(resolve, type, quality);
+        c.toBlob(resolve, type, quality);
       });
     }
     exportJSON() {
@@ -3668,12 +3477,12 @@ var CasuyaBlackboard = (() => {
       }
       const newPool = [];
       const newMap = /* @__PURE__ */ new Map();
-      for (let i2 = 0; i2 < this.imagePool.length; i2++) {
-        const ref = `__img:${i2}`;
+      for (let i = 0; i < this.imagePool.length; i++) {
+        const ref = `__img:${i}`;
         if (used.has(ref)) {
           const idx = newPool.length;
-          newPool.push(this.imagePool[i2]);
-          newMap.set(this.imagePool[i2], idx);
+          newPool.push(this.imagePool[i]);
+          newMap.set(this.imagePool[i], idx);
         }
       }
       const remap = (els) => {
@@ -3735,13 +3544,13 @@ var CasuyaBlackboard = (() => {
         toast.remove();
       }, 2e3);
     }
-    handleImagePaste(e2) {
+    handleImagePaste(e) {
       if (this.textInput) return;
-      const items = e2.clipboardData?.items;
+      const items = e.clipboardData?.items;
       if (!items) return;
       for (const item of items) {
         if (item.type.startsWith("image/")) {
-          e2.preventDefault();
+          e.preventDefault();
           const blob = item.getAsFile();
           if (!blob) continue;
           const reader = new FileReader();
@@ -3773,17 +3582,17 @@ var CasuyaBlackboard = (() => {
         }
       }
     }
-    handleDragOver(e2) {
-      e2.preventDefault();
-      if (e2.dataTransfer) e2.dataTransfer.dropEffect = "copy";
+    handleDragOver(e) {
+      e.preventDefault();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = "copy";
     }
-    handleFileDrop(e2) {
-      e2.preventDefault();
-      const files = e2.dataTransfer?.files;
+    handleFileDrop(e) {
+      e.preventDefault();
+      const files = e.dataTransfer?.files;
       if (!files) return;
       const rect = this.liveCanvas.getBoundingClientRect();
-      const sx = e2.clientX - rect.left;
-      const sy = e2.clientY - rect.top;
+      const sx = e.clientX - rect.left;
+      const sy = e.clientY - rect.top;
       const world = this.screenToWorld(sx, sy);
       this.pushUndo();
       for (const file of files) {
@@ -3830,7 +3639,7 @@ var CasuyaBlackboard = (() => {
       this.pushUndo();
       const groupId = uid();
       for (const id of this.selectedIds) {
-        const el = this.elements.find((e2) => e2.id === id);
+        const el = this.elements.find((e) => e.id === id);
         if (el) el.groupId = groupId;
       }
       this.renderAll();
@@ -3840,7 +3649,7 @@ var CasuyaBlackboard = (() => {
       if (this.selectedIds.size === 0) return;
       this.pushUndo();
       for (const id of this.selectedIds) {
-        const el = this.elements.find((e2) => e2.id === id);
+        const el = this.elements.find((e) => e.id === id);
         if (el) el.groupId = void 0;
       }
       this.renderAll();
@@ -3849,11 +3658,11 @@ var CasuyaBlackboard = (() => {
     exportSVG() {
       let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
       for (const el of this.elements) {
-        const b2 = this.getElementBounds(el);
-        if (b2.x < minX) minX = b2.x;
-        if (b2.y < minY) minY = b2.y;
-        if (b2.x + b2.w > maxX) maxX = b2.x + b2.w;
-        if (b2.y + b2.h > maxY) maxY = b2.y + b2.h;
+        const b = this.getElementBounds(el);
+        if (b.x < minX) minX = b.x;
+        if (b.y < minY) minY = b.y;
+        if (b.x + b.w > maxX) maxX = b.x + b.w;
+        if (b.y + b.h > maxY) maxY = b.y + b.h;
       }
       if (minX === Infinity) {
         minX = 0;
@@ -3877,13 +3686,13 @@ var CasuyaBlackboard = (() => {
     exportSelectedSVG() {
       if (this.selectedIds.size === 0) return this.exportSVG();
       let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-      const selected = this.elements.filter((e2) => this.selectedIds.has(e2.id));
+      const selected = this.elements.filter((e) => this.selectedIds.has(e.id));
       for (const el of selected) {
-        const b2 = this.getElementBounds(el);
-        if (b2.x < minX) minX = b2.x;
-        if (b2.y < minY) minY = b2.y;
-        if (b2.x + b2.w > maxX) maxX = b2.x + b2.w;
-        if (b2.y + b2.h > maxY) maxY = b2.y + b2.h;
+        const b = this.getElementBounds(el);
+        if (b.x < minX) minX = b.x;
+        if (b.y < minY) minY = b.y;
+        if (b.x + b.w > maxX) maxX = b.x + b.w;
+        if (b.y + b.h > maxY) maxY = b.y + b.h;
       }
       if (minX === Infinity) return "";
       const pad = 10;
@@ -3900,23 +3709,23 @@ var CasuyaBlackboard = (() => {
         this.exportPNG();
         return;
       }
-      const selected = this.elements.filter((e2) => this.selectedIds.has(e2.id));
+      const selected = this.elements.filter((e) => this.selectedIds.has(e.id));
       let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
       for (const el of selected) {
-        const b2 = this.getElementBounds(el);
-        if (b2.x < minX) minX = b2.x;
-        if (b2.y < minY) minY = b2.y;
-        if (b2.x + b2.w > maxX) maxX = b2.x + b2.w;
-        if (b2.y + b2.h > maxY) maxY = b2.y + b2.h;
+        const b = this.getElementBounds(el);
+        if (b.x < minX) minX = b.x;
+        if (b.y < minY) minY = b.y;
+        if (b.x + b.w > maxX) maxX = b.x + b.w;
+        if (b.y + b.h > maxY) maxY = b.y + b.h;
       }
       if (minX === Infinity) return;
       const pad = 10;
       const vx = minX - pad, vy = minY - pad;
       const vw = maxX - minX + pad * 2, vh = maxY - minY + pad * 2;
-      const c2 = document.createElement("canvas");
-      c2.width = vw * this.dpr;
-      c2.height = vh * this.dpr;
-      const ctx = c2.getContext("2d");
+      const c = document.createElement("canvas");
+      c.width = vw * this.dpr;
+      c.height = vh * this.dpr;
+      const ctx = c.getContext("2d");
       ctx.scale(this.dpr, this.dpr);
       ctx.fillStyle = THEMES[this.theme].canvasBg;
       ctx.fillRect(0, 0, vw, vh);
@@ -3924,13 +3733,13 @@ var CasuyaBlackboard = (() => {
       ctx.translate(-vx, -vy);
       for (const el of selected) this.drawElement(ctx, el);
       ctx.restore();
-      c2.toBlob((blob) => {
+      c.toBlob((blob) => {
         if (!blob) return;
         const url = URL.createObjectURL(blob);
-        const a2 = document.createElement("a");
-        a2.href = url;
-        a2.download = "selection.png";
-        a2.click();
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "selection.png";
+        a.click();
         URL.revokeObjectURL(url);
       }, "image/png");
     }
@@ -3940,71 +3749,76 @@ var CasuyaBlackboard = (() => {
       if (el.tool === "pen" || el.tool === "eraser" || el.tool === "highlighter") {
         const stroke = el;
         if (stroke.points.length < 2) return "";
-        const outlinePoints = R(
-          stroke.points.map((p2) => [p2.x, p2.y, p2.pressure ?? 0.5]),
-          { size: stroke.width, thinning: stroke.tool === "highlighter" ? 0 : 0.5, smoothing: 0.5, streamline: 0.5, simulatePressure: stroke.tool !== "highlighter" }
-        );
-        const pathData = getSvgPathFromStroke(outlinePoints);
-        if (!pathData) return "";
-        const fill = stroke.tool === "eraser" ? "none" : stroke.color;
+        const pts = stroke.points;
+        let d = `M${pts[0].x.toFixed(2)},${pts[0].y.toFixed(2)}`;
+        for (let i = 1; i < pts.length; i++) {
+          const prev = pts[i - 1];
+          const curr = pts[i];
+          const mx = ((prev.x + curr.x) / 2).toFixed(2);
+          const my = ((prev.y + curr.y) / 2).toFixed(2);
+          d += ` Q${prev.x.toFixed(2)},${prev.y.toFixed(2)} ${mx},${my}`;
+        }
+        d += ` L${pts[pts.length - 1].x.toFixed(2)},${pts[pts.length - 1].y.toFixed(2)}`;
+        const strokeColor = stroke.tool === "eraser" ? "none" : stroke.color;
+        const fillColor = stroke.tool === "eraser" ? "none" : stroke.color;
         const opAttr = stroke.tool === "highlighter" ? ` opacity="0.3"` : op;
         const rot = rotation !== 0 ? ` transform="rotate(${rotation * 180 / Math.PI}, ${this.getRotationCenter(el).x}, ${this.getRotationCenter(el).y})"` : "";
-        return `<path d="${pathData}" fill="${fill}"${rot}${opAttr}/>`;
+        return `<path d="${d}" fill="none" stroke="${strokeColor}" stroke-width="${stroke.width}" stroke-linecap="round" stroke-linejoin="round"${rot}${opAttr}/>`;
       }
       if (el.tool === "line") {
-        const s2 = el;
+        const s = el;
         const rot = rotation !== 0 ? ` transform="rotate(${rotation * 180 / Math.PI}, ${this.getRotationCenter(el).x}, ${this.getRotationCenter(el).y})"` : "";
-        const dash = s2.dashPattern ? ` stroke-dasharray="${s2.dashPattern.join(",")}"` : "";
-        return `<line x1="${s2.start.x}" y1="${s2.start.y}" x2="${s2.end.x}" y2="${s2.end.y}" stroke="${s2.color}" stroke-width="${s2.width}" stroke-linecap="round"${dash}${rot}${op}/>`;
+        const dash = s.dashPattern ? ` stroke-dasharray="${s.dashPattern.join(",")}"` : "";
+        return `<line x1="${s.start.x}" y1="${s.start.y}" x2="${s.end.x}" y2="${s.end.y}" stroke="${s.color}" stroke-width="${s.width}" stroke-linecap="round"${dash}${rot}${op}/>`;
       }
       if (el.tool === "rect") {
-        const s2 = el;
-        const rx = Math.min(s2.start.x, s2.end.x);
-        const ry = Math.min(s2.start.y, s2.end.y);
-        const rw = Math.abs(s2.end.x - s2.start.x);
-        const rh = Math.abs(s2.end.y - s2.start.y);
-        const cr = s2.cornerRadius ? ` rx="${s2.cornerRadius}" ry="${s2.cornerRadius}"` : "";
-        const fill = s2.filled ? ` fill="${s2.color}" fill-opacity="0.25"` : ' fill="none"';
-        const dash = s2.dashPattern ? ` stroke-dasharray="${s2.dashPattern.join(",")}"` : "";
+        const s = el;
+        const rx = Math.min(s.start.x, s.end.x);
+        const ry = Math.min(s.start.y, s.end.y);
+        const rw = Math.abs(s.end.x - s.start.x);
+        const rh = Math.abs(s.end.y - s.start.y);
+        const cr = s.cornerRadius ? ` rx="${s.cornerRadius}" ry="${s.cornerRadius}"` : "";
+        const fill = s.filled ? ` fill="${s.color}" fill-opacity="0.25"` : ' fill="none"';
+        const dash = s.dashPattern ? ` stroke-dasharray="${s.dashPattern.join(",")}"` : "";
         const rot = rotation !== 0 ? ` transform="rotate(${rotation * 180 / Math.PI}, ${this.getRotationCenter(el).x}, ${this.getRotationCenter(el).y})"` : "";
-        return `<rect x="${rx}" y="${ry}" width="${rw}" height="${rh}"${cr} stroke="${s2.color}" stroke-width="${s2.width}"${fill}${dash}${rot}${op}/>`;
+        return `<rect x="${rx}" y="${ry}" width="${rw}" height="${rh}"${cr} stroke="${s.color}" stroke-width="${s.width}"${fill}${dash}${rot}${op}/>`;
       }
       if (el.tool === "circle") {
-        const s2 = el;
-        const cx = (s2.start.x + s2.end.x) / 2;
-        const cy = (s2.start.y + s2.end.y) / 2;
-        const rrx = Math.abs(s2.end.x - s2.start.x) / 2;
-        const rry = Math.abs(s2.end.y - s2.start.y) / 2;
-        const fill = s2.filled ? ` fill="${s2.color}" fill-opacity="0.25"` : ' fill="none"';
-        const dash = s2.dashPattern ? ` stroke-dasharray="${s2.dashPattern.join(",")}"` : "";
+        const s = el;
+        const cx = (s.start.x + s.end.x) / 2;
+        const cy = (s.start.y + s.end.y) / 2;
+        const rrx = Math.abs(s.end.x - s.start.x) / 2;
+        const rry = Math.abs(s.end.y - s.start.y) / 2;
+        const fill = s.filled ? ` fill="${s.color}" fill-opacity="0.25"` : ' fill="none"';
+        const dash = s.dashPattern ? ` stroke-dasharray="${s.dashPattern.join(",")}"` : "";
         const rot = rotation !== 0 ? ` transform="rotate(${rotation * 180 / Math.PI}, ${this.getRotationCenter(el).x}, ${this.getRotationCenter(el).y})"` : "";
-        return `<ellipse cx="${cx}" cy="${cy}" rx="${rrx}" ry="${rry}" stroke="${s2.color}" stroke-width="${s2.width}"${fill}${dash}${rot}${op}/>`;
+        return `<ellipse cx="${cx}" cy="${cy}" rx="${rrx}" ry="${rry}" stroke="${s.color}" stroke-width="${s.width}"${fill}${dash}${rot}${op}/>`;
       }
       if (el.tool === "arrow") {
-        const s2 = el;
-        const dx = s2.end.x - s2.start.x;
-        const dy = s2.end.y - s2.start.y;
+        const s = el;
+        const dx = s.end.x - s.start.x;
+        const dy = s.end.y - s.start.y;
         const len = Math.hypot(dx, dy);
         if (len < 1) return "";
         const headLen = Math.min(15, len * 0.3);
         const angle = Math.atan2(dy, dx);
-        const ax1 = s2.end.x - headLen * Math.cos(angle - Math.PI / 6);
-        const ay1 = s2.end.y - headLen * Math.sin(angle - Math.PI / 6);
-        const ax2 = s2.end.x - headLen * Math.cos(angle + Math.PI / 6);
-        const ay2 = s2.end.y - headLen * Math.sin(angle + Math.PI / 6);
-        const dash = s2.dashPattern ? ` stroke-dasharray="${s2.dashPattern.join(",")}"` : "";
+        const ax1 = s.end.x - headLen * Math.cos(angle - Math.PI / 6);
+        const ay1 = s.end.y - headLen * Math.sin(angle - Math.PI / 6);
+        const ax2 = s.end.x - headLen * Math.cos(angle + Math.PI / 6);
+        const ay2 = s.end.y - headLen * Math.sin(angle + Math.PI / 6);
+        const dash = s.dashPattern ? ` stroke-dasharray="${s.dashPattern.join(",")}"` : "";
         const rot = rotation !== 0 ? ` transform="rotate(${rotation * 180 / Math.PI}, ${this.getRotationCenter(el).x}, ${this.getRotationCenter(el).y})"` : "";
-        return `<g${rot}${op}><line x1="${s2.start.x}" y1="${s2.start.y}" x2="${s2.end.x}" y2="${s2.end.y}" stroke="${s2.color}" stroke-width="${s2.width}" stroke-linecap="round"${dash}/><line x1="${s2.end.x}" y1="${s2.end.y}" x2="${ax1}" y2="${ay1}" stroke="${s2.color}" stroke-width="${s2.width}" stroke-linecap="round"${dash}/><line x1="${s2.end.x}" y1="${s2.end.y}" x2="${ax2}" y2="${ay2}" stroke="${s2.color}" stroke-width="${s2.width}" stroke-linecap="round"${dash}/></g>`;
+        return `<g${rot}${op}><line x1="${s.start.x}" y1="${s.start.y}" x2="${s.end.x}" y2="${s.end.y}" stroke="${s.color}" stroke-width="${s.width}" stroke-linecap="round"${dash}/><line x1="${s.end.x}" y1="${s.end.y}" x2="${ax1}" y2="${ay1}" stroke="${s.color}" stroke-width="${s.width}" stroke-linecap="round"${dash}/><line x1="${s.end.x}" y1="${s.end.y}" x2="${ax2}" y2="${ay2}" stroke="${s.color}" stroke-width="${s.width}" stroke-linecap="round"${dash}/></g>`;
       }
       if (el.tool === "text") {
-        const t2 = el;
-        const lines = this.wordWrapTextForSVG(t2.content, t2.fontSize, t2.width > 1 ? t2.width : 300, t2.fontFamily);
-        const lineHeight = t2.fontSize * 1.4;
+        const t = el;
+        const lines = this.wordWrapTextForSVG(t.content, t.fontSize, t.width > 1 ? t.width : 300, t.fontFamily);
+        const lineHeight = t.fontSize * 1.4;
         const tspans = lines.map(
-          (line, i2) => `<tspan x="${t2.position.x}" dy="${i2 === 0 ? 0 : lineHeight}">${line.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</tspan>`
+          (line, i) => `<tspan x="${t.position.x}" dy="${i === 0 ? 0 : lineHeight}">${line.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</tspan>`
         ).join("");
         const rot = rotation !== 0 ? ` transform="rotate(${rotation * 180 / Math.PI}, ${this.getRotationCenter(el).x}, ${this.getRotationCenter(el).y})"` : "";
-        return `<text x="${t2.position.x}" y="${t2.position.y}" font-size="${t2.fontSize}" font-family="${t2.fontFamily}" fill="${t2.color}" dominant-baseline="hanging"${rot}${op}>${tspans}</text>`;
+        return `<text x="${t.position.x}" y="${t.position.y}" font-size="${t.fontSize}" font-family="${t.fontFamily}" fill="${t.color}" dominant-baseline="hanging"${rot}${op}>${tspans}</text>`;
       }
       if (el.tool === "image") {
         const img = el;
