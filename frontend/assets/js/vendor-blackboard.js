@@ -886,6 +886,9 @@ var CasuyaBlackboard = (() => {
     alignmentGuides = {};
     imageCache = /* @__PURE__ */ new Map();
     resizeObserver = null;
+    graphCanvas = null;
+    graphCtx = null;
+    graphDirty = true;
     marqueeStart = null;
     marqueeEnd = null;
     autosaveTimer = null;
@@ -1299,7 +1302,26 @@ var CasuyaBlackboard = (() => {
           return name;
         }
       }
+      const rotatePos = this.getRotateHandlePos();
+      if (rotatePos && Math.abs(worldPoint.x - rotatePos.x) < handleSize * 1.5 && Math.abs(worldPoint.y - rotatePos.y) < handleSize * 1.5) {
+        return "rotate";
+      }
       return null;
+    }
+    getRotateHandlePos() {
+      if (this.selectedIds.size !== 1) return null;
+      const id = this.selectedIds.values().next().value;
+      const el = this.elements.find((e2) => e2.id === id);
+      if (!el) return null;
+      const bounds = this.getElementBounds(el);
+      const rotation = el.rotation ?? 0;
+      const pad = 6 / this.camera.zoom;
+      const topCenter = { x: bounds.x + bounds.w / 2, y: bounds.y - pad };
+      if (rotation !== 0) {
+        const center = this.getRotationCenter(el);
+        return this.rotatePoint(topCenter, center, rotation);
+      }
+      return topCenter;
     }
     getElementBounds(el) {
       const local = this.getLocalBounds(el);
@@ -1371,6 +1393,12 @@ var CasuyaBlackboard = (() => {
       }
       if (this.activeTool === "select") {
         const handle = this.getHandleAtPoint(point);
+        if (handle === "rotate") {
+          this.pushUndo();
+          this.dragState = { type: "rotate", startWorld: point, origElements: JSON.parse(JSON.stringify(this.elements)) };
+          this.renderAll();
+          return;
+        }
         if (handle) {
           this.pushUndo();
           this.dragState = { type: "resize", startWorld: point, origElements: JSON.parse(JSON.stringify(this.elements)), handle };
@@ -1753,6 +1781,7 @@ var CasuyaBlackboard = (() => {
           const panDy = (curCenter.y - this.pinchCenter.y) / this.camera.zoom;
           this.camera.x = this.pinchStartCamera.x - panDx;
           this.camera.y = this.pinchStartCamera.y - panDy;
+          this.graphDirty = true;
           this.renderAll();
           this.updateToolbar();
         }
@@ -1764,6 +1793,24 @@ var CasuyaBlackboard = (() => {
         const dy = (e2.clientY - this.panStart.y) / this.camera.zoom;
         this.camera.x = this.panCameraStart.x - dx;
         this.camera.y = this.panCameraStart.y - dy;
+        this.graphDirty = true;
+        this.renderAll();
+        return;
+      }
+      if (this.activeTool === "select" && this.dragState?.type === "rotate") {
+        const point = this.getPoint(e2);
+        const id = this.selectedIds.values().next().value;
+        const el = this.elements.find((e3) => e3.id === id);
+        if (el) {
+          const center = this.getRotationCenter(el);
+          const origAngle = Math.atan2(this.dragState.startWorld.y - center.y, this.dragState.startWorld.x - center.x);
+          const curAngle = Math.atan2(point.y - center.y, point.x - center.x);
+          const deltaAngle = curAngle - origAngle;
+          const origEl = this.dragState.origElements.find((e3) => e3.id === id);
+          if (origEl) {
+            el.rotation = ((origEl.rotation ?? 0) + deltaAngle) % (Math.PI * 2);
+          }
+        }
         this.renderAll();
         return;
       }
@@ -1995,6 +2042,7 @@ var CasuyaBlackboard = (() => {
       const worldAfter = this.screenToWorld(sx, sy);
       this.camera.x += worldBefore.x - worldAfter.x;
       this.camera.y += worldBefore.y - worldAfter.y;
+      this.graphDirty = true;
       this.renderAll();
       this.updateToolbar();
     };
@@ -2116,6 +2164,18 @@ var CasuyaBlackboard = (() => {
         else this.sendBackward();
         return;
       }
+      if (!e2.ctrlKey && !e2.metaKey && !e2.altKey && e2.key === "]") {
+        e2.preventDefault();
+        if (this.activeTool === "text") this.setFontSize(this.fontSize + 2);
+        else this.setWidth(this.strokeWidth + 1);
+        return;
+      }
+      if (!e2.ctrlKey && !e2.metaKey && !e2.altKey && e2.key === "[") {
+        e2.preventDefault();
+        if (this.activeTool === "text") this.setFontSize(this.fontSize - 2);
+        else this.setWidth(this.strokeWidth - 1);
+        return;
+      }
       if ((e2.ctrlKey || e2.metaKey) && e2.key === "g" && !e2.shiftKey) {
         e2.preventDefault();
         this.groupSelected();
@@ -2233,6 +2293,22 @@ var CasuyaBlackboard = (() => {
         { type: "separator" },
         { label: "Select All", shortcut: "Ctrl+A", action: () => this.selectAll(), disabled: this.elements.length === 0 }
       ];
+      if (hasSelection) {
+        items.push(
+          { type: "separator" },
+          { label: "Export Selected SVG", shortcut: "", action: () => {
+            const svg = this.exportSelectedSVG();
+            const blob = new Blob([svg], { type: "image/svg+xml" });
+            const url = URL.createObjectURL(blob);
+            const a2 = document.createElement("a");
+            a2.href = url;
+            a2.download = "selection.svg";
+            a2.click();
+            URL.revokeObjectURL(url);
+          }, disabled: false },
+          { label: "Export Selected PNG", shortcut: "", action: () => this.exportSelectedPNG(), disabled: false }
+        );
+      }
       let firstItem = null;
       for (const item of items) {
         if (item.type === "separator") {
@@ -2455,7 +2531,13 @@ var CasuyaBlackboard = (() => {
       ctx.save();
       ctx.scale(this.camera.zoom, this.camera.zoom);
       ctx.translate(-this.camera.x, -this.camera.y);
-      if (this.graph.enabled) this.drawGraph(ctx);
+      if (this.graph.enabled) {
+        if (this.graphDirty || !this.graphCanvas) {
+          this.ensureGraphCanvas();
+          this.renderGraphToOffscreen();
+        }
+        ctx.drawImage(this.graphCanvas, this.camera.x * this.camera.zoom, this.camera.y * this.camera.zoom, this.width, this.height, 0, 0, this.width, this.height);
+      }
       for (const el of this.elements) this.drawElement(ctx, el);
       ctx.restore();
       if (this.elements.length === 0 && !this.currentElement) {
@@ -2472,6 +2554,25 @@ var CasuyaBlackboard = (() => {
       } else if (this.hintEl) {
         this.hintEl.style.display = "none";
       }
+    }
+    ensureGraphCanvas() {
+      if (!this.graphCanvas) {
+        this.graphCanvas = document.createElement("canvas");
+        this.graphCtx = this.graphCanvas.getContext("2d");
+      }
+      if (this.graphCanvas.width !== this.width * this.dpr || this.graphCanvas.height !== this.height * this.dpr) {
+        this.graphCanvas.width = this.width * this.dpr;
+        this.graphCanvas.height = this.height * this.dpr;
+        this.graphCtx.scale(this.dpr, this.dpr);
+        this.graphDirty = true;
+      }
+    }
+    renderGraphToOffscreen() {
+      const ctx = this.graphCtx;
+      const t2 = THEMES[this.theme];
+      ctx.clearRect(0, 0, this.width, this.height);
+      this.drawGraph(ctx);
+      this.graphDirty = false;
     }
     flushLive() {
       const ctx = this.liveCtx;
@@ -2913,6 +3014,26 @@ var CasuyaBlackboard = (() => {
             ctx.strokeRect(c2.x - handleSize / 2, c2.y - handleSize / 2, handleSize, handleSize);
           }
         }
+        const rotateHandleDist = 28 / this.camera.zoom;
+        const rc = this.getRotateHandlePos();
+        if (rc) {
+          ctx.save();
+          ctx.strokeStyle = t2.selectionColor;
+          ctx.lineWidth = 1.5 / this.camera.zoom;
+          const topCenter = { x: bounds.x + bounds.w / 2, y: bounds.y - pad };
+          const from = (el.rotation ?? 0) !== 0 ? this.rotatePoint(topCenter, this.getRotationCenter(el), el.rotation ?? 0) : topCenter;
+          ctx.beginPath();
+          ctx.moveTo(from.x, from.y);
+          ctx.lineTo(rc.x, rc.y);
+          ctx.stroke();
+          const circleR = 5 / this.camera.zoom;
+          ctx.beginPath();
+          ctx.arc(rc.x, rc.y, circleR, 0, Math.PI * 2);
+          ctx.fillStyle = "#ffffff";
+          ctx.fill();
+          ctx.stroke();
+          ctx.restore();
+        }
         ctx.restore();
       }
     }
@@ -3045,6 +3166,7 @@ var CasuyaBlackboard = (() => {
     setTheme(theme) {
       this.theme = theme;
       this.root.style.background = THEMES[this.theme].canvasBg;
+      this.graphDirty = true;
       this.renderAll();
       this.updateToolbar();
     }
@@ -3064,6 +3186,7 @@ var CasuyaBlackboard = (() => {
     }
     resetView() {
       this.camera = { x: 0, y: 0, zoom: 1 };
+      this.graphDirty = true;
       this.renderAll();
       this.updateToolbar();
     }
@@ -3072,6 +3195,7 @@ var CasuyaBlackboard = (() => {
     }
     enableGraph(options) {
       this.graph = { ...this.graph, ...options, enabled: true };
+      this.graphDirty = true;
       this.renderStatic();
     }
     disableGraph() {
@@ -3265,6 +3389,7 @@ var CasuyaBlackboard = (() => {
         ["Ctrl+]", "Bring forward"],
         ["Ctrl+[", "Send backward"],
         ["Shift+R", "Rotate 15\xB0"],
+        ["[/]", "Width +/\u2212 (text: fontSize)"],
         ["Ctrl+Shift+S", "Export SVG"],
         ["Ctrl+Shift+P", "Export PNG"],
         ["Ctrl+Shift+F", "Apply style to selection"],
@@ -3506,10 +3631,12 @@ var CasuyaBlackboard = (() => {
       this.width = width;
       this.height = height;
       this.dpr = window.devicePixelRatio || 1;
+      this.graphDirty = true;
       this.setupCanvases();
       this.renderAll();
     }
     saveToStorage(key = "casuya-blackboard") {
+      this.cleanImagePool();
       const data = JSON.stringify(this.exportJSON());
       if (data.length > 4 * 1024 * 1024) {
         this.showToast("\u26A0\uFE0F Large data \u2014 some images may not persist");
@@ -3520,6 +3647,55 @@ var CasuyaBlackboard = (() => {
       } catch {
         this.showToast("\u26A0\uFE0F Storage full \u2014 clear browser data");
       }
+    }
+    cleanImagePool() {
+      const used = /* @__PURE__ */ new Set();
+      const collectFromElements = (els) => {
+        for (const el of els) {
+          if (el.tool === "image") {
+            const src = el.src;
+            if (src.startsWith("__img:")) used.add(src);
+          }
+        }
+      };
+      collectFromElements(this.elements);
+      for (const snap of this.undoStack) collectFromElements(snap);
+      for (const snap of this.redoStack) collectFromElements(snap);
+      if (used.size === 0) {
+        this.imagePool = [];
+        this.imageSrcToIdx.clear();
+        return;
+      }
+      const newPool = [];
+      const newMap = /* @__PURE__ */ new Map();
+      for (let i2 = 0; i2 < this.imagePool.length; i2++) {
+        const ref = `__img:${i2}`;
+        if (used.has(ref)) {
+          const idx = newPool.length;
+          newPool.push(this.imagePool[i2]);
+          newMap.set(this.imagePool[i2], idx);
+        }
+      }
+      const remap = (els) => {
+        for (const el of els) {
+          if (el.tool === "image") {
+            const img = el;
+            if (img.src.startsWith("__img:")) {
+              const oldIdx = parseInt(img.src.slice(6));
+              const realSrc = this.imagePool[oldIdx];
+              if (realSrc !== void 0) {
+                const newIdx = newMap.get(realSrc);
+                if (newIdx !== void 0) img.src = `__img:${newIdx}`;
+              }
+            }
+          }
+        }
+      };
+      remap(this.elements);
+      for (const snap of this.undoStack) remap(snap);
+      for (const snap of this.redoStack) remap(snap);
+      this.imagePool = newPool;
+      this.imageSrcToIdx = newMap;
     }
     loadFromStorage(key = "casuya-blackboard") {
       const raw = localStorage.getItem(key);
@@ -3697,6 +3873,66 @@ var CasuyaBlackboard = (() => {
       }
       parts.push("</svg>");
       return parts.join("\n");
+    }
+    exportSelectedSVG() {
+      if (this.selectedIds.size === 0) return this.exportSVG();
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      const selected = this.elements.filter((e2) => this.selectedIds.has(e2.id));
+      for (const el of selected) {
+        const b2 = this.getElementBounds(el);
+        if (b2.x < minX) minX = b2.x;
+        if (b2.y < minY) minY = b2.y;
+        if (b2.x + b2.w > maxX) maxX = b2.x + b2.w;
+        if (b2.y + b2.h > maxY) maxY = b2.y + b2.h;
+      }
+      if (minX === Infinity) return "";
+      const pad = 10;
+      const vx = minX - pad, vy = minY - pad;
+      const vw = maxX - minX + pad * 2, vh = maxY - minY + pad * 2;
+      const parts = [];
+      parts.push(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vx} ${vy} ${vw} ${vh}" width="${vw}" height="${vh}">`);
+      for (const el of selected) parts.push(this.elementToSVG(el));
+      parts.push("</svg>");
+      return parts.join("\n");
+    }
+    exportSelectedPNG() {
+      if (this.selectedIds.size === 0) {
+        this.exportPNG();
+        return;
+      }
+      const selected = this.elements.filter((e2) => this.selectedIds.has(e2.id));
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      for (const el of selected) {
+        const b2 = this.getElementBounds(el);
+        if (b2.x < minX) minX = b2.x;
+        if (b2.y < minY) minY = b2.y;
+        if (b2.x + b2.w > maxX) maxX = b2.x + b2.w;
+        if (b2.y + b2.h > maxY) maxY = b2.y + b2.h;
+      }
+      if (minX === Infinity) return;
+      const pad = 10;
+      const vx = minX - pad, vy = minY - pad;
+      const vw = maxX - minX + pad * 2, vh = maxY - minY + pad * 2;
+      const c2 = document.createElement("canvas");
+      c2.width = vw * this.dpr;
+      c2.height = vh * this.dpr;
+      const ctx = c2.getContext("2d");
+      ctx.scale(this.dpr, this.dpr);
+      ctx.fillStyle = THEMES[this.theme].canvasBg;
+      ctx.fillRect(0, 0, vw, vh);
+      ctx.save();
+      ctx.translate(-vx, -vy);
+      for (const el of selected) this.drawElement(ctx, el);
+      ctx.restore();
+      c2.toBlob((blob) => {
+        if (!blob) return;
+        const url = URL.createObjectURL(blob);
+        const a2 = document.createElement("a");
+        a2.href = url;
+        a2.download = "selection.png";
+        a2.click();
+        URL.revokeObjectURL(url);
+      }, "image/png");
     }
     elementToSVG(el) {
       const rotation = el.rotation ?? 0;
