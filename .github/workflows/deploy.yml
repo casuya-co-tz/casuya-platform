@@ -20,7 +20,8 @@ jobs:
       - name: Deploy to Vercel
         id: deploy
         run: |
-          url=$(vercel deploy --prod --yes --scope=casuya-codes --project=casuya-platform --token=${{ secrets.VERCEL_TOKEN }})
+          # --scope removed: infer team from VERCEL_TOKEN; avoids scope-not-accessible when token belongs to different team
+          url=$(vercel deploy --prod --yes --project=casuya-platform --token=${{ secrets.VERCEL_TOKEN }})
           echo "url=$url" >> $GITHUB_OUTPUT
 
       - name: Summary

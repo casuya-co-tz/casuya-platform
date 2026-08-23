@@ -223,20 +223,14 @@ def grade_attempt(quiz_id: str, answers: dict, work: dict | None = None) -> dict
                 snap = work.get(q.id) or work.get(str(q.id))
                 has = False
                 if isinstance(snap, dict):
-                    if snap.get("hasWork") is True:
+                    if snap.get("hasWork") is True or (isinstance(snap.get("elements"), list) and len(snap["elements"]) > 0):
                         has = True
-                    elif isinstance(snap.get("elements"), list) and len(snap["elements"]) > 0:
-                        has = True
-                    elif isinstance(snap.get("recognizedLatex"), str) and snap["recognizedLatex"].strip() not in ("", "__drawing__") :
+                    elif isinstance(snap.get("recognizedLatex"), str) and snap["recognizedLatex"].strip() not in ("", "__drawing__"):
                         # text work counts; drawings also count via elements/hasWork above
                         has = True
-                    elif snap.get("recognizedLatex") == "__drawing__":
+                    elif snap.get("recognizedLatex") == "__drawing__" or (isinstance(snap.get("elements_json"), str) and len(snap["elements_json"].strip()) > 4):
                         has = True
-                    elif isinstance(snap.get("elements_json"), str) and len(snap["elements_json"].strip()) > 4:
-                        has = True
-                elif isinstance(snap, list) and len(snap) > 0:
-                    has = True
-                elif snap is True:
+                elif (isinstance(snap, list) and len(snap) > 0) or snap is True:
                     has = True
                 if has:
                     work_score += 1
