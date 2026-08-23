@@ -223,12 +223,19 @@ def grade_attempt(quiz_id: str, answers: dict, work: dict | None = None) -> dict
                 snap = work.get(q.id) or work.get(str(q.id))
                 has = False
                 if isinstance(snap, dict):
-                    if snap.get("hasWork") is True or (isinstance(snap.get("elements"), list) and len(snap["elements"]) > 0):
+                    if snap.get("hasWork") is True or (
+                        isinstance(snap.get("elements"), list) and len(snap["elements"]) > 0
+                    ):
                         has = True
-                    elif isinstance(snap.get("recognizedLatex"), str) and snap["recognizedLatex"].strip() not in ("", "__drawing__"):
+                    elif isinstance(snap.get("recognizedLatex"), str) and snap["recognizedLatex"].strip() not in (
+                        "",
+                        "__drawing__",
+                    ):
                         # text work counts; drawings also count via elements/hasWork above
                         has = True
-                    elif snap.get("recognizedLatex") == "__drawing__" or (isinstance(snap.get("elements_json"), str) and len(snap["elements_json"].strip()) > 4):
+                    elif snap.get("recognizedLatex") == "__drawing__" or (
+                        isinstance(snap.get("elements_json"), str) and len(snap["elements_json"].strip()) > 4
+                    ):
                         has = True
                 elif (isinstance(snap, list) and len(snap) > 0) or snap is True:
                     has = True
@@ -236,7 +243,9 @@ def grade_attempt(quiz_id: str, answers: dict, work: dict | None = None) -> dict
                     work_score += 1
             work_percentage = round((work_score / total * 100) if total > 0 else 0, 2)
             # Weighted merge: 70% answers + 30% work (as per PLAN). If total==0, just use answer pct.
-            combined_percentage = round(percentage * 0.7 + work_percentage * 0.3, 2) if total > 0 else round(percentage, 2)
+            combined_percentage = (
+                round(percentage * 0.7 + work_percentage * 0.3, 2) if total > 0 else round(percentage, 2)
+            )
             return {
                 "quiz_id": quiz_id,
                 "score": correct,
