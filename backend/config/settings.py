@@ -94,6 +94,7 @@ class Settings(BaseSettings):
     facebook_client_id: str | None = None
     facebook_client_secret: str | None = None
     oauth_redirect_base: str = "https://casuya.co.tz"
+    frontend_base: str = "http://localhost:5173"
 
     storage_root: str = "./storage"
     rate_limit_per_minute: int = 120

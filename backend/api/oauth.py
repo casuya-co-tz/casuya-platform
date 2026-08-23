@@ -117,7 +117,7 @@ def oauth_callback(provider: str, request: Request):
 
     code = request.query_params.get("code")
     if not code:
-        return RedirectResponse(f"{settings.oauth_redirect_base}/login.html?error=no_code")
+        return RedirectResponse(f"{settings.frontend_base}/login.html?error=no_code")
 
     cfg = PROVIDERS[provider]
     client_id = _get_client_id(provider)
@@ -139,11 +139,11 @@ def oauth_callback(provider: str, request: Request):
         token_resp.raise_for_status()
         token_data = token_resp.json()
     except Exception:
-        return RedirectResponse(f"{settings.oauth_redirect_base}/login.html?error=token_exchange_failed")
+        return RedirectResponse(f"{settings.frontend_base}/login.html?error=token_exchange_failed")
 
     access_token = token_data.get("access_token")
     if not access_token:
-        return RedirectResponse(f"{settings.oauth_redirect_base}/login.html?error=no_access_token")
+        return RedirectResponse(f"{settings.frontend_base}/login.html?error=no_access_token")
 
     # Fetch user info
     try:
@@ -155,11 +155,11 @@ def oauth_callback(provider: str, request: Request):
         userinfo_resp.raise_for_status()
         userinfo = userinfo_resp.json()
     except Exception:
-        return RedirectResponse(f"{settings.oauth_redirect_base}/login.html?error=userinfo_failed")
+        return RedirectResponse(f"{settings.frontend_base}/login.html?error=userinfo_failed")
 
     user_info = cfg["get_user_info"](userinfo)
     if not user_info.get("email"):
-        return RedirectResponse(f"{settings.oauth_redirect_base}/login.html?error=no_email")
+        return RedirectResponse(f"{settings.frontend_base}/login.html?error=no_email")
 
     # Create or find user, get JWT tokens
     try:
@@ -171,7 +171,7 @@ def oauth_callback(provider: str, request: Request):
             avatar=user_info.get("avatar", ""),
         )
     except Exception:
-        return RedirectResponse(f"{settings.oauth_redirect_base}/login.html?error=account_creation_failed")
+        return RedirectResponse(f"{settings.frontend_base}/login.html?error=account_creation_failed")
 
     # Redirect to frontend with tokens in the URL fragment
     fragment = urlencode(
@@ -182,4 +182,4 @@ def oauth_callback(provider: str, request: Request):
             "user_id": result["user_id"],
         }
     )
-    return RedirectResponse(f"{settings.oauth_redirect_base}/login.html?oauth=success#{fragment}")
+    return RedirectResponse(f"{settings.frontend_base}/login.html?oauth=success#{fragment}")

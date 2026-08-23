@@ -11,19 +11,8 @@
   <meta property="og:locale" content="en_TZ">
   <meta name="theme-color" content="#2563eb">
   <link rel="icon" href="/favicon.ico">
-  <link rel="stylesheet" href="/assets/css/main.css">
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          screens: {
-            'xs': '475px',
-          }
-        }
-      }
-    }
-  </script>
+  <link rel="stylesheet" href="/assets/css/main.min.css">
+  <link rel="stylesheet" href="/assets/css/tailwind.min.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -224,7 +213,7 @@
         <!-- Auth Buttons (auth-aware: replaced with Dashboard/Log out when signed in) -->
         <div class="flex items-center gap-2 sm:gap-4" id="auth-buttons">
           <a href="/login.html" data-i18n="login" class="hidden sm:inline text-sm font-semibold text-slate-700 hover:text-blue-600 transition-colors">Login</a>
-          <a href="/register.html" data-i18n="getStarted" class="bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-semibold px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl shadow-lg shadow-blue-100 transition-all hover:-translate-y-0.5 min-h-[44px] flex items-center justify-center">Get Started</a>
+          <a href="/register.html" data-i18n="getStarted" class="bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-semibold px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl shadow-lg shadow-blue-100 transition-all hover:-translate-y-0.5 min-h-[44px] flex items-center justify-center"><span class="sm:hidden">Start</span><span class="hidden sm:inline">Get Started</span></a>
         </div>
         <script type="module">
           import { applyAuthChrome } from "/assets/js/auth-ui.js";
