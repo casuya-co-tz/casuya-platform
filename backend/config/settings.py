@@ -2,9 +2,34 @@
 
 from __future__ import annotations
 
+import json
 from functools import lru_cache
+from typing import Annotated
 
+from pydantic import BeforeValidator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def _parse_allowed_origins(v):
+    if v is None:
+        return v
+    if isinstance(v, list):
+        return v
+    if isinstance(v, str):
+        s = v.strip()
+        if not s:
+            return []
+        # Try JSON first: '["https://a","https://b"]'
+        if s.startswith("["):
+            try:
+                parsed = json.loads(s)
+                if isinstance(parsed, list):
+                    return [str(x).strip() for x in parsed if str(x).strip()]
+            except Exception:
+                pass
+        # Fallback: comma-separated: 'https://a,https://b'
+        return [x.strip() for x in s.split(",") if x.strip()]
+    return v
 
 
 class Settings(BaseSettings):
@@ -22,7 +47,7 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 15
     refresh_token_expire_days: int = 7
 
-    allowed_origins: list[str] = [
+    allowed_origins: Annotated[list[str], BeforeValidator(_parse_allowed_origins)] = [
         "http://localhost:5173",
         "http://localhost:8000",
         "http://127.0.0.1:5173",
