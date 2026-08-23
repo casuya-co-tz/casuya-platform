@@ -577,7 +577,7 @@ async function viewLessonContent(containerId, lessonId, backFn) {
         } catch(e) { status.textContent = "Failed to save"; }
       });
 
-      // Quiz submission
+      // Quiz submission — now wired to Show your work blackboards
       document.getElementById("quiz-form")?.addEventListener("submit", async (e) => {
         e.preventDefault();
         const btn = document.getElementById("quiz-submit-btn");
@@ -589,17 +589,38 @@ async function viewLessonContent(containerId, lessonId, backFn) {
             if (sel) answers[q.id] = sel.value;
           });
         }
+        // Collect Show your work snapshots per question
+        let work = null;
         try {
+          if (window.CasuyaBlackboardEmbed && window.CasuyaBlackboardEmbed.collectWorkMap) {
+            work = window.CasuyaBlackboardEmbed.collectWorkMap("[data-quiz-question]");
+          } else {
+            work = {};
+            document.querySelectorAll("[data-quiz-question]").forEach(el => {
+              const qid = el.dataset.quizQuestion;
+              const bb = el._casuyaBlackboard;
+              if (bb && bb.getWorkSnapshot) work[qid] = bb.getWorkSnapshot();
+              else if (bb && bb.getElements) { const els = bb.getElements(); work[qid] = { elements: els, hasWork: els.length>0, recognizedLatex: els.length>0?"__drawing__":"" }; }
+            });
+          }
+          if (work && Object.keys(work).length === 0) work = null;
+        } catch {}
+        try {
+          const body = work ? { answers, work } : { answers };
           const result = await request(`/quizzes/${quizData.id}/submit`, {
-            method: "POST", body: JSON.stringify({ answers }),
+            method: "POST", body: JSON.stringify(body),
           });
           const el = document.getElementById("quiz-result");
           el.style.display = "block";
+          const pct = result.combined_percentage != null ? result.combined_percentage : result.percentage;
+          const hasWork = result.work_score != null;
           el.innerHTML = `
             <p style="font-weight:600">Score: ${result.score} / ${result.total} (${Math.round(result.percentage)}%)</p>
-            ${result.percentage >= 50 ? '<p style="color:var(--color-success)">✅ Passed!</p>' : '<p style="color:red">❌ Try again</p>'}
+            ${hasWork ? `<p style="font-size:0.85rem;color:var(--color-text-muted)">Work: ${result.work_score}/${result.work_total} (${Math.round(result.work_percentage)}%) · Combined (70% answer + 30% work): <strong>${Math.round(pct)}%</strong></p>` : ``}
+            ${pct >= 50 ? '<p style="color:var(--color-success)">✅ Passed!</p>' : '<p style="color:red">❌ Try again</p>'}
+            ${hasWork && result.work_score < result.work_total ? '<p style="font-size:0.8rem;color:var(--color-text-muted)">Tip: open "Show your work" on each question to earn work credit.</p>' : ''}
           `;
-          sendProgress(100, result.percentage);
+          sendProgress(100, pct);
           quizScoreSent = true;
         } catch(err) {
           document.getElementById("quiz-result").style.display = "block";
@@ -1811,7 +1832,7 @@ async function renderStudentDashboard() {
         }, 2000);
       });
 
-      // Quiz submit
+      // Quiz submit — wired to Show your work
       document.getElementById("quiz-form")?.addEventListener("submit", async (e) => {
         e.preventDefault();
         if (!quizData || !quizData.questions) return;
@@ -1820,16 +1841,36 @@ async function renderStudentDashboard() {
           const sel = document.querySelector(`input[name="q_${q.id}"]:checked`);
           if (sel) answers[q.id] = sel.value;
         });
+        let work = null;
         try {
+          if (window.CasuyaBlackboardEmbed && window.CasuyaBlackboardEmbed.collectWorkMap) {
+            work = window.CasuyaBlackboardEmbed.collectWorkMap("[data-quiz-question]");
+          } else {
+            work = {};
+            document.querySelectorAll("[data-quiz-question]").forEach(el => {
+              const qid = el.dataset.quizQuestion;
+              const bb = el._casuyaBlackboard;
+              if (bb && bb.getWorkSnapshot) work[qid] = bb.getWorkSnapshot();
+              else if (bb && bb.getElements) { const els = bb.getElements(); work[qid] = { elements: els, hasWork: els.length>0, recognizedLatex: els.length>0?"__drawing__":"" }; }
+            });
+          }
+          if (work && Object.keys(work).length === 0) work = null;
+        } catch {}
+        try {
+          const body = work ? { answers, work } : { answers };
           const result = await request(`/quizzes/${quizData.id}/submit`, {
-            method: "POST", body: JSON.stringify({ answers }),
+            method: "POST", body: JSON.stringify(body),
           });
           const el = document.getElementById("quiz-result");
-          const passed = result.percentage >= 50;
+          const combined = result.combined_percentage != null ? result.combined_percentage : result.percentage;
+          const passed = combined >= 50;
+          const hasWork = result.work_score != null;
           el.innerHTML = `
             <p style="color:${passed ? "var(--color-success)" : "var(--color-danger)"};font-weight:600">Score: ${result.score}/${result.total} (${Math.round(result.percentage)}%)</p>
+            ${hasWork ? `<p style="font-size:0.85rem;color:var(--color-text-muted)">Work: ${result.work_score}/${result.work_total} (${Math.round(result.work_percentage)}%) · Combined (70/30): <strong>${Math.round(combined)}%</strong></p>` : ``}
             ${passed ? '<p style="color:var(--color-success)">Passed!</p>' : '<p style="color:var(--color-danger)">Try again</p>'}
             ${!passed ? '<button class="btn btn-sm btn-primary" id="retry-quiz-btn" style="margin-top:0.5rem">Retry Quiz</button>' : ''}
+            ${hasWork && result.work_score < result.work_total ? '<p style="font-size:0.8rem;color:var(--color-text-muted);margin-top:0.35rem">Tip: open "Show your work" to earn work credit.</p>' : ''}
           `;
           el.style.display = "block";
           if (!passed) {
@@ -1980,12 +2021,13 @@ async function renderStudentDashboard() {
             <div class="card-grid" style="margin-top:1rem">
               ${quizList.map(q => {
                 const history = examHistory.filter(h => h.quizId === q.id);
-                const bestScore = history.length > 0 ? Math.max(...history.map(h => h.percentage)) : null;
+                const bestScore = history.length > 0 ? Math.max(...history.map(h => h.combined_percentage != null ? h.combined_percentage : h.percentage)) : null;
+                const bestWork = history.length > 0 ? Math.max(...history.map(h => h.work_percentage ?? 0)) : 0;
                 return `
                   <div class="card" style="padding:1rem">
                     <h3 style="margin:0">${escapeHtml(q.title || "Exam")}</h3>
                     <p style="color:var(--color-text-muted);font-size:0.85rem;margin-top:0.25rem">${q.question_count ?? q.questions?.length ?? 0} questions</p>
-                    ${bestScore !== null ? `<p style="color:var(--color-success);font-size:0.85rem;margin-top:0.15rem">Best: ${bestScore}%</p>` : ''}
+                    ${bestScore !== null ? `<p style="color:var(--color-success);font-size:0.85rem;margin-top:0.15rem">Best: ${bestScore}%${bestWork ? ` <span style="color:var(--color-text-muted);font-size:0.75rem">(work ${bestWork}%)</span>` : ''}</p>` : ''}
                     <button class="btn btn-primary btn-sm start-exam-btn" data-quiz-id="${q.id}" style="margin-top:0.5rem">Start Exam</button>
                   </div>
                 `;
@@ -2002,13 +2044,16 @@ async function renderStudentDashboard() {
                     <th style="padding:0.5rem;text-align:left">Score</th>
                     <th style="padding:0.5rem;text-align:left">Date</th>
                   </tr>
-                  ${examHistory.slice(-10).reverse().map(h => `
+                  ${examHistory.slice(-10).reverse().map(h => {
+                    const dispPct = h.combined_percentage != null ? h.combined_percentage : h.percentage;
+                    const workInfo = h.work_percentage != null ? ` + work ${h.work_score}/${h.work_total}` : '';
+                    return `
                     <tr style="border-bottom:1px solid var(--color-border)">
                       <td style="padding:0.5rem">${escapeHtml(h.quizTitle || "Quiz")}</td>
-                      <td style="padding:0.5rem;color:${h.percentage >= 50 ? 'var(--color-success)' : 'var(--color-danger)'}">${h.score}/${h.total} (${h.percentage}%)</td>
+                      <td style="padding:0.5rem;color:${dispPct >= 50 ? 'var(--color-success)' : 'var(--color-danger)'}">${h.score}/${h.total} (${h.percentage}%${workInfo} → <strong>${dispPct}%</strong>)</td>
                       <td style="padding:0.5rem;color:var(--color-text-muted)">${new Date(h.takenAt).toLocaleDateString()}</td>
                     </tr>
-                  `).join("")}
+                  `}).join("")}
                 </table>
               </div>
             </div>
@@ -2066,6 +2111,34 @@ async function renderStudentDashboard() {
         </div>
       `);
 
+      // Mount blackboards for Show your work (exam)
+      if (window.CasuyaBlackboardEmbed) { window.CasuyaBlackboardEmbed.autoMount(); }
+      // Add live badge on each Show your work details when work is drawn
+      document.querySelectorAll("details").forEach(d => {
+        const bbDiv = d.querySelector("[data-blackboard]");
+        if (!bbDiv) return;
+        const summ = d.querySelector("summary");
+        if (!summ) return;
+        const baseLabel = summ.textContent.trim();
+        bbDiv.addEventListener("casuya:blackboard-ready", () => {});
+        // Poll for hasWork to update badge (lightweight)
+        const check = () => {
+          const bb = bbDiv._casuyaBlackboard;
+          const has = bb && bb.getElements && bb.getElements().length > 0;
+          summ.textContent = has ? `${baseLabel} — ✅ work captured` : baseLabel;
+          summ.style.color = has ? "var(--color-success)" : "var(--color-text-muted)";
+          summ.style.fontWeight = has ? "600" : "";
+        };
+        bbDiv.addEventListener("click", () => setTimeout(check, 100));
+        // Hook blackboard change event if available
+        const hook = setInterval(() => {
+          const bb = bbDiv._casuyaBlackboard;
+          if (bb && bb.on) { bb.on("change", check); clearInterval(hook); }
+          if (!document.body.contains(bbDiv)) clearInterval(hook);
+        }, 500);
+        setTimeout(check, 800);
+      });
+
       const timerEl = document.getElementById("exam-timer");
       const timerInterval = setInterval(() => {
         timeLeft--;
@@ -2088,29 +2161,60 @@ async function renderStudentDashboard() {
           const sel = document.querySelector(`input[name="q_${q.id}"]:checked`);
           if (sel) answers[q.id] = sel.value;
         });
+        // Collect Show your work per exam question (data-exam-question)
+        let work = null;
         try {
+          if (window.CasuyaBlackboardEmbed && window.CasuyaBlackboardEmbed.collectWorkMap) {
+            work = window.CasuyaBlackboardEmbed.collectWorkMap("[data-exam-question]");
+          } else {
+            work = {};
+            document.querySelectorAll("[data-exam-question]").forEach(el => {
+              const qid = el.dataset.examQuestion;
+              const bb = el._casuyaBlackboard;
+              if (bb && bb.getWorkSnapshot) work[qid] = bb.getWorkSnapshot();
+              else if (bb && bb.getElements) { const els = bb.getElements(); work[qid] = { elements: els, hasWork: els.length>0, recognizedLatex: els.length>0?"__drawing__":"" }; }
+            });
+          }
+          if (work && Object.keys(work).length === 0) work = null;
+        } catch {}
+        try {
+          const body = work ? { answers, work } : { answers };
           const result = await request(`/quizzes/${quizId}/submit`, {
-            method: "POST", body: JSON.stringify({ answers }),
+            method: "POST", body: JSON.stringify(body),
           });
+          // Also attempt step-grading via the dedicated grading engine for richer feedback (best-effort).
+          let extraStepFeedback = null;
+          if (work && window.CasuyaBlackboardEmbed && window.CasuyaBlackboardEmbed.gradeWorkMap) {
+            try { extraStepFeedback = await window.CasuyaBlackboardEmbed.gradeWorkMap(work, null); } catch {}
+          }
           let examHistory = [];
           try { examHistory = JSON.parse(localStorage.getItem("casuya_exam_history") || "[]"); } catch(e) {}
+          const finalPct = result.combined_percentage != null ? result.combined_percentage : result.percentage;
           examHistory.push({
             quizId,
             quizTitle: quizData.title,
             score: result.score,
             total: result.total,
             percentage: Math.round(result.percentage),
+            work_score: result.work_score,
+            work_total: result.work_total,
+            work_percentage: result.work_percentage,
+            combined_percentage: result.combined_percentage != null ? Math.round(result.combined_percentage) : Math.round(result.percentage),
             timeSpent: timeLimit - timeLeft,
             takenAt: Date.now(),
           });
           localStorage.setItem("casuya_exam_history", JSON.stringify(examHistory));
 
-          const passed = result.percentage >= 50;
+          const passed = finalPct >= 50;
+          const hasWork = result.work_score != null;
           document.getElementById("exam-result").innerHTML = `
             <div class="card" style="padding:1.5rem;text-align:center">
               <h3 style="color:${passed ? 'var(--color-success)' : 'var(--color-danger)'};margin:0 0 0.5rem">Exam ${passed ? 'Passed!' : 'Not Passed'}</h3>
               <p style="font-size:1.5rem;font-weight:700;margin:0.5rem 0">Score: ${result.score}/${result.total} (${Math.round(result.percentage)}%)</p>
-              <p style="color:var(--color-text-muted);font-size:0.85rem">Time: ${formatTime(timeLimit - timeLeft)}</p>
+              ${hasWork ? `<p style="font-size:0.95rem;margin:0.25rem 0">Work: ${result.work_score}/${result.work_total} (${Math.round(result.work_percentage)}%) · <strong>Combined: ${Math.round(finalPct)}%</strong> <span style="font-size:0.8rem;color:var(--color-text-muted)">(70% answer + 30% work)</span></p>` : ``}
+              ${hasWork && result.work_score < result.work_total ? `<p style="font-size:0.8rem;color:var(--color-text-muted)">You left ${result.work_total - result.work_score} "Show your work" board(s) empty.</p>` : ``}
+              ${extraStepFeedback && extraStepFeedback.stepResults && extraStepFeedback.stepResults.length ? `<div style="text-align:left;margin-top:0.75rem;font-size:0.85rem">${extraStepFeedback.stepResults.map((s,i)=>`<div style="padding:0.25rem 0;border-bottom:1px solid var(--color-border)"><span style="font-weight:600">Q${i+1} work:</span> ${escapeHtml(s.feedback)} ${s.hasWork ? '✅' : '⬜'}</div>`).join("")}</div>` : ``}
+              <p style="color:var(--color-text-muted);font-size:0.85rem;margin-top:0.5rem">Time: ${formatTime(timeLimit - timeLeft)}</p>
               <button class="btn btn-primary" id="back-to-exams" style="margin-top:1rem">Back to Exams</button>
             </div>
           `;

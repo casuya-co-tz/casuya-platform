@@ -99,4 +99,4 @@ def update_quiz_route(quiz_id: str, body: QuizUpdate):
 @router.post("/{quiz_id}/submit", response_model=QuizResult)
 @router.post("/{quiz_id}/submit/", response_model=QuizResult)
 def submit_quiz_attempt(quiz_id: str, body: QuizSubmission, current_user=Depends(get_current_user)):
-    return grade_attempt(quiz_id=quiz_id, answers=body.answers)
+    return grade_attempt(quiz_id=quiz_id, answers=body.answers, work=body.work)

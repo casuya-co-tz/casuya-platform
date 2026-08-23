@@ -199,7 +199,7 @@ def update_quiz(quiz_id: str, title: str | None = None, html: str | None = None)
         _gen.close()
 
 
-def grade_attempt(quiz_id: str, answers: dict) -> dict:
+def grade_attempt(quiz_id: str, answers: dict, work: dict | None = None) -> dict:
     _gen = get_db()
     db: Session = next(_gen)
     try:
@@ -211,6 +211,49 @@ def grade_attempt(quiz_id: str, answers: dict) -> dict:
             if correct_option and answers.get(q.id) == correct_option.id:
                 correct += 1
         percentage = (correct / total * 100) if total > 0 else 0
+
+        # --- Show-your-work grading (presence-based, not OCR-dependent) ---
+        # work: { questionId: { elements:[], hasWork:bool, recognizedLatex:str, elements_json:str } }
+        work_score = None
+        work_percentage = None
+        combined_percentage = None
+        if work is not None:
+            work_score = 0
+            for q in questions:
+                snap = work.get(q.id) or work.get(str(q.id))
+                has = False
+                if isinstance(snap, dict):
+                    if snap.get("hasWork") is True:
+                        has = True
+                    elif isinstance(snap.get("elements"), list) and len(snap["elements"]) > 0:
+                        has = True
+                    elif isinstance(snap.get("recognizedLatex"), str) and snap["recognizedLatex"].strip() not in ("", "__drawing__") :
+                        # text work counts; drawings also count via elements/hasWork above
+                        has = True
+                    elif snap.get("recognizedLatex") == "__drawing__":
+                        has = True
+                    elif isinstance(snap.get("elements_json"), str) and len(snap["elements_json"].strip()) > 4:
+                        has = True
+                elif isinstance(snap, list) and len(snap) > 0:
+                    has = True
+                elif snap is True:
+                    has = True
+                if has:
+                    work_score += 1
+            work_percentage = round((work_score / total * 100) if total > 0 else 0, 2)
+            # Weighted merge: 70% answers + 30% work (as per PLAN). If total==0, just use answer pct.
+            combined_percentage = round(percentage * 0.7 + work_percentage * 0.3, 2) if total > 0 else round(percentage, 2)
+            return {
+                "quiz_id": quiz_id,
+                "score": correct,
+                "total": total,
+                "percentage": round(percentage, 2),
+                "work_score": work_score,
+                "work_total": total,
+                "work_percentage": work_percentage,
+                "combined_percentage": combined_percentage,
+            }
+
         return {"quiz_id": quiz_id, "score": correct, "total": total, "percentage": round(percentage, 2)}
     finally:
         _gen.close()

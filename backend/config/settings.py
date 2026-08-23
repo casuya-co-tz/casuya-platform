@@ -28,9 +28,11 @@ class Settings(BaseSettings):
         "http://127.0.0.1:5173",
         "http://127.0.0.1:8000",
         "https://casuya-backend.onrender.com",
+        "https://casuya.co.tz",
+        "https://www.casuya.co.tz",
     ]
 
-    cors_origin_regex: str | None = r"https://.*\.vercel\.app|http://(localhost|127\.0\.0\.1):[0-9]+"
+    cors_origin_regex: str | None = r"https://([a-z0-9-]+\.)*casuya\.co\.tz|https://.*\.vercel\.app|http://(localhost|127\.0\.0\.1):[0-9]+"
 
     casuya_core_signing_key: str | None = None
     casuya_ai_url: str = "http://localhost:3000"
@@ -64,7 +66,7 @@ class Settings(BaseSettings):
     google_client_secret: str | None = None
     facebook_client_id: str | None = None
     facebook_client_secret: str | None = None
-    oauth_redirect_base: str = "http://localhost:5173"
+    oauth_redirect_base: str = "https://casuya.co.tz"
 
     storage_root: str = "./storage"
     rate_limit_per_minute: int = 120

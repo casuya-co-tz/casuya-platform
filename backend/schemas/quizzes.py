@@ -28,6 +28,8 @@ class QuizResponse(BaseModel):
 
 class QuizSubmission(BaseModel):
     answers: dict[str, str]
+    # Optional show-your-work payload: { questionId: { elements, hasWork, recognizedLatex } }
+    work: dict | None = None
 
 
 class QuizResult(BaseModel):
@@ -35,3 +37,8 @@ class QuizResult(BaseModel):
     score: int
     total: int
     percentage: float
+    # Work breakdown (presence-based grading) — null when no work sent
+    work_score: int | None = None
+    work_total: int | None = None
+    work_percentage: float | None = None
+    combined_percentage: float | None = None
