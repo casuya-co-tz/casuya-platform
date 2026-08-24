@@ -21,22 +21,24 @@
     body.high-contrast nav { background: #000 !important; }
     body.high-contrast a { color: #60a5fa !important; }
     body.high-contrast .bg-white { background: #000 !important; border: 2px solid #fff !important; }
-    body.high-contrast .bg-[#f9f3e9] { background: #000 !important; }
+    body.high-contrast .bg-\[#faf7f2\] { background: #000 !important; }
     @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }
     a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid #2563eb; outline-offset: 2px; }
     .skip-link { position: absolute; top: -100%; left: 16px; z-index: 9999; background: #2563eb; color: #fff; padding: 12px 24px; border-radius: 0 0 12px 12px; font-weight: 700; font-size: 14px; transition: top 0.2s ease; }
     .skip-link:focus { top: 0; }
-    .a11y-mini { position: fixed; bottom: 16px; left: 16px; z-index: 9998; display: flex; gap: 6px; }
-    .a11y-mini button { width: 36px; height: 36px; border-radius: 50%; border: 1px solid #e0d8cc; background: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); transition: all 0.15s; }
+    .a11y-mini { position: fixed; bottom: max(16px, env(safe-area-inset-bottom, 16px)); left: max(16px, env(safe-area-inset-left, 16px)); z-index: 9998; display: flex; gap: 6px; flex-wrap: wrap; max-width: calc(100vw - 32px); }
+    .a11y-mini button { width: 36px; height: 36px; min-width: 36px; min-height: 36px; border-radius: 50%; border: 1px solid #e2e8f0; background: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); transition: all 0.15s; flex-shrink: 0; }
     .a11y-mini button:hover { background: #eff6ff; border-color: #2563eb; }
     .a11y-mini button.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+    @media (max-width: 640px) { .a11y-mini { bottom: max(12px, env(safe-area-inset-bottom, 12px)); left: max(12px, env(safe-area-inset-left, 12px)); gap: 6px; } .a11y-mini button { width: 40px; height: 40px; min-width: 40px; min-height: 40px; font-size: 15px; } }
+    @media (max-width: 360px) { .a11y-mini button { width: 36px; height: 36px; min-width: 36px; min-height: 36px; font-size: 14px; } }
     .field-error { border-color: #dc2626 !important; }
     .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
     [role="alert"] { animation: slideDown 0.3s ease; }
     @keyframes slideDown { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
   </style>
 </head>
-<body class="bg-[#f9f3e9] text-slate-800 antialiased overflow-x-hidden">
+<body class="bg-[#faf7f2] text-slate-800 antialiased overflow-x-hidden" style="font-family:'Plus Jakarta Sans',system-ui,sans-serif;">
 
   <!-- Skip Link -->
   <a href="#login-form" class="skip-link">Skip to login form</a>
@@ -52,7 +54,7 @@
   <div id="sr-announcer" class="sr-only" aria-live="assertive" aria-atomic="true"></div>
 
   <!-- NAVIGATION BAR -->
-  <nav class="sticky top-0 z-50 bg-[#f9f3e9]/80 backdrop-blur-md border-b border-[#e0d8cc]" role="navigation" aria-label="Main navigation">
+  <nav class="sticky top-0 z-50 bg-[#faf7f2]/80 backdrop-blur-md border-b border-[#e2e8f0]" role="navigation" aria-label="Main navigation">
     <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
       <!-- Logo -->
       <div class="flex items-center gap-2">
@@ -81,21 +83,25 @@
   </nav>
 
   <!-- LOGIN SECTION -->
-  <section class="max-w-7xl mx-auto px-6 py-20" aria-labelledby="login-heading">
-    <div class="max-w-md mx-auto">
+  <section class="auth-section-frame py-16 sm:py-20" aria-labelledby="login-heading">
+    <div class="max-w-7xl mx-auto px-6">
+      <div class="max-w-md mx-auto">
       <!-- Login Card -->
-      <div class="bg-white border border-[#e0d8cc] rounded-3xl p-8 shadow-xl shadow-[#e0d8cc]/50">
+      <div class="auth-card-premium">
         <!-- Header -->
         <div class="text-center mb-8">
-          <h1 id="login-heading" class="text-3xl font-extrabold text-slate-900 mb-2">Welcome Back</h1>
-          <p class="text-slate-500 text-sm">Sign in to continue your learning journey</p>
+          <div class="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5" style="background:linear-gradient(135deg,rgba(37,99,235,0.1),rgba(124,58,237,0.08));border:1px solid rgba(37,99,235,0.15);box-shadow:0 4px 16px rgba(37,99,235,0.08);">
+            <svg class="w-8 h-8" style="color:#2563eb;" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+          </div>
+          <h1 id="login-heading" class="text-2xl sm:text-3xl font-extrabold text-slate-900 mb-2" style="letter-spacing:-0.03em;">Welcome Back</h1>
+          <p class="text-sm" style="color:#64748b;">Sign in to continue your learning journey</p>
         </div>
 
         <!-- Login Form -->
         <form id="login-form" class="space-y-6" novalidate aria-label="Login form">
           <!-- Email Field -->
           <div class="space-y-2">
-            <label for="email" class="text-sm font-semibold text-slate-700">Email Address</label>
+            <label for="email" class="text-sm font-semibold text-slate-800">Email Address</label>
             <div class="relative">
               <div class="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" aria-hidden="true">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -111,7 +117,7 @@
                 autocomplete="email"
                 aria-describedby="email-error"
                 aria-invalid="false"
-                class="w-full pl-10 pr-4 min-h-[48px] py-3 border border-[#d6cdbf] rounded-xl text-sm font-medium placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                class="input-premium pl-10"
                 placeholder="Enter your email"
               >
             </div>
@@ -121,7 +127,7 @@
           <!-- Password Field -->
           <div class="space-y-2">
             <div class="flex items-center justify-between">
-              <label for="password" class="text-sm font-semibold text-slate-700">Password</label>
+              <label for="password" class="text-sm font-semibold text-slate-800">Password</label>
               <a href="/forgot-password.html" class="text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors">Forgot password</a>
             </div>
             <div class="relative">
@@ -138,7 +144,7 @@
                 autocomplete="current-password"
                 aria-describedby="password-error"
                 aria-invalid="false"
-                class="w-full pl-10 pr-12 min-h-[48px] py-3 border border-[#d6cdbf] rounded-xl text-sm font-medium placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                class="input-premium pl-10 pr-12"
                 placeholder="Enter your password"
               >
               <button
@@ -182,7 +188,7 @@
           <button
             type="submit"
             id="submit-btn"
-            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold min-h-[48px] py-3 rounded-xl shadow-lg shadow-blue-100 transition-all hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            class="btn-premium w-full"
             aria-describedby="submit-status"
           >
             Sign in to your Casuya account
@@ -194,10 +200,10 @@
         <div class="my-8" role="separator">
           <div class="relative">
             <div class="absolute inset-0 flex items-center">
-              <div class="w-full border-t border-[#d6cdbf]"></div>
+              <div class="w-full" style="border-top:1px solid #e2e8f0;"></div>
             </div>
             <div class="relative flex justify-center text-sm">
-              <span class="px-4 bg-white text-slate-400 font-medium">OR</span>
+              <span class="px-4" style="background:#fff;color:#94a3b8;font-weight:500;">OR</span>
             </div>
           </div>
         </div>
@@ -207,7 +213,10 @@
           <button
             type="button"
             onclick="window.location.href=(typeof casuyaOAuthUrl==='function'?casuyaOAuthUrl('google'):'#')"
-            class="w-full flex items-center justify-center gap-3 bg-white border border-[#d6cdbf] rounded-xl py-3 px-4 text-sm font-semibold text-slate-700 hover:border-[#c8bdb0] hover:bg-[#f3ede1] transition-all"
+            class="w-full flex items-center justify-center gap-3 rounded-xl py-3 px-4 text-sm font-semibold transition-all"
+            style="background:#fff;border:1px solid #e2e8f0;color:#334155;border-radius:var(--radius-lg);box-shadow:0 1px 3px rgba(0,0,0,0.06);"
+            onmouseover="this.style.borderColor='#94a3b8';this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'"
+            onmouseout="this.style.borderColor='#e2e8f0';this.style.boxShadow='0 1px 3px rgba(0,0,0,0.06)'"
             aria-label="Sign in with Google"
           >
             <svg class="w-5 h-5" viewBox="0 0 24 24" aria-hidden="true">
@@ -222,7 +231,10 @@
           <button
             type="button"
             onclick="window.location.href=(typeof casuyaOAuthUrl==='function'?casuyaOAuthUrl('facebook'):'#')"
-            class="w-full flex items-center justify-center gap-3 bg-white border border-[#d6cdbf] rounded-xl py-3 px-4 text-sm font-semibold text-slate-700 hover:border-[#c8bdb0] hover:bg-[#f3ede1] transition-all"
+            class="w-full flex items-center justify-center gap-3 rounded-xl py-3 px-4 text-sm font-semibold transition-all"
+            style="background:#fff;border:1px solid #e2e8f0;color:#334155;border-radius:var(--radius-lg);box-shadow:0 1px 3px rgba(0,0,0,0.06);"
+            onmouseover="this.style.borderColor='#94a3b8';this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'"
+            onmouseout="this.style.borderColor='#e2e8f0';this.style.boxShadow='0 1px 3px rgba(0,0,0,0.06)'"
             aria-label="Sign in with Facebook"
           >
             <svg class="w-5 h-5" fill="#1877F2" viewBox="0 0 24 24" aria-hidden="true">
@@ -240,33 +252,37 @@
           </p>
         </div>
       </div>
+      </div>
     </div>
   </section>
 
   <!-- FOOTER -->
-  <footer class="bg-white border-t border-[#e0d8cc] text-slate-500 text-xs py-12 mt-20" role="contentinfo">
-    <div class="max-w-7xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-8">
-      <div class="space-y-3">
-        <div class="font-bold text-slate-900 text-sm">Platform</div>
-        <div><a href="/index.html#features" class="hover:text-blue-600">Features</a></div>
-        <div><a href="https://github.com/casuya-co-tz" class="hover:text-blue-600" target="_blank" rel="noopener">Documentation</a></div>
-        <div><a href="/index.html#subjects" class="hover:text-blue-600">Subjects</a></div>
+  <footer class="text-xs py-10 sm:py-14 mt-16" role="contentinfo" style="background:linear-gradient(180deg,#0f172a 0%,#020617 100%);color:#94a3b8;">
+    <div class="max-w-7xl mx-auto px-6">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
+        <div class="space-y-3">
+          <div class="font-bold text-sm" style="color:#f1f5f9;">Platform</div>
+          <div><a href="/index.html#features" class="transition-colors hover:text-blue-400">Features</a></div>
+          <div><a href="https://github.com/casuya-co-tz" class="transition-colors hover:text-blue-400" target="_blank" rel="noopener">Documentation</a></div>
+          <div><a href="/index.html#subjects" class="transition-colors hover:text-blue-400">Subjects</a></div>
+        </div>
+        <div class="space-y-3">
+          <div class="font-bold text-sm" style="color:#f1f5f9;">Support</div>
+          <div><a href="/help.html" class="transition-colors hover:text-blue-400">Help Center</a></div>
+          <div><a href="/contact.html" class="transition-colors hover:text-blue-400">Contact Us</a></div>
+        </div>
+        <div class="space-y-3">
+          <div class="font-bold text-sm" style="color:#f1f5f9;">Legal</div>
+          <div><a href="/privacy.html" class="transition-colors hover:text-blue-400">Privacy Policy</a></div>
+          <div><a href="/terms.html" class="transition-colors hover:text-blue-400">Terms of Service</a></div>
+        </div>
+        <div class="space-y-3">
+          <div class="font-bold text-sm" style="color:#f1f5f9;">Links</div>
+          <div><a href="https://github.com/casuya-co-tz" class="transition-colors hover:text-blue-400" target="_blank" rel="noopener">GitHub Organization</a></div>
+        </div>
       </div>
-      <div class="space-y-3">
-        <div class="font-bold text-slate-900 text-sm">Support</div>
-        <div><a href="/help.html" class="hover:text-blue-600">Help Center</a></div>
-        <div><a href="/contact.html" class="hover:text-blue-600">Contact Us</a></div>
-      </div>
-      <div class="space-y-3">
-        <div class="font-bold text-slate-900 text-sm">Legal</div>
-        <div><a href="/privacy.html" class="hover:text-blue-600">Privacy Policy</a></div>
-        <div><a href="/terms.html" class="hover:text-blue-600">Terms of Service</a></div>
-      </div>
-      <div class="space-y-3">
-        <div class="font-bold text-slate-900 text-sm">Links</div>
-        <div><a href="https://github.com/casuya-co-tz" class="hover:text-blue-600">GitHub Organization</a></div>
-        <div class="pt-2 text-[10px] text-slate-400">&copy; 2026 Casuya Platform.</div>
-      </div>
+      <div style="border-top:1px solid rgba(148,163,184,0.12);"></div>
+      <div class="pt-4 text-[11px]" style="color:#475569;">&copy; 2026 Casuya Platform.</div>
     </div>
   </footer>
 
@@ -293,7 +309,8 @@
         state.tts = !state.tts; apply();
         if (!state.tts) window.speechSynthesis.cancel();
         else {
-          var text = document.querySelector('h1').textContent + '. ' + document.querySelector('p.text-slate-500').textContent;
+          var desc = document.querySelector('h1').nextElementSibling;
+          var text = document.querySelector('h1').textContent + (desc ? '. ' + desc.textContent : '');
           var u = new SpeechSynthesisUtterance(text);
           var voices = window.speechSynthesis.getVoices();
           var preferred = ['en-TZ', 'en-KE', 'en-UG', 'en-GH', 'en-ZA', 'en-GB', 'en-US'];

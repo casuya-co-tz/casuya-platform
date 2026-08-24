@@ -31,15 +31,15 @@
     body.high-contrast nav, body.high-contrast footer { background: #000 !important; }
     body.high-contrast a { color: #60a5fa !important; }
     body.high-contrast .bg-white { background: #000 !important; border: 2px solid #fff !important; }
-    body.high-contrast .bg-[#f9f3e9] { background: #000 !important; }
+    body.high-contrast .bg-\[#faf7f2\] { background: #000 !important; }
     body.high-contrast .text-slate-900 { color: #fff !important; }
     body.high-contrast .text-slate-600 { color: #e2e8f0 !important; }
     body.high-contrast .text-slate-500 { color: #cbd5e1 !important; }
     body.high-contrast .text-slate-400 { color: #94a3b8 !important; }
     body.high-contrast .bg-blue-50 { background: #1e3a5f !important; }
     body.high-contrast .bg-blue-600 { background: #3b82f6 !important; color: #000 !important; }
-    body.high-contrast .border-[#e0d8cc] { border-color: #334155 !important; }
-    body.high-contrast .border-[#d6cdbf] { border-color: #334155 !important; }
+    body.high-contrast .border-\[#e2e8f0\] { border-color: #334155 !important; }
+    body.high-contrast .border-\[#e2e8f0\] { border-color: #334155 !important; }
     body.high-contrast .shadow-2xl { box-shadow: 0 0 0 2px #fff !important; }
     body.high-contrast .shadow-sm { box-shadow: 0 0 0 1px #fff !important; }
     body.high-contrast .bg-slate-900 { background: #0f172a !important; }
@@ -74,43 +74,47 @@
       position: absolute; bottom: 64px; left: 0;
       background: #fff; border: 1px solid #e2e8f0; border-radius: 16px;
       box-shadow: 0 20px 60px rgba(0,0,0,0.15);
-      padding: 16px; width: 260px;
-      opacity: 0; pointer-events: none; transform: translateY(10px);
-      transition: all 0.25s ease;
+      padding: 16px; width: 280px; max-width: calc(100vw - 32px);
+      max-height: min(72vh, 520px); overflow-y: auto; overflow-x: hidden;
+      -webkit-overflow-scrolling: touch; scrollbar-width: thin;
+      overscroll-behavior: contain;
+      opacity: 0; pointer-events: none; transform: translateY(10px) scale(0.98);
+      transition: opacity 0.25s ease, transform 0.25s ease;
+      will-change: opacity, transform;
     }
-    .a11y-panel.open { opacity: 1; pointer-events: auto; transform: translateY(0); }
-    .a11y-panel h3 { font-size: 13px; font-weight: 800; color: #0f172a; margin-bottom: 12px; }
+    .a11y-panel.open { opacity: 1; pointer-events: auto; transform: translateY(0) scale(1); }
+    .a11y-panel h3 { font-size: 13px; font-weight: 800; color: #0f172a; margin-bottom: 12px; letter-spacing: -0.01em; }
     .a11y-option {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 10px 12px; border-radius: 10px; margin-bottom: 6px;
-      cursor: pointer; transition: background 0.15s;
+      gap: 12px; min-height: 44px; padding: 8px 10px; border-radius: 10px; margin-bottom: 4px;
+      cursor: pointer; transition: background 0.15s; flex-shrink: 0;
     }
     .a11y-option:hover { background: #f1f5f9; }
-    .a11y-option span { font-size: 13px; font-weight: 600; color: #334155; }
-    .a11y-option .a11y-icon { font-size: 18px; }
+    .a11y-option span { font-size: 13px; font-weight: 600; color: #334155; line-height: 1.3; }
+    .a11y-option .a11y-icon { font-size: 18px; flex-shrink: 0; }
     .a11y-toggle-btn {
-      width: 40px; height: 22px; border-radius: 11px; border: none;
-      background: #cbd5e1; cursor: pointer; position: relative;
+      width: 40px; height: 22px; min-width: 40px; min-height: 22px; border-radius: 11px; border: none;
+      background: #cbd5e1; cursor: pointer; position: relative; flex-shrink: 0;
       transition: background 0.2s;
     }
     .a11y-toggle-btn.active { background: #2563eb; }
     .a11y-toggle-btn::after {
       content: ''; position: absolute; top: 2px; left: 2px;
       width: 18px; height: 18px; border-radius: 50%;
-      background: #fff; transition: transform 0.2s;
+      background: #fff; transition: transform 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.15);
     }
     .a11y-toggle-btn.active::after { transform: translateX(18px); }
-    .a11y-slider-row { display: flex; align-items: center; gap: 8px; padding: 8px 12px; }
-    .a11y-slider-row span { font-size: 12px; font-weight: 600; color: #64748b; min-width: 24px; }
-    .a11y-slider { flex: 1; accent-color: #2563eb; cursor: pointer; }
+    .a11y-slider-row { display: flex; align-items: center; gap: 8px; padding: 8px 10px; min-height: 36px; flex-shrink: 0; }
+    .a11y-slider-row span { font-size: 11px; font-weight: 600; color: #64748b; min-width: 28px; white-space: nowrap; flex-shrink: 0; }
+    .a11y-slider { flex: 1; min-width: 0; accent-color: #2563eb; cursor: pointer; height: 20px; }
     .speech-controls {
-      display: flex; align-items: center; gap: 8px;
-      padding: 8px 12px; margin-top: 4px;
-      background: #f8fafc; border-radius: 10px;
+      display: flex; align-items: center; gap: 6px; flex-wrap: nowrap;
+      padding: 8px 10px; margin-top: 4px; min-height: 44px; flex-shrink: 0;
+      background: #f8fafc; border-radius: 10px; border: 1px solid #f1f5f9;
     }
     .speech-btn {
-      width: 32px; height: 32px; border-radius: 8px; border: 1px solid #e2e8f0;
-      background: #fff; cursor: pointer; display: flex; align-items: center;
+      width: 32px; height: 32px; min-width: 32px; min-height: 32px; border-radius: 8px; border: 1px solid #e2e8f0;
+      background: #fff; cursor: pointer; display: flex; align-items: center; flex-shrink: 0;
       justify-content: center; transition: all 0.15s;
     }
     .speech-btn:hover { background: #eff6ff; border-color: #2563eb; }
@@ -139,10 +143,53 @@
       }
     }
 
-    /* Mobile-specific refinements */
+    /* ── Accessibility Panel Responsive ──────────────────────── */
+    @media (max-width: 640px) {
+      .a11y-toolbar { bottom: max(12px, env(safe-area-inset-bottom, 12px)); left: max(12px, env(safe-area-inset-left, 12px)); right: auto; }
+      .a11y-toggle { width: 48px; height: 48px; }
+      .a11y-panel {
+        position: fixed; bottom: 68px; left: 12px; right: 12px; width: auto; max-width: none;
+        max-height: min(68vh, 480px); padding: 14px; border-radius: 16px;
+        transform: translateY(12px) scale(0.97);
+        /* prevent horizontal overflow on tiny screens */
+        box-sizing: border-box;
+      }
+      .a11y-panel.open { transform: translateY(0) scale(1); }
+      .a11y-option { padding: 10px 10px; min-height: 44px; }
+      .a11y-option span { font-size: 13px; }
+      .a11y-slider-row { padding: 6px 10px; }
+      .speech-controls { gap: 6px; padding: 8px 10px; }
+    }
+    @media (max-width: 360px) {
+      .a11y-panel { left: 8px; right: 8px; bottom: 64px; padding: 12px; max-height: 62vh; }
+      .a11y-option span { font-size: 12px; }
+    }
+    /* collapse sections animate without jumping */
+    #a11y-fontsize-row, #a11y-speed-row, #speech-controls {
+      transition: opacity 0.2s ease;
+    }
+
+    /* ── Global Responsive Safeguards ────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+    img, video, svg { max-width: 100%; height: auto; }
+    body { overflow-wrap: break-word; word-break: break-word; }
+    /* Prevent any section from causing horizontal scroll */
+    section, nav, footer, main { max-width: 100vw; overflow-x: clip; }
+
+    /* Mobile refinements */
     @media (max-width: 639px) {
-      .hero-title { font-size: 2.15rem; line-height: 1.15; }
+      .hero-title { font-size: clamp(1.9rem, 8vw, 2.4rem); line-height: 1.12; word-break: break-word; }
       .mock-ui-sidebar { display: none !important; }
+      .glass-card { aspect-ratio: auto; min-height: 260px; }
+    }
+    @media (max-width: 380px) {
+      .hero-title { font-size: clamp(1.65rem, 7.5vw, 2rem); }
+      .section-label { font-size: 10px; padding: 4px 10px; }
+    }
+    @media (max-width: 320px) {
+      .a11y-toggle { width: 44px; height: 44px; }
+      .hero-title { font-size: 1.6rem; }
     }
 
     /* Ensure minimum tap target size for accessibility */
@@ -186,7 +233,7 @@
     /* Phone frame */
     .demo-phone {
       width: 100%; aspect-ratio: 9/16; max-height: 72vh;
-      background: #f9f3e9; position: relative; overflow: hidden;
+      background: linear-gradient(135deg, #faf7f2 0%, #eff6ff 50%, #f0fdf4 100%); position: relative; overflow: hidden;
     }
 
     /* Screen slides */
@@ -284,7 +331,7 @@
   <script src="/assets/js/config.js"></script>
   <script src="/assets/js/brand.js"></script>
 </head>
-<body class="bg-[#f9f3e9] text-slate-800 antialiased overflow-x-hidden">
+<body class="bg-[#faf7f2] text-slate-800 antialiased overflow-x-hidden" style="font-family:'Plus Jakarta Sans',system-ui,sans-serif;">
 
   <!-- Skip Link for keyboard / screen-reader users -->
   <a href="#main-content" class="skip-link">Skip to main content</a>
@@ -343,7 +390,7 @@
   </div>
 
   <!-- NAVIGATION BAR -->
-  <nav class="sticky top-0 z-50 bg-[#f9f3e9]/80 backdrop-blur-md border-b border-[#e0d8cc]" role="navigation" aria-label="Main navigation">
+  <nav class="sticky top-0 z-50 bg-[#faf7f2]/80 backdrop-blur-md border-b border-[#e2e8f0]" role="navigation" aria-label="Main navigation">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 sm:h-20 flex items-center justify-between">
       <!-- Logo -->
       <div class="flex items-center gap-2">
@@ -352,7 +399,7 @@
       </div>
 
       <!-- Right-hand group: nav links, language toggle, auth, mobile menu button -->
-      <div class="flex items-center gap-2 sm:gap-5">
+      <div class="flex items-center gap-1.5 sm:gap-5 min-w-0">
         <!-- Nav Links (desktop) -->
         <div class="hidden md:flex items-center gap-8 text-sm font-semibold text-slate-600">
           <a href="#features" data-i18n="navFeatures" class="hover:text-blue-600 transition-colors">Features</a>
@@ -361,7 +408,7 @@
         </div>
 
         <!-- Language toggle (EN / SW) -->
-        <button id="lang-toggle" type="button" class="inline-flex items-center gap-1 text-[11px] sm:text-xs font-bold text-slate-500 hover:text-blue-600 hover:border-blue-200 border border-[#d6cdbf] rounded-lg px-3 py-2.5 sm:px-3 sm:py-2.5 transition-colors min-h-[44px]" aria-label="Badilisha lugha / Switch language">
+        <button id="lang-toggle" type="button" class="inline-flex items-center gap-1 text-[11px] sm:text-xs font-bold transition-colors min-h-[44px] px-3 py-2.5 sm:px-3 sm:py-2.5" style="color:#475569;border:1px solid #e2e8f0;border-radius:var(--radius-md);background:#fff;box-shadow:0 1px 2px rgba(0,0,0,0.04);" onmouseover="this.style.borderColor='#93c5fd';this.style.color='#2563eb'" onmouseout="this.style.borderColor='#e2e8f0';this.style.color='#475569'" aria-label="Badilisha lugha / Switch language">
           <span id="lang-toggle-label">SW</span>
         </button>
 
@@ -384,12 +431,12 @@
     </div>
 
     <!-- Mobile menu panel -->
-    <div id="mobile-menu" class="md:hidden hidden border-t border-[#e0d8cc] bg-white">
+    <div id="mobile-menu" class="md:hidden hidden border-t border-[#e2e8f0] bg-white">
       <div class="px-4 sm:px-6 py-4 flex flex-col gap-3 sm:gap-4 text-sm font-semibold text-slate-600">
         <a href="#features" data-i18n="navFeatures" class="hover:text-blue-600 transition-colors">Features</a>
         <a href="#subjects" data-i18n="navSubjects" class="hover:text-blue-600 transition-colors">Subjects</a>
         <a href="#about" data-i18n="navAbout" class="hover:text-blue-600 transition-colors">About</a>
-        <a href="/login.html" data-i18n="login" class="sm:hidden pt-2 border-t border-[#e0d8cc] hover:text-blue-600 transition-colors">Login</a>
+        <a href="/login.html" data-i18n="login" class="sm:hidden pt-2 border-t border-[#e2e8f0] hover:text-blue-600 transition-colors">Login</a>
       </div>
     </div>
   </nav>
@@ -397,7 +444,7 @@
   <main id="main-content">
 
   <!-- HERO SECTION -->
-  <section class="relative max-w-7xl mx-auto px-4 sm:px-6 pt-10 sm:pt-16 pb-16 sm:pb-24 grid lg:grid-cols-12 gap-8 sm:gap-12 items-center mesh-gradient-bg overflow-hidden">
+  <section class="relative max-w-7xl mx-auto px-4 sm:px-6 pt-10 sm:pt-16 pb-16 sm:pb-24 grid lg:grid-cols-12 gap-8 sm:gap-12 items-center overflow-hidden" style="background:linear-gradient(135deg,#faf7f2 0%,#eff6ff 40%,#f0fdf4 80%,#faf7f2 100%);">
     <!-- Glow orbs -->
     <div class="glow-orb glow-orb-1" aria-hidden="true"></div>
     <div class="glow-orb glow-orb-2" aria-hidden="true"></div>
@@ -407,10 +454,11 @@
     <!-- Noise texture -->
     <div class="noise-overlay" aria-hidden="true"></div>
     <div class="lg:col-span-6 space-y-5 sm:space-y-6">
-      <h1 data-i18n-html="heroTitle" class="hero-title text-3xl xs:text-4xl sm:text-5xl lg:text-6xl font-extrabold text-slate-900 tracking-tight leading-[1.1]">
-        Learn Smarter.<br>Teach Better.<br><span class="text-blue-600">Build the Future.</span>
+      <div><span class="section-label">Education Reimagined</span></div>
+      <h1 data-i18n-html="heroTitle" class="hero-title hero-title-premium text-3xl sm:text-4xl lg:text-[3.5rem] text-slate-900 break-words" style="letter-spacing:-0.035em;line-height:1.08;">
+        Learn Smarter.<br>Teach Better.<br><span class="gradient-text">Build the Future.</span>
       </h1>
-      <p data-i18n="heroSubtitle" class="text-base sm:text-lg text-slate-600 max-w-lg leading-relaxed">
+      <p data-i18n="heroSubtitle" class="text-base sm:text-lg text-slate-500 max-w-lg leading-relaxed" style="font-weight:500;">
         An intelligent educational ecosystem connecting teachers, students, and schools with modern digital tools built for any infrastructure.
       </p>
 
@@ -419,8 +467,9 @@
 
       <!-- Hero CTA -->
       <div class="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-4">
-        <a href="/register.html" data-i18n="ctaStart" class="bg-slate-900 hover:bg-slate-800 text-white font-semibold px-6 sm:px-8 py-3.5 sm:py-4 rounded-xl shadow-xl shadow-[#d6cdbf] transition-all hover:-translate-y-0.5 text-center min-h-[48px] flex items-center justify-center">Start Learning</a>
-        <a href="#demo" data-i18n="ctaDemo" class="bg-white border border-[#d6cdbf] hover:border-[#c8bdb0] text-slate-700 font-semibold px-6 sm:px-8 py-3.5 sm:py-4 rounded-xl transition-all flex items-center justify-center gap-2 min-h-[48px]">
+        <a href="/register.html" data-i18n="ctaStart" class="btn-premium text-center min-h-[52px] px-8 w-full sm:w-auto">Start Learning</a>
+        <a href="#demo" data-i18n="ctaDemo" class="btn-premium-outline flex items-center justify-center gap-2 min-h-[52px] w-full sm:w-auto">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
           Watch Demo
         </a>
       </div>
@@ -428,45 +477,45 @@
 
     <!-- Hero Illustration Placeholder -->
     <div class="lg:col-span-6 relative">
-      <div class="absolute inset-0 bg-gradient-to-tr from-blue-400 to-indigo-400 rounded-3xl opacity-10 blur-3xl -z-10" aria-hidden="true"></div>
-      <div class="bg-white border border-[#e0d8cc] rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl shadow-[#d6cdbf]/80 aspect-[4/3] flex flex-col justify-between overflow-hidden">
-        <div class="flex items-center border-b border-[#e0d8cc] pb-3 sm:pb-4">
+      <div class="absolute inset-0 rounded-3xl opacity-15 blur-3xl -z-10" style="background:linear-gradient(135deg,#2563eb,#7c3aed,#3b82f6);" aria-hidden="true"></div>
+      <div class="glass-card sm:rounded-3xl p-4 sm:p-6 aspect-[4/3] flex flex-col justify-between overflow-hidden" style="border:1px solid rgba(224,216,204,0.4);box-shadow:0 20px 60px rgba(0,0,0,0.08),0 0 40px rgba(37,99,235,0.06);">
+        <div class="flex items-center border-b border-[#e2e8f0]/60 pb-3 sm:pb-4">
           <div class="flex gap-1.5" aria-hidden="true">
-            <div class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-red-400"></div>
-            <div class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-yellow-400"></div>
-            <div class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-green-400"></div>
+            <div class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full" style="background:#ff5f57;"></div>
+            <div class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full" style="background:#febc2e;"></div>
+            <div class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full" style="background:#28c840;"></div>
           </div>
         </div>
         <!-- Mock UI Elements simulating the ecosystem -->
         <div class="flex-1 grid grid-cols-12 gap-3 sm:gap-4 pt-4 sm:pt-6">
-          <div class="col-span-12 sm:col-span-4 mock-ui-sidebar bg-[#f3ede1] rounded-xl p-2.5 sm:p-3 space-y-2 sm:space-y-3">
-            <div class="h-5 sm:h-6 bg-blue-100 rounded-lg w-3/4"></div>
-            <div class="h-2.5 sm:h-3 bg-[#d6cdbf] rounded w-full"></div>
-            <div class="h-2.5 sm:h-3 bg-[#d6cdbf] rounded w-5/6"></div>
+          <div class="col-span-12 sm:col-span-4 mock-ui-sidebar rounded-xl p-2.5 sm:p-3 space-y-2 sm:space-y-3" style="background:rgba(37,99,235,0.04);border:1px solid rgba(37,99,235,0.08);">
+            <div class="h-5 sm:h-6 rounded-lg w-3/4" style="background:linear-gradient(90deg,rgba(37,99,235,0.15),rgba(124,58,237,0.1));"></div>
+            <div class="h-2.5 sm:h-3 rounded w-full" style="background:rgba(37,99,235,0.08);"></div>
+            <div class="h-2.5 sm:h-3 rounded w-5/6" style="background:rgba(37,99,235,0.06);"></div>
             <div class="pt-3 sm:pt-4 space-y-2">
-              <div class="h-7 sm:h-8 bg-white border border-[#e0d8cc] rounded-lg shadow-sm flex items-center gap-1.5 px-2 text-[9px] sm:text-[10px] font-bold text-slate-500">
-                <svg class="w-3 h-3 sm:w-3.5 sm:h-3.5 text-blue-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20c0-9 6-15 15-15 0 9-6 15-15 15Z"/><path d="M6 18 17 7"/></svg>
+              <div class="h-7 sm:h-8 rounded-lg shadow-sm flex items-center gap-1.5 px-2 text-[9px] sm:text-[10px] font-bold" style="background:#fff;border:1px solid rgba(37,99,235,0.1);color:#475569;">
+                <svg class="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" style="color:#2563eb;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20c0-9 6-15 15-15 0 9-6 15-15 15Z"/><path d="M6 18 17 7"/></svg>
                 Biology
               </div>
-              <div class="h-7 sm:h-8 bg-white border border-[#e0d8cc] rounded-lg shadow-sm flex items-center gap-1.5 px-2 text-[9px] sm:text-[10px] font-bold text-slate-500">
-                <svg class="w-3 h-3 sm:w-3.5 sm:h-3.5 text-blue-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 7 6 15M12 7l6 8M7 16h10"/><circle cx="12" cy="5" r="1.6"/><circle cx="5" cy="17" r="1.6"/><circle cx="19" cy="17" r="1.6"/></svg>
+              <div class="h-7 sm:h-8 rounded-lg shadow-sm flex items-center gap-1.5 px-2 text-[9px] sm:text-[10px] font-bold" style="background:#fff;border:1px solid rgba(37,99,235,0.1);color:#475569;">
+                <svg class="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" style="color:#2563eb;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 7 6 15M12 7l6 8M7 16h10"/><circle cx="12" cy="5" r="1.6"/><circle cx="5" cy="17" r="1.6"/><circle cx="19" cy="17" r="1.6"/></svg>
                 Chemistry
               </div>
             </div>
           </div>
           <div class="col-span-12 sm:col-span-8 space-y-3 sm:space-y-4">
-            <div class="bg-blue-600 rounded-xl p-3 sm:p-4 text-white space-y-1.5 sm:space-y-2 shadow-lg shadow-blue-100">
+            <div class="rounded-xl p-3 sm:p-4 text-white space-y-1.5 sm:space-y-2" style="background:linear-gradient(135deg,#2563eb,#7c3aed);box-shadow:0 8px 30px rgba(37,99,235,0.25);">
               <div class="text-[10px] sm:text-xs font-bold uppercase tracking-wider opacity-75">Today's Lesson</div>
               <div class="text-xs sm:text-sm font-semibold">"Dive into interactive exercises with built-in quizzes and real-time progress tracking."</div>
             </div>
             <div class="grid grid-cols-2 gap-2 sm:gap-3">
-              <div class="bg-[#f3ede1] border border-[#e0d8cc] rounded-xl p-2.5 sm:p-3 text-center">
-                <div class="text-[10px] sm:text-xs text-slate-400 font-medium">Class Sync</div>
-                <div class="text-xs sm:text-sm font-bold text-slate-800">100% Offline ready</div>
+              <div class="rounded-xl p-2.5 sm:p-3 text-center" style="background:rgba(37,99,235,0.04);border:1px solid rgba(37,99,235,0.08);">
+                <div class="text-[10px] sm:text-xs font-medium" style="color:#94a3b8;">Class Sync</div>
+                <div class="text-xs sm:text-sm font-bold" style="color:#1e293b;">100% Offline ready</div>
               </div>
-              <div class="bg-[#f3ede1] border border-[#e0d8cc] rounded-xl p-2.5 sm:p-3 text-center">
-                <div class="text-[10px] sm:text-xs text-slate-400 font-medium">Avg Score</div>
-                <div class="text-xs sm:text-sm font-bold text-green-600">+18% Progress</div>
+              <div class="rounded-xl p-2.5 sm:p-3 text-center" style="background:rgba(34,197,94,0.04);border:1px solid rgba(34,197,94,0.08);">
+                <div class="text-[10px] sm:text-xs font-medium" style="color:#94a3b8;">Avg Score</div>
+                <div class="text-xs sm:text-sm font-bold" style="color:#16a34a;">+18% Progress</div>
               </div>
             </div>
           </div>
@@ -476,44 +525,44 @@
   </section>
 
   <!-- TRUSTED BY SECTION (rendered from enabled features) -->
-  <section class="border-y border-[#e0d8cc] bg-white py-8 sm:py-10 text-center">
-    <p class="text-[10px] sm:text-xs font-bold tracking-widest text-slate-400 uppercase mb-3 sm:mb-4 px-4">Empowering Modern Educational Workflows</p>
-    <div id="trusted-features" class="flex flex-wrap justify-center items-center gap-6 sm:gap-12 font-bold text-sm sm:text-lg text-slate-300 px-4"></div>
+  <section class="border-y border-[#e2e8f0]/60 py-8 sm:py-10 text-center" style="background:rgba(255,255,255,0.5);backdrop-filter:blur(10px);">
+    <p class="text-[10px] sm:text-xs font-bold tracking-widest uppercase mb-3 sm:mb-4 px-4" style="color:#475569;">Empowering Modern Educational Workflows</p>
+    <div id="trusted-features" class="flex flex-wrap justify-center items-center gap-6 sm:gap-12 font-bold text-sm sm:text-lg px-4" style="color:#334155;"></div>
   </section>
 
   <!-- FEATURES GRID -->
   <section id="features" class="max-w-7xl mx-auto px-4 sm:px-6 py-16 sm:py-24">
-    <div class="text-center max-w-2xl mx-auto mb-10 sm:mb-16 space-y-2 sm:space-y-3 px-2">
-      <h2 class="text-[10px] sm:text-xs font-bold text-blue-600 uppercase tracking-widest">Platform Capabilities</h2>
-      <p class="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-slate-900 tracking-tight">Why Schools Choose Casuya</p>
-      <p class="text-sm sm:text-base text-slate-500">Every single module is optimized for lightning-fast speeds and reliable performance on low-end operational hardware.</p>
+    <div class="text-center max-w-2xl mx-auto mb-10 sm:mb-16 space-y-3 sm:space-y-4 px-2">
+      <span class="section-label mx-auto">Platform Capabilities</span>
+      <p class="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-slate-900 tracking-tight" style="letter-spacing:-0.03em;">Why Schools Choose Casuya</p>
+      <p class="text-sm sm:text-base" style="color:#64748b;">Every single module is optimized for lightning-fast speeds and reliable performance on low-end operational hardware.</p>
     </div>
 
     <div id="features-grid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8"></div>
   </section>
 
   <!-- SUBJECTS SECTION -->
-  <section id="subjects" class="bg-slate-900 text-white py-16 sm:py-24">
+  <section id="subjects" class="text-white py-16 sm:py-24" style="background:linear-gradient(135deg,#0f172a 0%,#1e293b 50%,#0f172a 100%);">
     <div class="max-w-7xl mx-auto px-4 sm:px-6">
       <div class="max-w-2xl mb-8 sm:mb-12">
-        <h2 class="text-[10px] sm:text-xs font-bold text-blue-400 uppercase tracking-widest mb-2">Curriculum Framework</h2>
-        <h3 class="text-2xl sm:text-3xl font-extrabold tracking-tight">Explore Subjects Across the Ecosystem</h3>
+        <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest mb-4" style="background:rgba(96,165,250,0.15);color:#60a5fa;border:1px solid rgba(96,165,250,0.2);">Curriculum Framework</span>
+        <h3 class="text-2xl sm:text-3xl font-extrabold tracking-tight" style="letter-spacing:-0.03em;">Explore Subjects Across the Ecosystem</h3>
       </div>
       <div class="flex flex-wrap gap-2.5 sm:gap-4">
-        <a href="/register.html" class="inline-flex items-center gap-2 bg-slate-800 border border-slate-700/50 px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl text-sm sm:font-medium hover:border-blue-500 hover:bg-blue-600/10 transition-all cursor-pointer">
-          <svg class="w-4 h-4 sm:w-5 sm:h-5 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12c2-5 4-5 6 0s4 5 6 0 4-5 6 0"/></svg>
+        <a href="/register.html" class="subject-tag">
+          <svg class="w-4 h-4 sm:w-5 sm:h-5" style="color:#60a5fa;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12c2-5 4-5 6 0s4 5 6 0 4-5 6 0"/></svg>
           Physics
         </a>
-        <a href="/register.html" class="inline-flex items-center gap-2 bg-slate-800 border border-slate-700/50 px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl text-sm sm:font-medium hover:border-blue-500 hover:bg-blue-600/10 transition-all cursor-pointer">
-          <svg class="w-4 h-4 sm:w-5 sm:h-5 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 7 6 15M12 7l6 8M7 16h10"/><circle cx="12" cy="5" r="2"/><circle cx="5" cy="17" r="2"/><circle cx="19" cy="17" r="2"/></svg>
+        <a href="/register.html" class="subject-tag">
+          <svg class="w-4 h-4 sm:w-5 sm:h-5" style="color:#60a5fa;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 7 6 15M12 7l6 8M7 16h10"/><circle cx="12" cy="5" r="2"/><circle cx="5" cy="17" r="2"/><circle cx="19" cy="17" r="2"/></svg>
           Chemistry
         </a>
-        <a href="/register.html" class="inline-flex items-center gap-2 bg-slate-800 border border-slate-700/50 px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl text-sm sm:font-medium hover:border-blue-500 hover:bg-blue-600/10 transition-all cursor-pointer">
-          <svg class="w-4 h-4 sm:w-5 sm:h-5 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20c0-9 6-15 15-15 0 9-6 15-15 15Z"/><path d="M6 18 17 7"/></svg>
+        <a href="/register.html" class="subject-tag">
+          <svg class="w-4 h-4 sm:w-5 sm:h-5" style="color:#60a5fa;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20c0-9 6-15 15-15 0 9-6 15-15 15Z"/><path d="M6 18 17 7"/></svg>
           Biology
         </a>
-        <a href="/register.html" class="inline-flex items-center gap-2 bg-slate-800 border border-slate-700/50 px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl text-sm sm:font-medium hover:border-blue-500 hover:bg-blue-600/10 transition-all cursor-pointer">
-          <svg class="w-4 h-4 sm:w-5 sm:h-5 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20 12 4l8 16"/><path d="M8 14h8"/></svg>
+        <a href="/register.html" class="subject-tag">
+          <svg class="w-4 h-4 sm:w-5 sm:h-5" style="color:#60a5fa;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20 12 4l8 16"/><path d="M8 14h8"/></svg>
           Mathematics
         </a>
       </div>
@@ -522,53 +571,53 @@
 
   <!-- AUDIENCES SECTION -->
   <section id="about" class="max-w-7xl mx-auto px-4 sm:px-6 py-16 sm:py-24">
-      <div class="text-center max-w-2xl mx-auto mb-10 sm:mb-16 space-y-2 sm:space-y-3 px-2">
-        <h2 class="text-[10px] sm:text-xs font-bold text-blue-600 uppercase tracking-widest">Tailored Experiences</h2>
-        <p class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Built for Everyone in the School</p>
-        <p class="text-xs sm:text-sm text-slate-500">Sign-up accounts are available as <strong>Student</strong> or <strong>Teacher</strong>. Parents and schools benefit through the student and teacher experience.</p>
+      <div class="text-center max-w-2xl mx-auto mb-10 sm:mb-16 space-y-3 sm:space-y-4 px-2">
+        <span class="section-label mx-auto">Tailored Experiences</span>
+        <p class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight" style="letter-spacing:-0.03em;">Built for Everyone in the School</p>
+        <p class="text-xs sm:text-sm" style="color:#64748b;">Sign-up accounts are available as <strong class="text-slate-700">Student</strong> or <strong class="text-slate-700">Teacher</strong>. Parents and schools benefit through the student and teacher experience.</p>
       </div>
 
-    <div class="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-      <div class="bg-white border border-[#e0d8cc] rounded-2xl p-5 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
-        <div class="w-10 h-10 sm:w-11 sm:h-11 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mb-3 sm:mb-4" aria-hidden="true">
-          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M8 20h8M12 16v4"/><path d="M7 10l3-2 2 1.5 4-3"/></svg>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+      <div class="premium-card p-5 sm:p-6 group glow-hover">
+        <div class="feature-icon-premium mb-3 sm:mb-4" aria-hidden="true">
+          <svg class="w-5 h-5" style="color:#2563eb;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M8 20h8M12 16v4"/><path d="M7 10l3-2 2 1.5 4-3"/></svg>
         </div>
-        <h4 class="font-bold text-slate-900 mb-2 sm:mb-3 text-sm sm:text-base">Teachers</h4>
-        <ul class="text-xs text-slate-500 space-y-1.5 sm:space-y-2">
-          <li class="flex items-start gap-1.5"><span class="text-blue-500 mt-0.5 shrink-0">•</span>Create rich digital content</li>
-          <li class="flex items-start gap-1.5"><span class="text-blue-500 mt-0.5 shrink-0">•</span>Coordinate modular cohorts</li>
-          <li class="flex items-start gap-1.5"><span class="text-blue-500 mt-0.5 shrink-0">•</span>Evaluate metrics streams</li>
+        <h4 class="font-bold text-slate-900 mb-2 sm:mb-3 text-lg sm:text-xl">Teachers</h4>
+        <ul class="text-sm sm:text-base space-y-1.5 sm:space-y-2" style="color:#475569;">
+          <li class="flex items-start gap-1.5"><span class="mt-0.5 shrink-0" style="color:#2563eb;">•</span>Create rich digital content</li>
+          <li class="flex items-start gap-1.5"><span class="mt-0.5 shrink-0" style="color:#2563eb;">•</span>Coordinate modular cohorts</li>
+          <li class="flex items-start gap-1.5"><span class="mt-0.5 shrink-0" style="color:#2563eb;">•</span>Evaluate metrics streams</li>
         </ul>
       </div>
-      <div class="bg-white border border-[#e0d8cc] rounded-2xl p-5 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
-        <div class="w-10 h-10 sm:w-11 sm:h-11 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mb-3 sm:mb-4" aria-hidden="true">
-          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6c-2-1.5-5-2-8-1.5v13c3-.5 6 0 8 1.5 2-1.5 5-2 8-1.5v-13c-3-.5-6 0-8 1.5Z"/><path d="M12 6v13"/></svg>
+      <div class="premium-card p-5 sm:p-6 group glow-hover">
+        <div class="feature-icon-premium mb-3 sm:mb-4" aria-hidden="true">
+          <svg class="w-5 h-5" style="color:#2563eb;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6c-2-1.5-5-2-8-1.5v13c3-.5 6 0 8 1.5 2-1.5 5-2 8-1.5v-13c-3-.5-6 0-8 1.5Z"/><path d="M12 6v13"/></svg>
         </div>
-        <h4 class="font-bold text-slate-900 mb-2 sm:mb-3 text-sm sm:text-base">Students</h4>
-        <ul class="text-xs text-slate-500 space-y-1.5 sm:space-y-2">
-          <li class="flex items-start gap-1.5"><span class="text-blue-500 mt-0.5 shrink-0">•</span>Study from any location</li>
-          <li class="flex items-start gap-1.5"><span class="text-blue-500 mt-0.5 shrink-0">•</span>Interact with tests offline</li>
-          <li class="flex items-start gap-1.5"><span class="text-blue-500 mt-0.5 shrink-0">•</span>Monitor learning records</li>
+        <h4 class="font-bold text-slate-900 mb-2 sm:mb-3 text-lg sm:text-xl">Students</h4>
+        <ul class="text-sm sm:text-base space-y-1.5 sm:space-y-2" style="color:#475569;">
+          <li class="flex items-start gap-1.5"><span class="mt-0.5 shrink-0" style="color:#2563eb;">•</span>Study from any location</li>
+          <li class="flex items-start gap-1.5"><span class="mt-0.5 shrink-0" style="color:#2563eb;">•</span>Interact with tests offline</li>
+          <li class="flex items-start gap-1.5"><span class="mt-0.5 shrink-0" style="color:#2563eb;">•</span>Monitor learning records</li>
         </ul>
       </div>
-      <div class="bg-white border border-[#e0d8cc] rounded-2xl p-5 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
-        <div class="w-10 h-10 sm:w-11 sm:h-11 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mb-3 sm:mb-4" aria-hidden="true">
-          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11 12 4l8 7"/><path d="M6 10v10h12V10"/><path d="M12 14c-1.2-1.5-3.5-1-3.5 1 0 1.6 2 2.8 3.5 4 1.5-1.2 3.5-2.4 3.5-4 0-2-2.3-2.5-3.5-1Z"/></svg>
+      <div class="premium-card p-5 sm:p-6 group glow-hover">
+        <div class="feature-icon-premium mb-3 sm:mb-4" aria-hidden="true">
+          <svg class="w-5 h-5" style="color:#2563eb;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11 12 4l8 7"/><path d="M6 10v10h12V10"/><path d="M12 14c-1.2-1.5-3.5-1-3.5 1 0 1.6 2 2.8 3.5 4 1.5-1.2 3.5-2.4 3.5-4 0-2-2.3-2.5-3.5-1Z"/></svg>
         </div>
-        <h4 class="font-bold text-slate-900 mb-2 sm:mb-3 text-sm sm:text-base">Parents</h4>
-        <ul class="text-xs text-slate-500 space-y-1.5 sm:space-y-2">
-          <li class="flex items-start gap-1.5"><span class="text-blue-500 mt-0.5 shrink-0">•</span>Observe progress trackers</li>
-          <li class="flex items-start gap-1.5"><span class="text-blue-500 mt-0.5 shrink-0">•</span>View localized updates</li>
+        <h4 class="font-bold text-slate-900 mb-2 sm:mb-3 text-lg sm:text-xl">Parents</h4>
+        <ul class="text-sm sm:text-base space-y-1.5 sm:space-y-2" style="color:#475569;">
+          <li class="flex items-start gap-1.5"><span class="mt-0.5 shrink-0" style="color:#2563eb;">•</span>Observe progress trackers</li>
+          <li class="flex items-start gap-1.5"><span class="mt-0.5 shrink-0" style="color:#2563eb;">•</span>View localized updates</li>
         </ul>
       </div>
-      <div class="bg-white border border-[#e0d8cc] rounded-2xl p-5 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
-        <div class="w-10 h-10 sm:w-11 sm:h-11 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mb-3 sm:mb-4" aria-hidden="true">
-          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V9l8-5 8 5v12"/><path d="M9 21v-6h6v6"/><path d="M12 4V2M12 2h3l-3 2"/></svg>
+      <div class="premium-card p-5 sm:p-6 group glow-hover">
+        <div class="feature-icon-premium mb-3 sm:mb-4" aria-hidden="true">
+          <svg class="w-5 h-5" style="color:#2563eb;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V9l8-5 8 5v12"/><path d="M9 21v-6h6v6"/><path d="M12 4V2M12 2h3l-3 2"/></svg>
         </div>
-        <h4 class="font-bold text-slate-900 mb-2 sm:mb-3 text-sm sm:text-base">Schools</h4>
-        <ul class="text-xs text-slate-500 space-y-1.5 sm:space-y-2">
-          <li class="flex items-start gap-1.5"><span class="text-blue-500 mt-0.5 shrink-0">•</span>Optimize staff delegation</li>
-          <li class="flex items-start gap-1.5"><span class="text-blue-500 mt-0.5 shrink-0">•</span>Export complex analytical datasets</li>
+        <h4 class="font-bold text-slate-900 mb-2 sm:mb-3 text-lg sm:text-xl">Schools</h4>
+        <ul class="text-sm sm:text-base space-y-1.5 sm:space-y-2" style="color:#475569;">
+          <li class="flex items-start gap-1.5"><span class="mt-0.5 shrink-0" style="color:#2563eb;">•</span>Optimize staff delegation</li>
+          <li class="flex items-start gap-1.5"><span class="mt-0.5 shrink-0" style="color:#2563eb;">•</span>Export complex analytical datasets</li>
         </ul>
       </div>
     </div>
@@ -576,21 +625,21 @@
 
   <!-- CALL TO ACTION -->
   <section class="max-w-7xl mx-auto px-4 sm:px-6 mb-16 sm:mb-24">
-    <div class="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-blue-600 via-blue-600 to-indigo-700 px-6 py-12 sm:px-16 sm:py-20 text-center text-white shadow-2xl shadow-blue-200/50">
+    <div class="relative overflow-hidden rounded-2xl sm:rounded-3xl px-6 py-12 sm:px-16 sm:py-20 text-center text-white" style="background:linear-gradient(135deg,#2563eb 0%,#7c3aed 50%,#4f46e5 100%);box-shadow:0 20px 60px rgba(37,99,235,0.3);">
       <!-- Decorative accents -->
       <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-white/15 to-transparent pointer-events-none" aria-hidden="true"></div>
-      <div class="absolute -top-16 -left-16 w-64 h-64 bg-indigo-400/30 rounded-full blur-3xl pointer-events-none" aria-hidden="true"></div>
-      <div class="absolute -bottom-20 -right-10 w-72 h-72 bg-blue-300/20 rounded-full blur-3xl pointer-events-none" aria-hidden="true"></div>
+      <div class="absolute -top-16 -left-16 w-64 h-64 rounded-full blur-3xl pointer-events-none" aria-hidden="true" style="background:rgba(96,165,250,0.2);"></div>
+      <div class="absolute -bottom-20 -right-10 w-72 h-72 rounded-full blur-3xl pointer-events-none" aria-hidden="true" style="background:rgba(124,58,237,0.15);"></div>
 
       <div class="relative max-w-2xl mx-auto space-y-5 sm:space-y-6">
-        <h3 class="text-2xl sm:text-3xl lg:text-5xl font-extrabold tracking-tight leading-tight">Ready to Transform Education?</h3>
-        <p class="text-blue-100 max-w-xl mx-auto text-sm sm:text-base lg:text-lg leading-relaxed">Join thousands of modern instructors, students, and system administrators configuring smarter school networks today.</p>
+        <h3 class="text-2xl sm:text-3xl lg:text-5xl font-extrabold tracking-tight leading-tight" style="letter-spacing:-0.03em;">Ready to Transform Education?</h3>
+        <p class="max-w-xl mx-auto text-sm sm:text-base lg:text-lg leading-relaxed" style="color:rgba(255,255,255,0.8);">Join thousands of modern instructors, students, and system administrators configuring smarter school networks today.</p>
         <div class="flex flex-col sm:flex-row flex-wrap justify-center gap-3 sm:gap-4 pt-4">
-          <a href="/register.html" class="inline-flex items-center justify-center gap-2 bg-white text-blue-700 font-bold px-6 sm:px-8 py-3.5 sm:py-4 rounded-xl transition-all hover:bg-blue-50 hover:-translate-y-0.5 shadow-lg shadow-blue-900/20 min-h-[48px]">
+          <a href="/register.html" class="inline-flex items-center justify-center gap-2 bg-white font-bold px-6 sm:px-8 py-3.5 sm:py-4 rounded-xl transition-all hover:bg-blue-50 hover:-translate-y-0.5 min-h-[48px] w-full sm:w-auto" style="color:#2563eb;box-shadow:0 4px 20px rgba(0,0,0,0.15);">
             Create Account
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
+            <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
           </a>
-          <a href="/login.html" class="inline-flex items-center justify-center gap-2 bg-white/10 text-white border border-white/30 font-bold px-6 sm:px-8 py-3.5 sm:py-4 rounded-xl transition-all hover:bg-white/20 hover:-translate-y-0.5 backdrop-blur-sm min-h-[48px]">
+          <a href="/login.html" class="inline-flex items-center justify-center gap-2 text-white font-bold px-6 sm:px-8 py-3.5 sm:py-4 rounded-xl transition-all hover:-translate-y-0.5 backdrop-blur-sm min-h-[48px] w-full sm:w-auto" style="background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.25);">
             Login
           </a>
         </div>
@@ -779,7 +828,7 @@
             </div>
             <div style="width:28px;height:28px;background:#2563eb;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700">A</div>
           </div>
-          <div style="flex:1;padding:16px;overflow-y:auto;background:#f9f3e9">
+          <div style="flex:1;padding:16px;overflow-y:auto;background:#faf7f2">
             <!-- Welcome banner -->
             <div class="demo-card-up" style="background:linear-gradient(135deg,#2563eb,#7c3aed);border-radius:14px;padding:16px;color:#fff;margin-bottom:14px">
               <div style="font-size:10px;font-weight:600;opacity:0.7;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">Welcome back</div>
@@ -866,29 +915,40 @@
   </main>
 
   <!-- FOOTER -->
-  <footer class="bg-white border-t border-[#e0d8cc] text-slate-500 text-xs py-10 sm:py-12" role="contentinfo">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
-      <div class="space-y-3">
-        <div class="font-bold text-slate-900 text-sm">Platform</div>
-        <div><a href="#features" class="hover:text-blue-600">Features</a></div>
-        <div><a href="https://github.com/casuya-co-tz" class="hover:text-blue-600" target="_blank" rel="noopener">Documentation</a></div>
-        <div><a href="#subjects" class="hover:text-blue-600">Subjects</a></div>
+  <footer class="text-xs py-10 sm:py-14" role="contentinfo" style="background:linear-gradient(180deg,#0f172a 0%,#020617 100%);color:#94a3b8;">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-8 sm:gap-10 mb-10">
+        <div class="space-y-4">
+          <div class="flex items-center gap-2 mb-2">
+            <div class="w-8 h-8 rounded-xl flex items-center justify-center text-white font-extrabold text-sm" style="background:linear-gradient(135deg,#2563eb,#7c3aed);">C</div>
+            <span class="font-extrabold text-sm" style="color:#f1f5f9;letter-spacing:-0.02em;">Casuya</span>
+          </div>
+          <div><a href="#features" class="transition-colors hover:text-blue-400">Features</a></div>
+          <div><a href="https://github.com/casuya-co-tz" class="transition-colors hover:text-blue-400" target="_blank" rel="noopener">Documentation</a></div>
+          <div><a href="#subjects" class="transition-colors hover:text-blue-400">Subjects</a></div>
+        </div>
+        <div class="space-y-4">
+          <div class="font-bold text-sm mb-2" style="color:#f1f5f9;">Support</div>
+          <div><a href="/help.html" class="transition-colors hover:text-blue-400">Help Center</a></div>
+          <div><a href="/contact.html" class="transition-colors hover:text-blue-400">Contact Us</a></div>
+          <div><a href="https://wa.me/255748386745" target="_blank" rel="noopener" class="transition-colors hover:text-blue-400">WhatsApp</a></div>
+        </div>
+        <div class="space-y-4">
+          <div class="font-bold text-sm mb-2" style="color:#f1f5f9;">Legal</div>
+          <div><a href="/privacy.html" class="transition-colors hover:text-blue-400">Privacy Policy</a></div>
+          <div><a href="/terms.html" class="transition-colors hover:text-blue-400">Terms of Service</a></div>
+        </div>
+        <div class="space-y-4">
+          <div class="font-bold text-sm mb-2" style="color:#f1f5f9;">Links</div>
+          <div><a href="https://github.com/casuya-co-tz" class="transition-colors hover:text-blue-400" target="_blank" rel="noopener">GitHub Organization</a></div>
+        </div>
       </div>
-      <div class="space-y-3">
-        <div class="font-bold text-slate-900 text-sm">Support</div>
-        <div><a href="/help.html" class="hover:text-blue-600">Help Center</a></div>
-        <div><a href="/contact.html" class="hover:text-blue-600">Contact Us</a></div>
-        <div><a href="https://wa.me/255748386745" target="_blank" rel="noopener" class="hover:text-blue-600">WhatsApp</a></div>
-      </div>
-      <div class="space-y-3">
-        <div class="font-bold text-slate-900 text-sm">Legal</div>
-        <div><a href="/privacy.html" class="hover:text-blue-600">Privacy Policy</a></div>
-        <div><a href="/terms.html" class="hover:text-blue-600">Terms of Service</a></div>
-      </div>
-      <div class="space-y-3">
-        <div class="font-bold text-slate-900 text-sm">Links</div>
-        <div><a href="https://github.com/casuya-co-tz" class="hover:text-blue-600" target="_blank" rel="noopener">GitHub Organization</a></div>
-        <div class="pt-2 text-[10px] text-slate-400">© 2026 Casuya Platform.</div>
+      <div style="border-top:1px solid rgba(148,163,184,0.12);"></div>
+      <div class="pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div class="text-[11px]" style="color:#475569;">&copy; 2026 Casuya Platform. All rights reserved.</div>
+        <div class="flex items-center gap-4 text-[11px]" style="color:#475569;">
+          <span>Built with care for Tanzanian schools</span>
+        </div>
       </div>
     </div>
   </footer>
@@ -923,9 +983,9 @@
       trustedEl.innerHTML = trusted
         .map(
           (f, i) =>
-            `<span class="hover:text-slate-400 transition-colors cursor-default text-xs sm:text-sm lg:text-lg">${f.title}</span>${
+            `<span class="cursor-default text-xs sm:text-sm lg:text-lg" style="color:#334155;">${f.title}</span>${
               i < trusted.length - 1
-                ? '<span class="text-blue-500">•</span>'
+                ? '<span style="color:#2563eb;">•</span>'
                 : ""
             }`
         )
@@ -940,10 +1000,10 @@
       gridEl.innerHTML = cards
         .map(
           (f) =>
-            `<div class="bg-white border border-[#e0d8cc] rounded-2xl p-5 sm:p-6 lg:p-8 hover:shadow-xl hover:shadow-[#e0d8cc] transition-all group">
-              <div class="w-10 h-10 sm:w-11 sm:h-11 lg:w-12 lg:h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center font-bold text-lg sm:text-xl mb-4 sm:mb-5 lg:mb-6 group-hover:bg-blue-600 group-hover:text-white transition-all">${f.icon}</div>
+            `<div class="premium-card p-5 sm:p-6 lg:p-8 group glow-hover">
+              <div class="feature-icon-premium mb-4 sm:mb-5 lg:mb-6">${f.icon}</div>
               <h3 class="text-base sm:text-lg font-bold text-slate-900 mb-1.5 sm:mb-2">${f.title}</h3>
-              <p class="text-xs sm:text-sm text-slate-500 leading-relaxed">${f.blurb}</p>
+              <p class="text-xs sm:text-sm leading-relaxed" style="color:#64748b;">${f.blurb}</p>
             </div>`
         )
         .join("");
