@@ -19,13 +19,116 @@
   <style>
     body { font-family: 'Plus Jakarta Sans', sans-serif; }
 
+    /* ── Dyslexia Font Mode ─────────────────────────────────── */
+    body.dyslexia-mode, body.dyslexia-mode * {
+      font-family: 'OpenDyslexic', 'Comic Sans MS', cursive !important;
+      letter-spacing: 0.05em;
+      word-spacing: 0.15em;
+    }
+    /* ── High Contrast Mode ──────────────────────────────────── */
+    body.high-contrast { background: #000 !important; color: #fff !important; }
+    body.high-contrast * { border-color: #fff !important; color: #fff !important; background: transparent !important; }
+    body.high-contrast nav, body.high-contrast footer { background: #000 !important; }
+    body.high-contrast a { color: #60a5fa !important; }
+    body.high-contrast .bg-white { background: #000 !important; border: 2px solid #fff !important; }
+    body.high-contrast .bg-[#f9f3e9] { background: #000 !important; }
+    body.high-contrast .text-slate-900 { color: #fff !important; }
+    body.high-contrast .text-slate-600 { color: #e2e8f0 !important; }
+    body.high-contrast .text-slate-500 { color: #cbd5e1 !important; }
+    body.high-contrast .text-slate-400 { color: #94a3b8 !important; }
+    body.high-contrast .bg-blue-50 { background: #1e3a5f !important; }
+    body.high-contrast .bg-blue-600 { background: #3b82f6 !important; color: #000 !important; }
+    body.high-contrast .border-[#e0d8cc] { border-color: #334155 !important; }
+    body.high-contrast .border-[#d6cdbf] { border-color: #334155 !important; }
+    body.high-contrast .shadow-2xl { box-shadow: 0 0 0 2px #fff !important; }
+    body.high-contrast .shadow-sm { box-shadow: 0 0 0 1px #fff !important; }
+    body.high-contrast .bg-slate-900 { background: #0f172a !important; }
+    body.high-contrast .bg-slate-800 { background: #1e293b !important; }
+    /* ── Large Text Mode ──────────────────────────────────────── */
+    body.large-text { font-size: 125%; line-height: 1.7; }
+    body.large-text h1 { font-size: 135% !important; }
+    body.large-text h2 { font-size: 125% !important; }
+    body.large-text p, body.large-text li, body.large-text span { font-size: 115% !important; }
+    body.extra-large-text { font-size: 150%; line-height: 1.9; letter-spacing: 0.03em; }
+    body.extra-large-text h1 { font-size: 160% !important; }
+    body.extra-large-text h2 { font-size: 140% !important; }
+    body.extra-large-text p, body.extra-large-text li, body.extra-large-text span { font-size: 130% !important; }
+    body.max-text { font-size: 200%; line-height: 2; letter-spacing: 0.05em; }
+    body.max-text h1 { font-size: 180% !important; }
+    body.max-text h2 { font-size: 160% !important; }
+    body.max-text p, body.max-text li, body.max-text span { font-size: 150% !important; }
+    /* ── Wide Spacing Mode ────────────────────────────────────── */
+    body.wide-spacing { line-height: 2.2 !important; letter-spacing: 0.12em !important; word-spacing: 0.2em !important; }
+    body.wide-spacing * { line-height: 2.2 !important; letter-spacing: 0.12em !important; word-spacing: 0.2em !important; }
+    /* ── Accessibility Toolbar ───────────────────────────────── */
+    .a11y-toolbar { position: fixed; bottom: 20px; left: 20px; z-index: 9998; }
+    .a11y-toggle {
+      width: 52px; height: 52px; border-radius: 50%;
+      background: #2563eb; color: #fff; border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 20px rgba(37,99,235,0.4);
+      transition: all 0.3s ease;
+    }
+    .a11y-toggle:hover { transform: scale(1.1); background: #1d4ed8; }
+    .a11y-panel {
+      position: absolute; bottom: 64px; left: 0;
+      background: #fff; border: 1px solid #e2e8f0; border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+      padding: 16px; width: 260px;
+      opacity: 0; pointer-events: none; transform: translateY(10px);
+      transition: all 0.25s ease;
+    }
+    .a11y-panel.open { opacity: 1; pointer-events: auto; transform: translateY(0); }
+    .a11y-panel h3 { font-size: 13px; font-weight: 800; color: #0f172a; margin-bottom: 12px; }
+    .a11y-option {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 12px; border-radius: 10px; margin-bottom: 6px;
+      cursor: pointer; transition: background 0.15s;
+    }
+    .a11y-option:hover { background: #f1f5f9; }
+    .a11y-option span { font-size: 13px; font-weight: 600; color: #334155; }
+    .a11y-option .a11y-icon { font-size: 18px; }
+    .a11y-toggle-btn {
+      width: 40px; height: 22px; border-radius: 11px; border: none;
+      background: #cbd5e1; cursor: pointer; position: relative;
+      transition: background 0.2s;
+    }
+    .a11y-toggle-btn.active { background: #2563eb; }
+    .a11y-toggle-btn::after {
+      content: ''; position: absolute; top: 2px; left: 2px;
+      width: 18px; height: 18px; border-radius: 50%;
+      background: #fff; transition: transform 0.2s;
+    }
+    .a11y-toggle-btn.active::after { transform: translateX(18px); }
+    .a11y-slider-row { display: flex; align-items: center; gap: 8px; padding: 8px 12px; }
+    .a11y-slider-row span { font-size: 12px; font-weight: 600; color: #64748b; min-width: 24px; }
+    .a11y-slider { flex: 1; accent-color: #2563eb; cursor: pointer; }
+    .speech-controls {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 12px; margin-top: 4px;
+      background: #f8fafc; border-radius: 10px;
+    }
+    .speech-btn {
+      width: 32px; height: 32px; border-radius: 8px; border: 1px solid #e2e8f0;
+      background: #fff; cursor: pointer; display: flex; align-items: center;
+      justify-content: center; transition: all 0.15s;
+    }
+    .speech-btn:hover { background: #eff6ff; border-color: #2563eb; }
+    .speech-btn.speaking { background: #2563eb; color: #fff; border-color: #2563eb; }
+    /* ── Skip Link ───────────────────────────────────────────── */
+    .skip-link {
+      position: absolute; top: -100%; left: 16px; z-index: 9999;
+      background: #2563eb; color: #fff; padding: 12px 24px;
+      border-radius: 0 0 12px 12px; font-weight: 700; font-size: 14px;
+      transition: top 0.2s ease;
+    }
+    .skip-link:focus { top: 0; }
     /* Accessible keyboard focus states */
-    a:focus-visible, button:focus-visible {
-      outline: 2px solid #2563eb;
+    a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible {
+      outline: 3px solid #2563eb;
       outline-offset: 2px;
       border-radius: 4px;
     }
-
     /* Respect users who've asked for reduced motion */
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after {
@@ -183,15 +286,68 @@
 </head>
 <body class="bg-[#f9f3e9] text-slate-800 antialiased overflow-x-hidden">
 
-  <!-- Skip link for keyboard / screen-reader users -->
-  <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[100] bg-blue-600 text-white text-sm font-semibold px-4 py-2 rounded-lg">Skip to content</a>
+  <!-- Skip Link for keyboard / screen-reader users -->
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+
+  <!-- GLOBAL ACCESSIBILITY TOOLBAR -->
+  <div class="a11y-toolbar" role="region" aria-label="Accessibility options">
+    <button class="a11y-toggle" id="a11y-toggle-btn" aria-label="Open accessibility settings" aria-expanded="false" aria-controls="a11y-panel">
+      <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <circle cx="12" cy="4" r="2"/><path d="M12 8v8m-4-6l4 6 4-6M4 20h16"/>
+      </svg>
+    </button>
+    <div class="a11y-panel" id="a11y-panel" role="dialog" aria-label="Accessibility settings panel">
+      <h3>Accessibility Settings</h3>
+      <div class="a11y-option" role="button" tabindex="0" id="a11y-dyslexia" aria-pressed="false">
+        <span><span class="a11y-icon" aria-hidden="true">📖</span> Dyslexia Font</span>
+        <button class="a11y-toggle-btn" aria-label="Toggle dyslexia-friendly font"></button>
+      </div>
+      <div class="a11y-option" role="button" tabindex="0" id="a11y-contrast" aria-pressed="false">
+        <span><span class="a11y-icon" aria-hidden="true">🌗</span> High Contrast</span>
+        <button class="a11y-toggle-btn" aria-label="Toggle high contrast mode"></button>
+      </div>
+      <div class="a11y-option" role="button" tabindex="0" id="a11y-large-text" aria-pressed="false">
+        <span><span class="a11y-icon" aria-hidden="true">🔤</span> Large Text</span>
+        <button class="a11y-toggle-btn" aria-label="Toggle large text mode"></button>
+      </div>
+      <div class="a11y-option" role="button" tabindex="0" id="a11y-wide-spacing" aria-pressed="false">
+        <span><span class="a11y-icon" aria-hidden="true">↔️</span> Wide Spacing</span>
+        <button class="a11y-toggle-btn" aria-label="Toggle wide line and letter spacing"></button>
+      </div>
+      <div class="a11y-slider-row" id="a11y-fontsize-row">
+        <span style="font-size:11px;color:#64748b;white-space:nowrap">Size</span>
+        <input type="range" class="a11y-slider" id="a11y-fontsize" min="100" max="200" step="10" value="100" aria-label="Font size percentage">
+        <span id="a11y-fontsize-label" style="font-size:11px;color:#64748b;min-width:32px;text-align:right">100%</span>
+      </div>
+      <div class="a11y-option" role="button" tabindex="0" id="a11y-tts" aria-pressed="false">
+        <span><span class="a11y-icon" aria-hidden="true">🔊</span> Text-to-Speech</span>
+        <button class="a11y-toggle-btn" aria-label="Toggle text-to-speech"></button>
+      </div>
+      <div class="a11y-slider-row" id="a11y-speed-row" style="display:none">
+        <span id="a11y-speed-label">1x</span>
+        <input type="range" class="a11y-slider" id="a11y-speed" min="0.5" max="2" step="0.1" value="1" aria-label="Speech rate">
+      </div>
+      <div class="speech-controls" id="speech-controls" style="display:none">
+        <button class="speech-btn" id="speech-play" aria-label="Play speech">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+        </button>
+        <button class="speech-btn" id="speech-pause" aria-label="Pause speech">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+        </button>
+        <button class="speech-btn" id="speech-stop" aria-label="Stop speech">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+        </button>
+        <span style="font-size:11px;color:#64748b;margin-left:auto" id="speech-status">Ready</span>
+      </div>
+    </div>
+  </div>
 
   <!-- NAVIGATION BAR -->
-  <nav class="sticky top-0 z-50 bg-[#f9f3e9]/80 backdrop-blur-md border-b border-[#e0d8cc]">
+  <nav class="sticky top-0 z-50 bg-[#f9f3e9]/80 backdrop-blur-md border-b border-[#e0d8cc]" role="navigation" aria-label="Main navigation">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 sm:h-20 flex items-center justify-between">
       <!-- Logo -->
       <div class="flex items-center gap-2">
-        <div data-brand-logo data-brand-logo-class="w-8 h-8 sm:w-9 sm:h-9 bg-blue-600 rounded-xl flex items-center justify-center text-white font-extrabold text-base sm:text-lg shadow-md shadow-blue-200" class="w-8 h-8 sm:w-9 sm:h-9 bg-blue-600 rounded-xl flex items-center justify-center text-white font-extrabold text-base sm:text-lg shadow-md shadow-blue-200">C</div>
+        <div data-brand-logo data-brand-logo-class="w-8 h-8 sm:w-9 sm:h-9 bg-blue-600 rounded-xl flex items-center justify-center text-white font-extrabold text-base sm:text-lg shadow-md shadow-blue-200" class="w-8 h-8 sm:w-9 sm:h-9 bg-blue-600 rounded-xl flex items-center justify-center text-white font-extrabold text-base sm:text-lg shadow-md shadow-blue-200" aria-hidden="true">C</div>
         <span class="text-lg sm:text-xl font-extrabold tracking-tight text-slate-900">Casuya</span>
       </div>
 
@@ -201,7 +357,6 @@
         <div class="hidden md:flex items-center gap-8 text-sm font-semibold text-slate-600">
           <a href="#features" data-i18n="navFeatures" class="hover:text-blue-600 transition-colors">Features</a>
           <a href="#subjects" data-i18n="navSubjects" class="hover:text-blue-600 transition-colors">Subjects</a>
-          <a href="#audiences" data-i18n="navUsers" class="hover:text-blue-600 transition-colors">Users</a>
           <a href="#about" data-i18n="navAbout" class="hover:text-blue-600 transition-colors">About</a>
         </div>
 
@@ -233,7 +388,6 @@
       <div class="px-4 sm:px-6 py-4 flex flex-col gap-3 sm:gap-4 text-sm font-semibold text-slate-600">
         <a href="#features" data-i18n="navFeatures" class="hover:text-blue-600 transition-colors">Features</a>
         <a href="#subjects" data-i18n="navSubjects" class="hover:text-blue-600 transition-colors">Subjects</a>
-        <a href="#audiences" data-i18n="navUsers" class="hover:text-blue-600 transition-colors">Users</a>
         <a href="#about" data-i18n="navAbout" class="hover:text-blue-600 transition-colors">About</a>
         <a href="/login.html" data-i18n="login" class="sm:hidden pt-2 border-t border-[#e0d8cc] hover:text-blue-600 transition-colors">Login</a>
       </div>
@@ -245,13 +399,13 @@
   <!-- HERO SECTION -->
   <section class="relative max-w-7xl mx-auto px-4 sm:px-6 pt-10 sm:pt-16 pb-16 sm:pb-24 grid lg:grid-cols-12 gap-8 sm:gap-12 items-center mesh-gradient-bg overflow-hidden">
     <!-- Glow orbs -->
-    <div class="glow-orb glow-orb-1"></div>
-    <div class="glow-orb glow-orb-2"></div>
-    <div class="glow-orb glow-orb-3"></div>
+    <div class="glow-orb glow-orb-1" aria-hidden="true"></div>
+    <div class="glow-orb glow-orb-2" aria-hidden="true"></div>
+    <div class="glow-orb glow-orb-3" aria-hidden="true"></div>
     <!-- Grid overlay -->
-    <div class="grid-overlay"></div>
+    <div class="grid-overlay" aria-hidden="true"></div>
     <!-- Noise texture -->
-    <div class="noise-overlay"></div>
+    <div class="noise-overlay" aria-hidden="true"></div>
     <div class="lg:col-span-6 space-y-5 sm:space-y-6">
       <h1 data-i18n-html="heroTitle" class="hero-title text-3xl xs:text-4xl sm:text-5xl lg:text-6xl font-extrabold text-slate-900 tracking-tight leading-[1.1]">
         Learn Smarter.<br>Teach Better.<br><span class="text-blue-600">Build the Future.</span>
@@ -712,7 +866,7 @@
   </main>
 
   <!-- FOOTER -->
-  <footer class="bg-white border-t border-[#e0d8cc] text-slate-500 text-xs py-10 sm:py-12">
+  <footer class="bg-white border-t border-[#e0d8cc] text-slate-500 text-xs py-10 sm:py-12" role="contentinfo">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
       <div class="space-y-3">
         <div class="font-bold text-slate-900 text-sm">Platform</div>
@@ -747,7 +901,7 @@
   </a>
 
   <script type="module">
-    import { FEATURES, PERSONAS, enabledFeatures } from "/assets/js/site-features.js";
+    import { FEATURES } from "/assets/js/site-features.js";
 
     // ── Hero value checkmarks ──────────────────────────────────────────
     const heroEl = document.getElementById("hero-features");
@@ -894,25 +1048,40 @@
     var totalSteps = 4;
     var timer = null;
     var typingTimer = null;
+    var pendingTimeouts = [];
     var screens = ['ds-login', 'ds-forgot', 'ds-register', 'ds-dashboard'];
-    var labels = ['Sign In', 'Forgot Password', 'Create Account', 'Dashboard'];
     var overlay = document.getElementById('demo-overlay');
     var dots = document.querySelectorAll('#demo-steps .demo-step-dot');
     var playIcon = document.getElementById('demo-play-icon');
     var pauseIcon = document.getElementById('demo-pause-icon');
     var labelEl = document.getElementById('demo-label');
+    var labelTimer = null;
+
+    function safeSetTimeout(fn, ms) {
+      var id = setTimeout(fn, ms);
+      pendingTimeouts.push(id);
+      return id;
+    }
+
+    function clearPendingTimeouts() {
+      pendingTimeouts.forEach(clearTimeout);
+      pendingTimeouts = [];
+    }
 
     // ── Show / hide label badge ────────────────────────────────
     function showLabel(text) {
+      if (!labelEl) return;
+      clearTimeout(labelTimer);
       labelEl.textContent = text;
       labelEl.classList.add('show');
-      setTimeout(function () { labelEl.classList.remove('show'); }, 1800);
+      labelTimer = setTimeout(function () { labelEl.classList.remove('show'); }, 1800);
     }
 
     // ── Navigate to a screen ──────────────────────────────────
     function goToScreen(index) {
       screens.forEach(function (id, i) {
         var el = document.getElementById(id);
+        if (!el) return;
         el.classList.remove('active', 'left', 'right');
         if (i < index) el.classList.add('left');
         else if (i > index) el.classList.add('right');
@@ -927,6 +1096,7 @@
     function typeText(elId, cursorId, text, speed, cb) {
       var el = document.getElementById(elId);
       var cursor = document.getElementById(cursorId);
+      if (!el || !cursor) { if (cb) cb(); return; }
       el.textContent = '';
       cursor.style.display = 'inline-block';
       var i = 0;
@@ -937,7 +1107,7 @@
           i++;
         } else {
           clearInterval(typingTimer);
-          setTimeout(function () { cursor.style.display = 'none'; }, 600);
+          safeSetTimeout(function () { cursor.style.display = 'none'; }, 600);
           if (cb) cb();
         }
       }, speed);
@@ -945,24 +1115,27 @@
 
     // ── Step animations ───────────────────────────────────────
     function runStep0(cb) {
-      // Login screen: type email, password, check remember, click sign in
       showLabel('Step 1 — Sign In');
       goToScreen(0);
-      setTimeout(function () {
+      safeSetTimeout(function () {
         typeText('demo-email-text', 'demo-email-cursor', 'amina@school.tz', 60, function () {
-          setTimeout(function () {
+          safeSetTimeout(function () {
             typeText('demo-pass-text', 'demo-pass-cursor', '••••••••', 50, function () {
-              setTimeout(function () {
+              safeSetTimeout(function () {
                 var box = document.getElementById('demo-remember-box');
-                box.style.background = '#2563eb';
-                box.style.borderColor = '#2563eb';
-                box.innerHTML = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"><path d="M5 13l4 4L19 7"/></svg>';
-                setTimeout(function () {
+                if (box) {
+                  box.style.background = '#2563eb';
+                  box.style.borderColor = '#2563eb';
+                  box.innerHTML = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"><path d="M5 13l4 4L19 7"/></svg>';
+                }
+                safeSetTimeout(function () {
                   var btn = document.getElementById('demo-signin-btn');
-                  btn.classList.add('demo-press');
-                  btn.style.background = '#1d4ed8';
-                  setTimeout(function () { btn.classList.remove('demo-press'); btn.style.background = '#2563eb'; }, 400);
-                  if (cb) setTimeout(cb, 500);
+                  if (btn) {
+                    btn.classList.add('demo-press');
+                    btn.style.background = '#1d4ed8';
+                    safeSetTimeout(function () { btn.classList.remove('demo-press'); btn.style.background = '#2563eb'; }, 400);
+                  }
+                  if (cb) safeSetTimeout(cb, 500);
                 }, 500);
               }, 400);
             });
@@ -972,48 +1145,51 @@
     }
 
     function runStep1(cb) {
-      // Forgot password: navigate from login, type email, send
       showLabel('Step 2 — Forgot Password');
       goToScreen(1);
-      setTimeout(function () {
+      safeSetTimeout(function () {
         typeText('demo-forgot-email-text', 'demo-forgot-email-cursor', 'amina@school.tz', 60, function () {
-          setTimeout(function () {
+          safeSetTimeout(function () {
             var btn = document.getElementById('demo-send-btn');
-            btn.classList.add('demo-press');
-            btn.style.background = '#1d4ed8';
-            setTimeout(function () {
-              btn.classList.remove('demo-press');
-              btn.style.background = '#2563eb';
-              btn.textContent = 'Sending...';
-              setTimeout(function () {
-                btn.style.display = 'none';
-                document.getElementById('demo-forgot-success').style.display = 'block';
-                if (cb) setTimeout(cb, 1200);
-              }, 800);
-            }, 400);
+            if (btn) {
+              btn.classList.add('demo-press');
+              btn.style.background = '#1d4ed8';
+              safeSetTimeout(function () {
+                btn.classList.remove('demo-press');
+                btn.style.background = '#2563eb';
+                btn.textContent = 'Sending...';
+                safeSetTimeout(function () {
+                  btn.style.display = 'none';
+                  var success = document.getElementById('demo-forgot-success');
+                  if (success) success.style.display = 'block';
+                  if (cb) safeSetTimeout(cb, 1200);
+                }, 800);
+              }, 400);
+            }
           }, 400);
         });
       }, 600);
     }
 
     function runStep2(cb) {
-      // Register: navigate, fill form fields with typing
       showLabel('Step 3 — Register');
       goToScreen(2);
-      setTimeout(function () {
+      safeSetTimeout(function () {
         typeText('demo-reg-name-text', 'demo-reg-name-cursor', 'Amina Husen', 60, function () {
-          setTimeout(function () {
+          safeSetTimeout(function () {
             typeText('demo-reg-email-text', 'demo-reg-email-cursor', 'amina@school.tz', 50, function () {
-              setTimeout(function () {
+              safeSetTimeout(function () {
                 typeText('demo-reg-pass-text', 'demo-reg-pass-cursor', '••••••••', 50, function () {
-                  setTimeout(function () {
+                  safeSetTimeout(function () {
                     typeText('demo-reg-confirm-text', 'demo-reg-confirm-cursor', '••••••••', 50, function () {
-                      setTimeout(function () {
+                      safeSetTimeout(function () {
                         var btn = document.getElementById('demo-register-btn');
-                        btn.classList.add('demo-press');
-                        btn.style.background = '#1d4ed8';
-                        setTimeout(function () { btn.classList.remove('demo-press'); btn.style.background = '#2563eb'; }, 400);
-                        if (cb) setTimeout(cb, 600);
+                        if (btn) {
+                          btn.classList.add('demo-press');
+                          btn.style.background = '#1d4ed8';
+                          safeSetTimeout(function () { btn.classList.remove('demo-press'); btn.style.background = '#2563eb'; }, 400);
+                        }
+                        if (cb) safeSetTimeout(cb, 600);
                       }, 400);
                     });
                   }, 200);
@@ -1026,10 +1202,9 @@
     }
 
     function runStep3(cb) {
-      // Dashboard: just slide in and show cards
       showLabel('Step 4 — Dashboard');
       goToScreen(3);
-      if (cb) setTimeout(cb, 1500);
+      if (cb) safeSetTimeout(cb, 1500);
     }
 
     var stepRunners = [runStep0, runStep1, runStep2, runStep3];
@@ -1037,13 +1212,12 @@
     function runCurrentStep() {
       stepRunners[currentStep](function () {
         if (playing && currentStep < totalSteps - 1) {
-          timer = setTimeout(function () {
+          timer = safeSetTimeout(function () {
             currentStep++;
             runCurrentStep();
           }, 1800);
         } else if (playing && currentStep === totalSteps - 1) {
-          // Loop back to start
-          timer = setTimeout(function () {
+          timer = safeSetTimeout(function () {
             currentStep = 0;
             resetScreens();
             runCurrentStep();
@@ -1053,26 +1227,26 @@
     }
 
     function resetScreens() {
-      // Reset forgot screen
       var fb = document.getElementById('demo-send-btn');
-      fb.style.display = '';
-      fb.textContent = 'Send Reset Link';
-      fb.style.background = '#2563eb';
-      document.getElementById('demo-forgot-success').style.display = 'none';
-      document.getElementById('demo-forgot-email-text').textContent = '';
-      // Reset login
-      document.getElementById('demo-email-text').textContent = '';
-      document.getElementById('demo-pass-text').textContent = '';
+      if (fb) { fb.style.display = ''; fb.textContent = 'Send Reset Link'; fb.style.background = '#2563eb'; }
+      var fs = document.getElementById('demo-forgot-success');
+      if (fs) fs.style.display = 'none';
+      var fe = document.getElementById('demo-forgot-email-text');
+      if (fe) fe.textContent = '';
+      var et = document.getElementById('demo-email-text');
+      if (et) et.textContent = '';
+      var pt = document.getElementById('demo-pass-text');
+      if (pt) pt.textContent = '';
       var rbox = document.getElementById('demo-remember-box');
-      rbox.style.background = '';
-      rbox.style.borderColor = '';
-      rbox.innerHTML = '';
-      // Reset register
-      document.getElementById('demo-reg-name-text').textContent = '';
-      document.getElementById('demo-reg-email-text').textContent = '';
-      document.getElementById('demo-reg-pass-text').textContent = '';
-      document.getElementById('demo-reg-confirm-text').textContent = '';
-      // Hide cursors
+      if (rbox) { rbox.style.background = ''; rbox.style.borderColor = ''; rbox.innerHTML = ''; }
+      var rn = document.getElementById('demo-reg-name-text');
+      if (rn) rn.textContent = '';
+      var re = document.getElementById('demo-reg-email-text');
+      if (re) re.textContent = '';
+      var rp = document.getElementById('demo-reg-pass-text');
+      if (rp) rp.textContent = '';
+      var rc = document.getElementById('demo-reg-confirm-text');
+      if (rc) rc.textContent = '';
       document.querySelectorAll('.demo-cursor').forEach(function (c) { c.style.display = 'none'; });
     }
 
@@ -1081,10 +1255,10 @@
       overlay.classList.add('open');
       document.body.style.overflow = 'hidden';
       currentStep = 0;
+      clearPendingTimeouts();
       resetScreens();
       goToScreen(0);
-      // Auto-start after a short delay
-      setTimeout(function () {
+      safeSetTimeout(function () {
         playing = true;
         playIcon.style.display = 'none';
         pauseIcon.style.display = '';
@@ -1096,6 +1270,7 @@
       overlay.classList.remove('open');
       document.body.style.overflow = '';
       playing = false;
+      clearPendingTimeouts();
       clearTimeout(timer);
       clearInterval(typingTimer);
       playIcon.style.display = '';
@@ -1111,12 +1286,14 @@
       } else {
         playIcon.style.display = '';
         pauseIcon.style.display = 'none';
+        clearPendingTimeouts();
         clearTimeout(timer);
         clearInterval(typingTimer);
       }
     };
 
     window.demoNextStep = function () {
+      clearPendingTimeouts();
       clearTimeout(timer);
       clearInterval(typingTimer);
       playing = false;
@@ -1137,14 +1314,240 @@
     });
 
     // ── Close on overlay click (outside modal) ────────────────
-    overlay.addEventListener('click', function (e) {
-      if (e.target === overlay) window.closeDemo();
-    });
+    if (overlay) {
+      overlay.addEventListener('click', function (e) {
+        if (e.target === overlay) window.closeDemo();
+      });
+    }
 
     // ── Close on Escape key ───────────────────────────────────
     document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape' && overlay.classList.contains('open')) {
+      if (e.key === 'Escape' && overlay && overlay.classList.contains('open')) {
         window.closeDemo();
+      }
+    });
+
+    // ── Focus trap for demo modal ─────────────────────────────
+    if (overlay) {
+      overlay.addEventListener('keydown', function (e) {
+        if (e.key !== 'Tab' || !overlay.classList.contains('open')) return;
+        var modal = document.getElementById('demo-modal');
+        var focusable = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+        if (!focusable.length) return;
+        var first = focusable[0];
+        var last = focusable[focusable.length - 1];
+        if (e.shiftKey) {
+          if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+        } else {
+          if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+        }
+      });
+    }
+  })();
+  </script>
+
+  <!-- ═══════════════════ ACCESSIBILITY TOOLBAR SCRIPT ═══════════════════ -->
+  <script>
+  (function () {
+    var state = {
+      dyslexia: false,
+      highContrast: false,
+      largeText: false,
+      wideSpacing: false,
+      tts: false,
+      speechRate: 1,
+      fontSize: 100
+    };
+
+    try {
+      var saved = JSON.parse(localStorage.getItem('casuya_a11y'));
+      if (saved) Object.assign(state, saved);
+    } catch (e) {}
+
+    function saveState() {
+      try { localStorage.setItem('casuya_a11y', JSON.stringify(state)); } catch (e) {}
+    }
+
+    function applyState() {
+      document.body.classList.toggle('dyslexia-mode', state.dyslexia);
+      document.body.classList.toggle('high-contrast', state.highContrast);
+      document.body.classList.toggle('large-text', state.largeText);
+      document.body.classList.toggle('extra-large-text', state.fontSize >= 150 && state.fontSize < 200);
+      document.body.classList.toggle('max-text', state.fontSize >= 200);
+      document.body.classList.toggle('wide-spacing', state.wideSpacing);
+
+      document.querySelectorAll('.a11y-toggle-btn').forEach(function (btn, i) {
+        var vals = [state.dyslexia, state.highContrast, state.largeText, state.wideSpacing, state.tts];
+        btn.classList.toggle('active', vals[i]);
+      });
+
+      var ariaIds = ['a11y-dyslexia', 'a11y-contrast', 'a11y-large-text', 'a11y-wide-spacing', 'a11y-tts'];
+      var ariaKeys = ['dyslexia', 'highContrast', 'largeText', 'wideSpacing', 'tts'];
+      ariaIds.forEach(function (id, i) {
+        var el = document.getElementById(id);
+        if (el) el.setAttribute('aria-pressed', state[ariaKeys[i]]);
+      });
+
+      var speedRow = document.getElementById('a11y-speed-row');
+      var speechCtrl = document.getElementById('speech-controls');
+      if (speedRow) speedRow.style.display = state.tts ? 'flex' : 'none';
+      if (speechCtrl) speechCtrl.style.display = state.tts ? 'flex' : 'none';
+
+      var fontSlider = document.getElementById('a11y-fontsize');
+      var fontLabel = document.getElementById('a11y-fontsize-label');
+      if (fontSlider && fontLabel) {
+        fontSlider.value = state.fontSize;
+        fontLabel.textContent = state.fontSize + '%';
+      }
+
+      saveState();
+    }
+
+    applyState();
+
+    var toggleBtn = document.getElementById('a11y-toggle-btn');
+    var panel = document.getElementById('a11y-panel');
+
+    toggleBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var isOpen = panel.classList.toggle('open');
+      toggleBtn.setAttribute('aria-expanded', isOpen);
+    });
+
+    document.addEventListener('click', function (e) {
+      if (!panel.contains(e.target) && !toggleBtn.contains(e.target)) {
+        panel.classList.remove('open');
+        toggleBtn.setAttribute('aria-expanded', 'false');
+      }
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && panel.classList.contains('open')) {
+        panel.classList.remove('open');
+        toggleBtn.setAttribute('aria-expanded', 'false');
+        toggleBtn.focus();
+      }
+    });
+
+    document.getElementById('a11y-dyslexia').addEventListener('click', function () {
+      state.dyslexia = !state.dyslexia;
+      applyState();
+    });
+    document.getElementById('a11y-contrast').addEventListener('click', function () {
+      state.highContrast = !state.highContrast;
+      applyState();
+    });
+    document.getElementById('a11y-large-text').addEventListener('click', function () {
+      state.largeText = !state.largeText;
+      applyState();
+    });
+    document.getElementById('a11y-tts').addEventListener('click', function () {
+      state.tts = !state.tts;
+      applyState();
+      if (!state.tts) window.speechSynthesis.cancel();
+    });
+    document.getElementById('a11y-wide-spacing').addEventListener('click', function () {
+      state.wideSpacing = !state.wideSpacing;
+      applyState();
+    });
+
+    var fontSlider = document.getElementById('a11y-fontsize');
+    var fontLabel = document.getElementById('a11y-fontsize-label');
+    if (fontSlider) {
+      fontSlider.addEventListener('input', function () {
+        state.fontSize = parseInt(this.value);
+        applyState();
+      });
+    }
+
+    document.querySelectorAll('.a11y-option').forEach(function (el) {
+      el.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          el.click();
+        }
+      });
+    });
+
+    var speedSlider = document.getElementById('a11y-speed');
+    var speedLabel = document.getElementById('a11y-speed-label');
+    if (speedSlider) {
+      speedSlider.addEventListener('input', function () {
+        state.speechRate = parseFloat(this.value);
+        speedLabel.textContent = state.speechRate.toFixed(1) + 'x';
+        saveState();
+      });
+    }
+
+    var speechStatus = document.getElementById('speech-status');
+    var speechUtterance = null;
+
+    function getSelectedText() {
+      var sel = window.getSelection();
+      if (sel && sel.toString().trim()) return sel.toString().trim();
+      return document.body.textContent.substring(0, 2000);
+    }
+
+    function findVoice() {
+      var voices = window.speechSynthesis.getVoices();
+      var preferred = ['en-TZ', 'en-KE', 'en-UG', 'en-GH', 'en-ZA', 'en-GB', 'en-US'];
+      for (var i = 0; i < preferred.length; i++) {
+        var match = voices.filter(function (v) { return v.lang === preferred[i]; });
+        if (match.length) return match[0];
+      }
+      for (var j = 0; j < voices.length; j++) {
+        if (voices[j].lang.indexOf('en') === 0) return voices[j];
+      }
+      return null;
+    }
+
+    function speak(text) {
+      window.speechSynthesis.cancel();
+      speechUtterance = new SpeechSynthesisUtterance(text);
+      var voice = findVoice('en-TZ');
+      if (voice) {
+        speechUtterance.voice = voice;
+        speechUtterance.lang = voice.lang;
+      } else {
+        speechUtterance.lang = 'en-TZ';
+      }
+      speechUtterance.rate = state.speechRate || 0.9;
+      speechUtterance.pitch = 1.0;
+      speechUtterance.volume = 1.0;
+      speechUtterance.onstart = function () { speechStatus.textContent = 'Speaking...'; };
+      speechUtterance.onend = function () { speechStatus.textContent = 'Done'; };
+      speechUtterance.onerror = function () { speechStatus.textContent = 'Error'; };
+      window.speechSynthesis.speak(speechUtterance);
+    }
+
+    if (window.speechSynthesis) {
+      window.speechSynthesis.onvoiceschanged = function () {};
+      window.speechSynthesis.getVoices();
+    }
+
+    document.getElementById('speech-play').addEventListener('click', function () {
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+        speechStatus.textContent = 'Speaking...';
+      } else {
+        speak(getSelectedText());
+      }
+    });
+
+    document.getElementById('speech-pause').addEventListener('click', function () {
+      window.speechSynthesis.pause();
+      speechStatus.textContent = 'Paused';
+    });
+
+    document.getElementById('speech-stop').addEventListener('click', function () {
+      window.speechSynthesis.cancel();
+      speechStatus.textContent = 'Stopped';
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.ctrlKey && e.key === 'u') {
+        e.preventDefault();
+        toggleBtn.click();
       }
     });
   })();

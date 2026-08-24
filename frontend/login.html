@@ -92,7 +92,7 @@
         </div>
 
         <!-- Login Form -->
-        <form id="login-form" class="space-y-6" onsubmit="handleLogin(event)" novalidate aria-label="Login form">
+        <form id="login-form" class="space-y-6" novalidate aria-label="Login form">
           <!-- Email Field -->
           <div class="space-y-2">
             <label for="email" class="text-sm font-semibold text-slate-700">Email Address</label>
@@ -206,7 +206,7 @@
         <div class="space-y-3" role="group" aria-label="Social login options">
           <button
             type="button"
-            onclick="window.location.href=casuyaOAuthUrl('google')"
+            onclick="window.location.href=(typeof casuyaOAuthUrl==='function'?casuyaOAuthUrl('google'):'#')"
             class="w-full flex items-center justify-center gap-3 bg-white border border-[#d6cdbf] rounded-xl py-3 px-4 text-sm font-semibold text-slate-700 hover:border-[#c8bdb0] hover:bg-[#f3ede1] transition-all"
             aria-label="Sign in with Google"
           >
@@ -221,7 +221,7 @@
 
           <button
             type="button"
-            onclick="window.location.href=casuyaOAuthUrl('facebook')"
+            onclick="window.location.href=(typeof casuyaOAuthUrl==='function'?casuyaOAuthUrl('facebook'):'#')"
             class="w-full flex items-center justify-center gap-3 bg-white border border-[#d6cdbf] rounded-xl py-3 px-4 text-sm font-semibold text-slate-700 hover:border-[#c8bdb0] hover:bg-[#f3ede1] transition-all"
             aria-label="Sign in with Facebook"
           >
@@ -295,11 +295,25 @@
         else {
           var text = document.querySelector('h1').textContent + '. ' + document.querySelector('p.text-slate-500').textContent;
           var u = new SpeechSynthesisUtterance(text);
-          u.rate = 1; u.lang = 'en-US';
+          var voices = window.speechSynthesis.getVoices();
+          var preferred = ['en-TZ', 'en-KE', 'en-UG', 'en-GH', 'en-ZA', 'en-GB', 'en-US'];
+          var voice = null;
+          for (var i = 0; i < preferred.length && !voice; i++) {
+            var m = voices.filter(function (v) { return v.lang === preferred[i]; });
+            if (m.length) voice = m[0];
+          }
+          if (voice) { u.voice = voice; u.lang = voice.lang; } else { u.lang = 'en-TZ'; }
+          u.rate = 0.9; u.pitch = 1.0; u.volume = 1.0;
           window.speechSynthesis.speak(u);
         }
       });
     })();
+
+    // Preload speech synthesis voices
+    if (window.speechSynthesis) {
+      window.speechSynthesis.onvoiceschanged = function () {};
+      window.speechSynthesis.getVoices();
+    }
 
     // ── OAuth callback: parse tokens from URL fragment ──────────
     const hash = window.location.hash.substring(1);
@@ -407,7 +421,7 @@
     };
 
     // ── Login handler ───────────────────────────────────────────
-    window.handleLogin = async function handleLogin(event) {
+    async function handleLogin(event) {
       event.preventDefault();
       hideFormError();
       clearFieldError('email');
@@ -436,18 +450,23 @@
       submitStatus.textContent = 'Signing in, please wait...';
 
       try {
-        const data = await login({ email, password });
+        const keepSession = document.getElementById("keep-logged-in").checked;
+        const data = await login({ email, password, keep_logged_in: keepSession });
         try {
           if (document.getElementById("remember").checked) {
             localStorage.setItem("casuya_remember_email", email);
           } else {
             localStorage.removeItem("casuya_remember_email");
           }
+          if (document.getElementById("keep-logged-in").checked) {
+            localStorage.setItem("casuya_keep_session", "30d");
+          } else {
+            localStorage.removeItem("casuya_keep_session");
+          }
         } catch (e) {}
         submitStatus.textContent = 'Login successful. Redirecting...';
         announce('Login successful. Redirecting to your dashboard.');
-        showFormError(''); // clear
-        document.getElementById('form-error').classList.add('hidden');
+        hideFormError();
         setTimeout(() => { window.location.href = getPortalPath(data.role); }, 800);
       } catch (error) {
         const msg = error?.message || 'Unable to reach the server. Please try again later.';
@@ -457,10 +476,14 @@
         submitButton.textContent = originalText;
         submitButton.disabled = false;
       }
-    };
+    }
 
     // ── Already signed in? Skip form setup ──────────────────────
     if (!redirectIfAuthed()) {
+      // ── Attach login handler to form ──────────────────────────
+      var loginForm = document.getElementById('login-form');
+      if (loginForm) loginForm.addEventListener('submit', handleLogin);
+
       // ── Remember Me: restore saved email ──────────────────────
       const rememberCheck = document.getElementById("remember");
       const emailInput = document.getElementById("email");

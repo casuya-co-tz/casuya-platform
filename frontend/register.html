@@ -363,16 +363,28 @@
         else {
           var text = document.querySelector('h1').textContent + '. ' + document.querySelector('p.text-slate-500').textContent;
           var u = new SpeechSynthesisUtterance(text);
-          u.rate = 1; u.lang = 'en-US';
+          var voices = window.speechSynthesis.getVoices();
+          var preferred = ['en-TZ', 'en-KE', 'en-UG', 'en-GH', 'en-ZA', 'en-GB', 'en-US'];
+          var voice = null;
+          for (var i = 0; i < preferred.length && !voice; i++) {
+            var m = voices.filter(function (v) { return v.lang === preferred[i]; });
+            if (m.length) voice = m[0];
+          }
+          if (voice) { u.voice = voice; u.lang = voice.lang; } else { u.lang = 'en-TZ'; }
+          u.rate = 0.9; u.pitch = 1.0; u.volume = 1.0;
           window.speechSynthesis.speak(u);
         }
       });
     })();
 
-    // Already signed in? Go straight to the portal
-    if (redirectIfAuthed()) {
-      throw new Error('redirecting');
+    // Preload speech synthesis voices
+    if (window.speechSynthesis) {
+      window.speechSynthesis.onvoiceschanged = function () {};
+      window.speechSynthesis.getVoices();
     }
+
+    // Already signed in? Go straight to the portal
+    if (!redirectIfAuthed()) {
 
     const announcer = document.getElementById('sr-announcer');
     function announce(text) { announcer.textContent = ''; requestAnimationFrame(() => { announcer.textContent = text; }); }
@@ -501,10 +513,17 @@
       submitStatus.textContent = 'Creating your account, please wait...';
 
       try {
+        const prefs = {};
+        if (role === 'special_needs') {
+          document.querySelectorAll('#accessibility-prefs input[type="checkbox"]').forEach(function(cb) {
+            prefs[cb.name] = cb.checked;
+          });
+        }
         const data = await apiRequest('/auth/register', {
           method: 'POST',
           body: JSON.stringify({
             email, password, full_name: fullName, role, phone: phone || null,
+            accessibility_prefs: role === 'special_needs' ? prefs : null,
           }),
         });
 
@@ -544,6 +563,8 @@
       if (!this.checked) showFieldError('terms', 'You must agree to the Terms of Service.');
       else clearFieldError('terms');
     });
+
+    } // end if (!redirectIfAuthed())
   </script>
 </body>
 </html>
