@@ -38,6 +38,7 @@ from backend.api import (
     students,
     subjects,
     subtopics,
+    syllabus,
     teachers,
     topics,
     uploads,
@@ -46,6 +47,7 @@ from backend.api import (
 from backend.config.database import init_db
 from backend.config.logging import configure_logging
 from backend.config.settings import get_settings
+from backend.middleware.compression import CompressionMiddleware
 from backend.middleware.cors import add_cors
 from backend.middleware.errors import register_error_handlers
 from backend.middleware.rate_limit import RateLimitMiddleware
@@ -98,6 +100,7 @@ app = FastAPI(
 )
 
 register_error_handlers(app)
+app.add_middleware(CompressionMiddleware)
 app.add_middleware(RateLimitMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
 add_cors(app)
@@ -113,6 +116,7 @@ for router_module in (
     subjects,
     topics,
     subtopics,
+    syllabus,
     quizzes,
     games,
     progress,

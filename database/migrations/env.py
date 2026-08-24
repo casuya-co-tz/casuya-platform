@@ -5,6 +5,13 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config, pool, create_engine
 
+try:
+    from dotenv import load_dotenv
+    # Load .env from the casuya-platform root (two dirs up from this file)
+    load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
+except ImportError:
+    pass
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from backend.config.database import Base

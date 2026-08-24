@@ -78,6 +78,7 @@ def init_db() -> None:
         role,
         setting,
         student,
+        syllabus,
         teacher,
         user,
     )
@@ -85,8 +86,8 @@ def init_db() -> None:
     try:
         engine = get_engine()
         Base.metadata.create_all(bind=engine)
-        # Ensure indexes exist on tables that may have been created before indexes were added
         with engine.connect() as conn:
+            from sqlalchemy import text
             for stmt in [
                 "CREATE INDEX IF NOT EXISTS ix_topic_subject_id ON topics(subject_id)",
                 "CREATE INDEX IF NOT EXISTS ix_subtopic_topic_id ON subtopics(topic_id)",
@@ -96,11 +97,25 @@ def init_db() -> None:
                 "CREATE INDEX IF NOT EXISTS ix_progress_lesson_id ON progress_records(lesson_id)",
                 "CREATE INDEX IF NOT EXISTS ix_progress_synced_at ON progress_records(synced_at)",
                 "CREATE UNIQUE INDEX IF NOT EXISTS uq_progress_student_lesson ON progress_records(student_id, lesson_id)",
+                "CREATE INDEX IF NOT EXISTS ix_quiz_lesson_id ON quizzes(lesson_id)",
+                "CREATE INDEX IF NOT EXISTS ix_bookmark_user_id ON bookmarks(user_id)",
+                "CREATE INDEX IF NOT EXISTS ix_bookmark_lesson_id ON bookmarks(lesson_id)",
+                "CREATE INDEX IF NOT EXISTS ix_notes_student_id ON notes(student_id)",
+                "CREATE INDEX IF NOT EXISTS ix_notes_lesson_id ON notes(lesson_id)",
+                "CREATE INDEX IF NOT EXISTS ix_notification_user_id ON notifications(user_id)",
+                "CREATE INDEX IF NOT EXISTS ix_notification_created_at ON notifications(created_at)",
+                "CREATE INDEX IF NOT EXISTS ix_notification_user_created ON notifications(user_id, created_at)",
+                "CREATE INDEX IF NOT EXISTS ix_quiz_question_quiz_id ON quiz_questions(quiz_id)",
+                "CREATE INDEX IF NOT EXISTS ix_quiz_option_question_id ON quiz_options(question_id)",
+                "CREATE INDEX IF NOT EXISTS ix_activity_student_viewed ON recent_activity(student_id, viewed_at)",
+                "CREATE INDEX IF NOT EXISTS ix_game_lesson_id ON games(lesson_id)",
+                "CREATE INDEX IF NOT EXISTS ix_payment_user_id ON payments(user_id)",
+                "CREATE INDEX IF NOT EXISTS ix_assignment_lesson_id ON assignments(lesson_id)",
             ]:
                 try:
-                    conn.execute(__import__("sqlalchemy", fromlist=["text"]).text(stmt))
+                    conn.execute(text(stmt))
                 except Exception:
-                    pass  # some DBs may not support IF NOT EXISTS
+                    pass
             conn.commit()
-    except SQLAlchemyError as exc:  # noqa: BLE001
+    except SQLAlchemyError as exc:
         print(f"WARNING: init_db failed, continuing without DB: {exc}")

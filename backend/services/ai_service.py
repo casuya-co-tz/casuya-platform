@@ -83,15 +83,36 @@ def _generate_questions_locally(lesson_html: str, count: int = 5) -> list[dict]:
 # ---------- AI Tutoring ----------
 
 
-async def get_tutoring_response(question: str, lesson_context: str = "") -> str:
-    """Get an AI tutoring response for a student question."""
-    result = await _call_ai_service(
-        "/api/tutoring/explain",
-        {
-            "question": question,
-            "context": lesson_context,
-        },
-    )
+async def get_tutoring_response(
+    question: str,
+    lesson_context: str = "",
+    subject_slug: str | None = None,
+    form_level: int | None = None,
+) -> str:
+    """Get an AI tutoring response for a student question.
+
+    When subject_slug and form_level are provided, the TIE syllabus
+    curriculum context is fetched and injected into the AI prompt
+    so the response aligns with the exact NECTA syllabus.
+    """
+    payload: dict = {
+        "question": question,
+        "context": lesson_context,
+    }
+
+    # Inject NECTA/TIE curriculum context if subject info is available
+    if subject_slug and form_level:
+        try:
+            from backend.services.syllabus_service import get_curriculum_context
+            curriculum_ctx = get_curriculum_context(subject_slug, form_level)
+            if curriculum_ctx:
+                payload["curriculum_context"] = curriculum_ctx
+                payload["subject_slug"] = subject_slug
+                payload["form_level"] = form_level
+        except Exception as exc:
+            logger.debug("Could not fetch syllabus context: %s", exc)
+
+    result = await _call_ai_service("/api/tutoring/explain", payload)
     if result and "response" in result:
         return result["response"]
 
