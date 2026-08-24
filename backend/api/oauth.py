@@ -71,7 +71,13 @@ def _get_client_secret(provider: str) -> str:
     return val
 
 
-def _callback_url(provider: str) -> str:
+def _callback_url(provider: str, request: Request | None = None) -> str:
+    # Prefer the host the request actually arrived on so the redirect URI
+    # always matches what's registered with the OAuth provider, regardless
+    # of deployment (localhost, Render, custom domain).
+    if request is not None:
+        base = str(request.base_url).rstrip("/")
+        return f"{base}/auth/callback/{provider}"
     return f"{settings.oauth_redirect_base}/auth/callback/{provider}"
 
 
@@ -80,7 +86,7 @@ def _callback_url(provider: str) -> str:
 
 @router.get("/oauth/{provider}")
 @router.get("/oauth/{provider}/")
-def oauth_initiate(provider: str):
+def oauth_initiate(provider: str, request: Request):
     if provider not in PROVIDERS:
         raise HTTPException(status_code=400, detail=f"Unsupported provider: {provider}")
 
@@ -90,7 +96,7 @@ def oauth_initiate(provider: str):
 
     params = {
         "client_id": client_id,
-        "redirect_uri": _callback_url(provider),
+        "redirect_uri": _callback_url(provider, request),
         "response_type": "code",
         "scope": cfg["scope"],
         "state": state,
@@ -131,7 +137,7 @@ def oauth_callback(provider: str, request: Request):
                 "code": code,
                 "client_id": client_id,
                 "client_secret": client_secret,
-                "redirect_uri": _callback_url(provider),
+                "redirect_uri": _callback_url(provider, request),
                 "grant_type": "authorization_code",
             },
             timeout=10,
