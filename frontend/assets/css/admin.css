@@ -1,40 +1,5 @@
 @import "main.css";
 
-.lesson-card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  padding: 1rem;
-  margin-bottom: 0.75rem;
-  cursor: pointer;
-  transition: box-shadow 0.15s;
-}
-
-.lesson-card:hover { box-shadow: var(--shadow); }
-
-.lesson-card.clickable {
-  cursor: pointer;
-  transition: box-shadow 0.15s, transform 0.15s;
-}
-
-.lesson-card.clickable:hover {
-  box-shadow: var(--shadow);
-  transform: translateY(-1px);
-}
-
-.lesson-viewer {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  padding: 1.5rem;
-  line-height: 1.7;
-  overflow-x: auto;
-}
-
-.lesson-viewer img { max-width: 100%; height: auto; }
-.lesson-viewer video { max-width: 100%; height: auto; }
-.lesson-viewer table { max-width: 100%; overflow-x: auto; display: block; }
-
 #admin-sidebar {
   background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
   border-right: 1px solid #0f172a;

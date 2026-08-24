@@ -456,7 +456,7 @@ a:hover { text-decoration: underline; }
   color: var(--color-primary);
   background: rgba(37, 99, 235, 0.04);
 }
-.btn-upload:dragover {
+.btn-upload.dragover {
   border-color: var(--color-primary);
   background: rgba(37, 99, 235, 0.08);
 }
@@ -566,10 +566,21 @@ a:hover { text-decoration: underline; }
   flex-shrink: 0;
 }
 
-/* Button focus ring */
-.btn:focus-visible {
+/* Focus ring (keyboard-only) */
+.btn:focus-visible,
+a:focus-visible,
+.tab-btn:focus-visible,
+.sidebar-nav-item:focus-visible,
+.dropdown-item:focus-visible,
+.icon-btn:focus-visible,
+.provider-card:focus-visible,
+.filter-btn:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.3);
+}
+
+a:focus:not(:focus-visible) {
+  box-shadow: none;
 }
 
 /* Button spinner */
@@ -863,7 +874,6 @@ a:hover { text-decoration: underline; }
   padding: 0.5rem;
   min-width: 44px;
   min-height: 44px;
-  display: flex;
   align-items: center;
   justify-content: center;
 }
@@ -944,7 +954,7 @@ a:hover { text-decoration: underline; }
     box-shadow: 4px 0 20px rgba(0,0,0,0.15);
   }
   .sidebar-toggle-btn {
-    display: block !important;
+    display: flex !important;
   }
   .main-header {
     padding: 0.5rem 0.75rem;
@@ -1192,7 +1202,7 @@ a:hover { text-decoration: underline; }
 .lesson-iframe { width: 100%; border: none; display: block; min-height: 400px; }
 
 @media (max-width: 768px) {
-  html { font-size: 15px; }
+  html { font-size: calc(15px * var(--app-font-scale, 1)); }
   .topbar { flex-wrap: wrap; gap: 0.5rem; padding: 0.5rem 0.75rem; }
   .topbar h1 { font-size: 1rem; width: 100%; }
   .topbar nav { order: 2; width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
@@ -1211,7 +1221,7 @@ a:hover { text-decoration: underline; }
 }
 
 @media (max-width: 480px) {
-  html { font-size: 14px; }
+  html { font-size: calc(14px * var(--app-font-scale, 1)); }
   .topbar { padding: 0.4rem 0.5rem; }
   .topbar h1 { font-size: 0.9rem; }
   .content { padding: 0.5rem; }
@@ -1225,4 +1235,52 @@ a:hover { text-decoration: underline; }
   .welcome-banner { padding: 1rem; }
   .welcome-banner h2 { font-size: 1.1rem; }
   .provider-grid { grid-template-columns: 1fr; }
+}
+
+/* ── Lesson Card / Viewer (shared across admin, student) ──────── */
+.lesson-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+  cursor: pointer;
+  transition: box-shadow 0.15s;
+}
+
+.lesson-card:hover { box-shadow: var(--shadow); }
+
+.lesson-card.clickable {
+  cursor: pointer;
+  transition: box-shadow 0.15s, transform 0.15s;
+}
+
+.lesson-card.clickable:hover {
+  box-shadow: var(--shadow);
+  transform: translateY(-1px);
+}
+
+.lesson-viewer {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  line-height: 1.7;
+  overflow-x: auto;
+}
+
+.lesson-viewer img { max-width: 100%; height: auto; }
+.lesson-viewer video { max-width: 100%; height: auto; }
+.lesson-viewer table { max-width: 100%; overflow-x: auto; display: block; }
+
+/* ── Accessibility: Reduced Motion ────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
