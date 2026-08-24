@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, ForeignKey, String
+from sqlalchemy import DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.config.database import Base
@@ -20,5 +20,6 @@ class LessonVersion(Base):
     lesson_id: Mapped[str] = mapped_column(ForeignKey("lessons.id"), nullable=False)
     package_version: Mapped[str] = mapped_column(String, nullable=False)
     content_hash: Mapped[str] = mapped_column(String, nullable=False)
+    content: Mapped[str | None] = mapped_column(Text, nullable=True)
     package_path: Mapped[str] = mapped_column(String, nullable=False)  # storage/lesson-packages/...
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))

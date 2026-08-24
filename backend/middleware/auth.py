@@ -10,8 +10,13 @@ from backend.models.user import User
 
 settings = get_settings()
 
+USER_CACHE_TTL = 60
 
-def get_current_user(authorization: str | None = Header(default=None)):
+
+def get_current_user(
+    authorization: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+):
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing bearer token")
     token = authorization.removeprefix("Bearer ")
@@ -19,19 +24,36 @@ def get_current_user(authorization: str | None = Header(default=None)):
         payload = decode_access_token(token)
     except Exception:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
-    # Dev-mode: accept tokens with a dev- prefix user_id without DB lookup
     if settings.environment == "development" and str(payload.get("sub", "")).startswith("dev-"):
         return payload
+
+    user_id = payload.get("sub")
+    cache_key = f"cache:user:{user_id}"
     try:
-        db: Session = next(get_db())
-        user = db.query(User).filter(User.id == payload["sub"]).first()
+        cached = redis_client.get(cache_key)
+        if cached:
+            user_data = json.loads(cached)
+            if not user_data.get("is_active"):
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User inactive or not found")
+            return payload
+    except HTTPException:
+        raise
+    except Exception:
+        pass
+
+    try:
+        user = db.query(User).filter(User.id == user_id).first()
         if not user or not user.is_active:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User inactive or not found")
+        try:
+            user_data = {"id": user.id, "is_active": user.is_active}
+            redis_client.setex(cache_key, USER_CACHE_TTL, json.dumps(user_data).encode("utf-8"))
+        except Exception:
+            pass
         return payload
     except HTTPException:
         raise
     except Exception:
-        # DB unreachable in dev — trust the JWT signature
         if settings.environment == "development":
             return payload
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")

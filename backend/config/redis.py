@@ -69,6 +69,24 @@ class SafeRedis:
         except RedisError:
             return None
 
+    def setex(self, *args: Any, **kwargs: Any) -> Any:
+        client = self._get()
+        if client is None:
+            return None
+        try:
+            return client.setex(*args, **kwargs)
+        except RedisError:
+            return None
+
+    def keys(self, *args: Any, **kwargs: Any) -> Any:
+        client = self._get()
+        if client is None:
+            return []
+        try:
+            return client.keys(*args, **kwargs)
+        except RedisError:
+            return []
+
     def delete(self, *args: Any, **kwargs: Any) -> Any:
         client = self._get()
         if client is None:
@@ -158,6 +176,15 @@ class SafeRedis:
             return client.ttl(*args, **kwargs)
         except RedisError:
             return -1
+
+    def flushdb(self) -> Any:
+        client = self._get()
+        if client is None:
+            return None
+        try:
+            return client.flushdb()
+        except RedisError:
+            return None
 
     def close(self) -> None:
         if self._client is not None:

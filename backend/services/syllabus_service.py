@@ -68,7 +68,11 @@ def get_subject_by_slug(slug: str) -> dict | None:
     try:
         subject = (
             db.query(SyllabusSubject)
-            .options(joinedload(SyllabusSubject.topics).joinedload(SyllabusTopic.subtopics).joinedload(SyllabusSubtopic.outcomes))
+            .options(
+                joinedload(SyllabusSubject.topics)
+                .joinedload(SyllabusTopic.subtopics)
+                .joinedload(SyllabusSubtopic.outcomes)
+            )
             .filter(SyllabusSubject.slug == slug)
             .first()
         )
@@ -86,7 +90,11 @@ def get_subject_with_form(slug: str, form_level: int) -> dict | None:
     try:
         subject = (
             db.query(SyllabusSubject)
-            .options(joinedload(SyllabusSubject.topics).joinedload(SyllabusTopic.subtopics).joinedload(SyllabusSubtopic.outcomes))
+            .options(
+                joinedload(SyllabusSubject.topics)
+                .joinedload(SyllabusTopic.subtopics)
+                .joinedload(SyllabusSubtopic.outcomes)
+            )
             .filter(SyllabusSubject.slug == slug)
             .first()
         )
@@ -160,9 +168,11 @@ def get_outcomes_for_subtopic(topic_id: str, subtopic_code: str | None = None) -
     _gen = get_db()
     db: Session = next(_gen)
     try:
-        query = db.query(SyllabusSubtopic).options(
-            joinedload(SyllabusSubtopic.outcomes)
-        ).filter(SyllabusSubtopic.topic_id == topic_id)
+        query = (
+            db.query(SyllabusSubtopic)
+            .options(joinedload(SyllabusSubtopic.outcomes))
+            .filter(SyllabusSubtopic.topic_id == topic_id)
+        )
 
         if subtopic_code:
             query = query.filter(SyllabusSubtopic.code == subtopic_code)
@@ -171,12 +181,14 @@ def get_outcomes_for_subtopic(topic_id: str, subtopic_code: str | None = None) -
         results = []
         for st in subtopics:
             for o in sorted(st.outcomes, key=lambda x: x.order_index):
-                results.append({
-                    "subtopic": st.title,
-                    "subtopic_code": st.code,
-                    "outcome": o.description,
-                    "cognitive_level": o.cognitive_level,
-                })
+                results.append(
+                    {
+                        "subtopic": st.title,
+                        "subtopic_code": st.code,
+                        "outcome": o.description,
+                        "cognitive_level": o.cognitive_level,
+                    }
+                )
         return results
     finally:
         _gen.close()

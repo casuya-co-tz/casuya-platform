@@ -164,14 +164,8 @@ def oauth_callback(provider: str, request: Request):
     # to prevent CSRF. Clear the cookie either way.
     state = request.query_params.get("state")
     cookie_state = request.cookies.get("oauth_state")
-    state_ok = (
-        state
-        and cookie_state
-        and hmac.compare_digest(state, cookie_state)
-    )
-    error_response = RedirectResponse(
-        f"{settings.frontend_base}/login.html?error=state_mismatch"
-    )
+    state_ok = state and cookie_state and hmac.compare_digest(state, cookie_state)
+    error_response = RedirectResponse(f"{settings.frontend_base}/login.html?error=state_mismatch")
     error_response.delete_cookie("oauth_state", path="/")
     if not state_ok:
         return error_response

@@ -10,31 +10,36 @@ from sqlalchemy.orm import Session
 
 from backend.config.database import get_db, get_engine
 from backend.config.settings import get_settings
+from backend.middleware.cache import cache_get as redis_cache_get
+from backend.middleware.cache import cache_invalidate
+from backend.middleware.cache import cache_set as redis_cache_set
 from backend.models.lesson import Lesson
 from backend.models.lesson_version import LessonVersion
 
 settings = get_settings()
 
-# ── In-memory content cache ──
+# ── Content cache (Redis-backed, survives restarts & shared across workers) ──
 CONTENT_CACHE_TTL = 300  # 5 minutes
-content_cache: dict[str, tuple[float, str]] = {}
 
 
 def _cache_get(key: str) -> str | None:
-    entry = content_cache.get(key)
-    if entry and (time.monotonic() - entry[0]) < CONTENT_CACHE_TTL:
-        return entry[1]
-    if entry:
-        del content_cache[key]
-    return None
+    """Read from Redis cache. Returns str or None."""
+    return redis_cache_get(f"lesson:content:{key}", ttl_seconds=CONTENT_CACHE_TTL)
 
 
 def _cache_set(key: str, value: str):
-    content_cache[key] = (time.monotonic(), value)
-    # Evict oldest if cache exceeds 10k entries
-    if len(content_cache) > 10000:
-        oldest = min(content_cache.items(), key=lambda x: x[1][0])
-        del content_cache[oldest[0]]
+    """Write to Redis cache with TTL."""
+    redis_cache_set(f"lesson:content:{key}", value, ttl=CONTENT_CACHE_TTL)
+
+
+def _cache_invalidate_content(slug: str):
+    """Invalidate a specific lesson content cache entry."""
+    try:
+        from backend.config.database import redis_client
+
+        redis_client.delete(f"cache:lesson:content:{slug}")
+    except Exception:
+        pass
 
 
 # ── Sharded package paths ──
@@ -46,7 +51,16 @@ def get_package_path(slug: str) -> Path:
 
 
 def _migrate_old_package(slug: str) -> str | None:
-    """Migrate old flat JSON package to new sharded HTML format, return HTML content."""
+    """Migrate old flat JSON or filesystem package to DB, return HTML content."""
+    new_path = get_package_path(slug)
+    if new_path.exists():
+        try:
+            html = new_path.read_text(encoding="utf-8")
+            _backfill_content_to_db(slug, html)
+            return html
+        except Exception:
+            pass
+
     old_path = Path(settings.storage_root) / "lesson-packages" / f"{slug}.json"
     if not old_path.exists():
         return None
@@ -57,9 +71,26 @@ def _migrate_old_package(slug: str) -> str | None:
         new_path.parent.mkdir(parents=True, exist_ok=True)
         new_path.write_text(html, encoding="utf-8")
         old_path.unlink()  # remove old format after migration
+        _backfill_content_to_db(slug, html)
         return html
     except Exception:
         return None
+
+
+def _backfill_content_to_db(slug: str, html: str) -> None:
+    """Write filesystem content into the DB lesson row so future reads are DB-only."""
+    try:
+        _gen = get_db()
+        db: Session = next(_gen)
+        try:
+            lesson = db.query(Lesson).filter(Lesson.slug == slug).first()
+            if lesson and not lesson.content:
+                lesson.content = html
+                db.commit()
+        finally:
+            _gen.close()
+    except Exception:
+        pass  # best-effort; filesystem fallback remains
 
 
 # ── LaTeX detection & KaTeX injection ──
@@ -160,13 +191,18 @@ def read_lesson_content(slug: str) -> str | None:
     if cached is not None:
         return cached
 
-    new_path = get_package_path(slug)
-    if new_path.exists():
-        html = new_path.read_text(encoding="utf-8")
-    else:
-        html = _migrate_old_package(slug)
-        if html is None:
-            return None
+    _gen = get_db()
+    db: Session = next(_gen)
+    try:
+        lesson = db.query(Lesson).filter(Lesson.slug == slug).first()
+        if lesson and lesson.content:
+            html = lesson.content
+        else:
+            html = _migrate_old_package(slug)
+            if html is None:
+                return None
+    finally:
+        _gen.close()
 
     html = _inject_katex(html)
     _cache_set(slug, html)
@@ -184,17 +220,16 @@ def create_lesson_from_html(subtopic_id: str, title: str, html: str) -> dict:
             slug=slug,
             title=title,
             content_hash=content_hash,
+            content=html,
         )
         db.add(lesson)
         db.flush()
-        pkg_path = get_package_path(slug)
-        pkg_path.parent.mkdir(parents=True, exist_ok=True)
-        pkg_path.write_text(html, encoding="utf-8")
         version = LessonVersion(
             lesson_id=lesson.id,
             package_version="1.0.0",
             content_hash=content_hash,
-            package_path=str(pkg_path),
+            content=html,
+            package_path=f"db://{slug}",
         )
         db.add(version)
         db.commit()
@@ -229,11 +264,10 @@ def delete_lesson(lesson_id: str) -> dict:
     raw_conn = engine.raw_connection()
     try:
         cur = raw_conn.cursor()
-        cur.execute("SELECT slug FROM lessons WHERE id = %s", (lesson_id,))
+        cur.execute("SELECT id FROM lessons WHERE id = %s", (lesson_id,))
         row = cur.fetchone()
         if not row:
             raise ValueError("Lesson not found")
-        slug = row[0]
 
         cur.execute(
             "DELETE FROM quiz_options WHERE question_id IN (SELECT id FROM quiz_questions WHERE quiz_id IN (SELECT id FROM quizzes WHERE lesson_id = %s))",
@@ -252,11 +286,6 @@ def delete_lesson(lesson_id: str) -> dict:
         cur.execute("DELETE FROM lessons WHERE id = %s", (lesson_id,))
         raw_conn.commit()
         cur.close()
-
-        if slug:
-            pkg_path = get_package_path(slug)
-            if pkg_path.exists():
-                pkg_path.unlink()
         return {"detail": "Lesson deleted"}
     except Exception:
         raw_conn.rollback()
@@ -278,6 +307,7 @@ def get_lesson(lesson_id: str) -> dict | None:
             "slug": lesson.slug,
             "title": lesson.title,
             "content_hash": lesson.content_hash,
+            "content": lesson.content,
             "package_version": lesson.package_version,
             "status": lesson.status,
         }
@@ -297,18 +327,16 @@ def update_lesson(lesson_id: str, title: str | None = None, html: str | None = N
         if html is not None:
             content_hash = hashlib.sha256(html.encode()).hexdigest()
             lesson.content_hash = content_hash
-            pkg_path = get_package_path(lesson.slug)
-            pkg_path.parent.mkdir(parents=True, exist_ok=True)
-            pkg_path.write_text(html, encoding="utf-8")
+            lesson.content = html
             version = LessonVersion(
                 lesson_id=lesson.id,
                 package_version="1.0.0",
                 content_hash=content_hash,
-                package_path=str(pkg_path),
+                content=html,
+                package_path=f"db://{lesson.slug}",
             )
             db.add(version)
-            if lesson.slug in content_cache:
-                del content_cache[lesson.slug]
+            _cache_invalidate_content(lesson.slug)
         db.commit()
         return {"id": lesson.id, "slug": lesson.slug, "title": lesson.title, "status": lesson.status}
     finally:

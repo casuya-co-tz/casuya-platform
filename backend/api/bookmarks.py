@@ -1,30 +1,37 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy.orm import Session
 
+from backend.config.database import get_db
 from backend.middleware.auth import get_current_user
 from backend.services.bookmark_service import add_bookmark, is_bookmarked, list_bookmarks, remove_bookmark
 
 router = APIRouter(prefix="/bookmarks", tags=["bookmarks"])
 
 
-@router.get("", response_model=list[dict])
-@router.get("/", response_model=list[dict])
-def list_bookmarks_route(current_user=Depends(get_current_user)):
-    return list_bookmarks(current_user["sub"])
+@router.get("")
+@router.get("/")
+def list_bookmarks_route(
+    offset: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    return list_bookmarks(db, current_user["sub"], offset=offset, limit=limit)
 
 
-@router.post("/{lesson_id}", response_model=dict)
-@router.post("/{lesson_id}/", response_model=dict)
-def add_bookmark_route(lesson_id: str, current_user=Depends(get_current_user)):
-    return add_bookmark(current_user["sub"], lesson_id)
+@router.post("/{lesson_id}")
+@router.post("/{lesson_id}/")
+def add_bookmark_route(lesson_id: str, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    return add_bookmark(db, current_user["sub"], lesson_id)
 
 
-@router.delete("/{lesson_id}", response_model=dict)
-@router.delete("/{lesson_id}/", response_model=dict)
-def remove_bookmark_route(lesson_id: str, current_user=Depends(get_current_user)):
-    return remove_bookmark(current_user["sub"], lesson_id)
+@router.delete("/{lesson_id}")
+@router.delete("/{lesson_id}/")
+def remove_bookmark_route(lesson_id: str, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    return remove_bookmark(db, current_user["sub"], lesson_id)
 
 
-@router.get("/{lesson_id}/status", response_model=dict)
-@router.get("/{lesson_id}/status/", response_model=dict)
-def bookmark_status_route(lesson_id: str, current_user=Depends(get_current_user)):
-    return {"bookmarked": is_bookmarked(current_user["sub"], lesson_id)}
+@router.get("/{lesson_id}/status")
+@router.get("/{lesson_id}/status/")
+def bookmark_status_route(lesson_id: str, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    return {"bookmarked": is_bookmarked(db, current_user["sub"], lesson_id)}

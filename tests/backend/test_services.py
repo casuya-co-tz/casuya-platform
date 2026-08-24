@@ -47,18 +47,19 @@ def test_lesson_flow():
 
 
 def test_quiz_flow():
+    db: Session = next(get_db())
     st_id = _create_test_subtopic()
     lesson_result = create_lesson_from_html(st_id, "Quiz Lesson", "<p>Quiz</p>")
     lesson_id = lesson_result["id"]
     publish_lesson(lesson_id)
-    result = create_quiz(lesson_id, "Physics Quiz", [
+    result = create_quiz(db, lesson_id, "Physics Quiz", [
         {"prompt": "What is force?", "options": [
             {"text": "Mass x Acceleration", "is_correct": True},
             {"text": "Speed", "is_correct": False},
         ]},
     ])
     assert result["id"] is not None
-    quiz = get_quiz_for_lesson(lesson_id)
+    quiz = get_quiz_for_lesson(db, lesson_id)
     assert quiz is not None
     questions = quiz["questions"]
     if questions:
@@ -67,7 +68,7 @@ def test_quiz_flow():
             if correct_id is None:
                 correct_id = opt["id"]
         if correct_id:
-            result = grade_attempt(quiz["id"], {questions[0]["id"]: correct_id})
+            result = grade_attempt(db, quiz["id"], {questions[0]["id"]: correct_id})
             assert result["score"] == 1
 
 

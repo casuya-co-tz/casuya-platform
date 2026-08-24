@@ -104,6 +104,7 @@ async def get_tutoring_response(
     if subject_slug and form_level:
         try:
             from backend.services.syllabus_service import get_curriculum_context
+
             curriculum_ctx = get_curriculum_context(subject_slug, form_level)
             if curriculum_ctx:
                 payload["curriculum_context"] = curriculum_ctx

@@ -40,22 +40,22 @@ class SyllabusSubject(Base):
     )
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
-    name: Mapped[str] = mapped_column(String, nullable=False)          # e.g. "Basic Mathematics"
-    code: Mapped[str] = mapped_column(String, nullable=False)          # e.g. "MATH"
-    slug: Mapped[str] = mapped_column(String, nullable=False)          # e.g. "mathematics"
+    name: Mapped[str] = mapped_column(String, nullable=False)  # e.g. "Basic Mathematics"
+    code: Mapped[str] = mapped_column(String, nullable=False)  # e.g. "MATH"
+    slug: Mapped[str] = mapped_column(String, nullable=False)  # e.g. "mathematics"
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     necta_code: Mapped[str | None] = mapped_column(String, nullable=True)  # e.g. "021"
     form_start: Mapped[int] = mapped_column(Integer, nullable=False, default=1)  # Starting form level
-    form_end: Mapped[int] = mapped_column(Integer, nullable=False, default=4)    # Ending form level
-    is_core: Mapped[bool] = mapped_column(Boolean, default=True)       # Core vs optional subject
+    form_end: Mapped[int] = mapped_column(Integer, nullable=False, default=4)  # Ending form level
+    is_core: Mapped[bool] = mapped_column(Boolean, default=True)  # Core vs optional subject
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(timezone.utc)
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
-    topics: Mapped[list["SyllabusTopic"]] = relationship(
-        "SyllabusTopic", back_populates="subject", cascade="all, delete-orphan",
+    topics: Mapped[list[SyllabusTopic]] = relationship(
+        "SyllabusTopic",
+        back_populates="subject",
+        cascade="all, delete-orphan",
         order_by="SyllabusTopic.order_index",
     )
 
@@ -77,21 +77,21 @@ class SyllabusTopic(Base):
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
     subject_id: Mapped[str] = mapped_column(ForeignKey("syllabus_subjects.id"), nullable=False)
-    title: Mapped[str] = mapped_column(String, nullable=False)         # e.g. "NUMBERS"
-    code: Mapped[str | None] = mapped_column(String, nullable=True)    # e.g. "1.0"
+    title: Mapped[str] = mapped_column(String, nullable=False)  # e.g. "NUMBERS"
+    code: Mapped[str | None] = mapped_column(String, nullable=True)  # e.g. "1.0"
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    form_level: Mapped[int] = mapped_column(Integer, nullable=False)   # 1-4 for O-Level
-    order_index: Mapped[int] = mapped_column(Integer, default=0)       # Display ordering
+    form_level: Mapped[int] = mapped_column(Integer, nullable=False)  # 1-4 for O-Level
+    order_index: Mapped[int] = mapped_column(Integer, default=0)  # Display ordering
     estimated_periods: Mapped[int | None] = mapped_column(Integer, nullable=True)  # Teaching periods
-    necta_weight: Mapped[str | None] = mapped_column(String, nullable=True)        # e.g. "high", "medium", "low"
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(timezone.utc)
-    )
+    necta_weight: Mapped[str | None] = mapped_column(String, nullable=True)  # e.g. "high", "medium", "low"
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
-    subject: Mapped["SyllabusSubject"] = relationship("SyllabusSubject", back_populates="topics")
-    subtopics: Mapped[list["SyllabusSubtopic"]] = relationship(
-        "SyllabusSubtopic", back_populates="topic", cascade="all, delete-orphan",
+    subject: Mapped[SyllabusSubject] = relationship("SyllabusSubject", back_populates="topics")
+    subtopics: Mapped[list[SyllabusSubtopic]] = relationship(
+        "SyllabusSubtopic",
+        back_populates="topic",
+        cascade="all, delete-orphan",
         order_by="SyllabusSubtopic.order_index",
     )
 
@@ -109,25 +109,23 @@ class SyllabusSubtopic(Base):
     """
 
     __tablename__ = "syllabus_subtopics"
-    __table_args__ = (
-        Index("ix_syllabus_subtopic_topic", "topic_id"),
-    )
+    __table_args__ = (Index("ix_syllabus_subtopic_topic", "topic_id"),)
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
     topic_id: Mapped[str] = mapped_column(ForeignKey("syllabus_topics.id"), nullable=False)
-    title: Mapped[str] = mapped_column(String, nullable=False)         # e.g. "Base ten numeration"
-    code: Mapped[str | None] = mapped_column(String, nullable=True)    # e.g. "1.1"
+    title: Mapped[str] = mapped_column(String, nullable=False)  # e.g. "Base ten numeration"
+    code: Mapped[str | None] = mapped_column(String, nullable=True)  # e.g. "1.1"
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     order_index: Mapped[int] = mapped_column(Integer, default=0)
     estimated_periods: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(timezone.utc)
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
-    topic: Mapped["SyllabusTopic"] = relationship("SyllabusTopic", back_populates="subtopics")
-    outcomes: Mapped[list["LearningOutcome"]] = relationship(
-        "LearningOutcome", back_populates="subtopic", cascade="all, delete-orphan",
+    topic: Mapped[SyllabusTopic] = relationship("SyllabusTopic", back_populates="subtopics")
+    outcomes: Mapped[list[LearningOutcome]] = relationship(
+        "LearningOutcome",
+        back_populates="subtopic",
+        cascade="all, delete-orphan",
         order_by="LearningOutcome.order_index",
     )
 
@@ -150,18 +148,16 @@ class LearningOutcome(Base):
     """
 
     __tablename__ = "learning_outcomes"
-    __table_args__ = (
-        Index("ix_learning_outcome_subtopic", "subtopic_id"),
-    )
+    __table_args__ = (Index("ix_learning_outcome_subtopic", "subtopic_id"),)
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
     subtopic_id: Mapped[str] = mapped_column(ForeignKey("syllabus_subtopics.id"), nullable=False)
-    description: Mapped[str] = mapped_column(Text, nullable=False)     # e.g. "Identify the place value of each digit in base ten numeration"
+    description: Mapped[str] = mapped_column(
+        Text, nullable=False
+    )  # e.g. "Identify the place value of each digit in base ten numeration"
     cognitive_level: Mapped[str] = mapped_column(String, default="comprehension")  # Bloom's level
     order_index: Mapped[int] = mapped_column(Integer, default=0)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(timezone.utc)
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
-    subtopic: Mapped["SyllabusSubtopic"] = relationship("SyllabusSubtopic", back_populates="outcomes")
+    subtopic: Mapped[SyllabusSubtopic] = relationship("SyllabusSubtopic", back_populates="outcomes")

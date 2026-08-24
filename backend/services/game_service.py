@@ -1,10 +1,10 @@
 import hashlib
 import uuid
 from pathlib import Path
+from typing import Optional
 
 from sqlalchemy.orm import Session
 
-from backend.config.database import get_db
 from backend.config.settings import get_settings
 from backend.models.game import Game
 
@@ -18,27 +18,23 @@ def _get_game_pkg_path(slug: str) -> Path:
     return storage / slug[:2] / slug[2:4] / f"{slug}.html"
 
 
-def get_games_for_lesson(lesson_id: str) -> list[dict]:
-    db: Session = next(get_db())
+def get_games_for_lesson(db: Session, lesson_id: str) -> list[dict]:
     games = db.query(Game).filter(Game.lesson_id == lesson_id).all()
-    result = []
-    for g in games:
-        result.append(
-            {
-                "id": g.id,
-                "lesson_id": g.lesson_id,
-                "title": g.title,
-                "package_path": g.package_path,
-                "slug": g.slug,
-                "content_hash": g.content_hash,
-                "status": g.status,
-            }
-        )
-    return result
+    return [
+        {
+            "id": g.id,
+            "lesson_id": g.lesson_id,
+            "title": g.title,
+            "package_path": g.package_path,
+            "slug": g.slug,
+            "content_hash": g.content_hash,
+            "status": g.status,
+        }
+        for g in games
+    ]
 
 
-def list_games() -> list[dict]:
-    db: Session = next(get_db())
+def list_games(db: Session) -> list[dict]:
     games = db.query(Game).all()
     return [
         {
@@ -53,8 +49,7 @@ def list_games() -> list[dict]:
     ]
 
 
-def get_game(game_id: str) -> dict | None:
-    db: Session = next(get_db())
+def get_game(db: Session, game_id: str) -> dict | None:
     game = db.query(Game).filter(Game.id == game_id).first()
     if not game:
         return None
@@ -75,14 +70,22 @@ def read_game_content(slug: str) -> str | None:
     return pkg_path.read_text(encoding="utf-8")
 
 
-def create_game_from_html(lesson_id: str | None, title: str, html: str) -> dict:
-    db: Session = next(get_db())
+def create_game_from_html(
+    db: Session,
+    lesson_id: str | None,
+    title: str,
+    html: str,
+) -> dict:
     slug = title.lower().replace(" ", "-") + "-" + uuid.uuid4().hex[:8]
     content_hash = hashlib.sha256(html.encode()).hexdigest()
     pkg_path = _get_game_pkg_path(slug)
     resolved_lesson_id = lesson_id or None
     game = Game(
-        lesson_id=resolved_lesson_id, title=title, slug=slug, package_path=str(pkg_path), content_hash=content_hash
+        lesson_id=resolved_lesson_id,
+        title=title,
+        slug=slug,
+        package_path=str(pkg_path),
+        content_hash=content_hash,
     )
     db.add(game)
     db.flush()
@@ -92,8 +95,7 @@ def create_game_from_html(lesson_id: str | None, title: str, html: str) -> dict:
     return {"id": game.id, "slug": slug, "title": title, "content_hash": content_hash, "status": "draft"}
 
 
-def publish_game(game_id: str) -> dict:
-    db: Session = next(get_db())
+def publish_game(db: Session, game_id: str) -> dict:
     game = db.query(Game).filter(Game.id == game_id).first()
     if not game:
         raise ValueError("Game not found")
@@ -102,8 +104,7 @@ def publish_game(game_id: str) -> dict:
     return {"id": game.id, "slug": game.slug, "status": "published"}
 
 
-def delete_game(game_id: str) -> dict:
-    db: Session = next(get_db())
+def delete_game(db: Session, game_id: str) -> dict:
     game = db.query(Game).filter(Game.id == game_id).first()
     if not game:
         raise ValueError("Game not found")
@@ -117,8 +118,12 @@ def delete_game(game_id: str) -> dict:
     return {"detail": "Game deleted"}
 
 
-def update_game(game_id: str, title: str | None = None, html: str | None = None) -> dict:
-    db: Session = next(get_db())
+def update_game(
+    db: Session,
+    game_id: str,
+    title: str | None = None,
+    html: str | None = None,
+) -> dict:
     game = db.query(Game).filter(Game.id == game_id).first()
     if not game:
         raise ValueError("Game not found")

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from pydantic import BaseModel
 
-
 # ── Request schemas ────────────────────────────────────────────────────────
+
 
 class SyllabusSubjectCreate(BaseModel):
     name: str
@@ -19,6 +19,7 @@ class SyllabusSubjectCreate(BaseModel):
 
 
 # ── Response schemas ───────────────────────────────────────────────────────
+
 
 class LearningOutcomeResponse(BaseModel):
     id: str
@@ -64,6 +65,7 @@ class SyllabusSubjectResponse(BaseModel):
 
 class SyllabusSubjectSummary(BaseModel):
     """Lightweight subject info without topics (for list endpoints)."""
+
     id: str
     name: str
     code: str
@@ -77,6 +79,7 @@ class SyllabusSubjectSummary(BaseModel):
 
 class SyllabusCoverageResponse(BaseModel):
     """How much of a subject's syllabus has been covered."""
+
     subject_id: str
     subject_name: str
     form_level: int

@@ -15,10 +15,13 @@ from backend.models.quiz import Quiz
 from sqlalchemy.orm import Session
 
 settings_from_config = None
+
+
 def _settings():
     global settings_from_config
     if settings_from_config is None:
         from backend.config.settings import get_settings
+
         settings_from_config = get_settings()
     return settings_from_config
 
@@ -34,9 +37,15 @@ def run():
         db.add(Role(name=role_name, description=f"{role_name.capitalize()} role"))
 
     admin = User(email="admin@casuya.co.tz", hashed_password=hash_password("admin123"), role="admin", is_active=True)
-    teacher = User(email="teacher@casuya.co.tz", hashed_password=hash_password("teacher123"), role="teacher", is_active=True)
-    student = User(email="student@casuya.co.tz", hashed_password=hash_password("student123"), role="student", is_active=True)
-    extra_student = User(email="student2@casuya.co.tz", hashed_password=hash_password("student123"), role="student", is_active=True)
+    teacher = User(
+        email="teacher@casuya.co.tz", hashed_password=hash_password("teacher123"), role="teacher", is_active=True
+    )
+    student = User(
+        email="student@casuya.co.tz", hashed_password=hash_password("student123"), role="student", is_active=True
+    )
+    extra_student = User(
+        email="student2@casuya.co.tz", hashed_password=hash_password("student123"), role="student", is_active=True
+    )
     db.add_all([admin, teacher, student, extra_student])
     db.flush()
 

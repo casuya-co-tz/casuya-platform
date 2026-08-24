@@ -88,6 +88,7 @@ def init_db() -> None:
         Base.metadata.create_all(bind=engine)
         with engine.connect() as conn:
             from sqlalchemy import text
+
             for stmt in [
                 "CREATE INDEX IF NOT EXISTS ix_topic_subject_id ON topics(subject_id)",
                 "CREATE INDEX IF NOT EXISTS ix_subtopic_topic_id ON subtopics(topic_id)",

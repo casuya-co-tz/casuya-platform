@@ -11,6 +11,9 @@ class SecurityHeadersMiddleware:
             await self.app(scope, receive, send)
             return
 
+        path: str = scope.get("path", "/")
+        method: str = scope.get("method", "GET")
+
         async def send_wrapper(message):
             if message["type"] == "http.response.start":
                 headers = MutableHeaders(scope=message)
@@ -18,7 +21,6 @@ class SecurityHeadersMiddleware:
                 headers["X-Frame-Options"] = "DENY"
                 headers["X-XSS-Protection"] = "1; mode=block"
                 headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-                headers["Cache-Control"] = "no-store"
                 headers["Content-Security-Policy"] = (
                     "default-src 'self'; "
                     "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
@@ -28,6 +30,30 @@ class SecurityHeadersMiddleware:
                     "frame-src 'self'; "
                     "connect-src 'self'"
                 )
+
+                # ── Smart Cache-Control ───────────────────────────────────
+                # Static assets (fonts, CSS, JS) → immutable long cache.
+                # API data → private, revalidate so conditional requests work.
+                # Health / auth / writes → never cache.
+                status = message.get("status", 200)
+                content_type = headers.get("content-type", "")
+
+                if path.startswith("/static/") or path.startswith("/fonts/"):
+                    headers["Cache-Control"] = "public, max-age=31536000, immutable"
+                elif path in ("/health", "/readyz") or method in ("POST", "PUT", "DELETE", "PATCH"):
+                    headers["Cache-Control"] = "no-store"
+                elif (
+                    "/api" in path
+                    or path.startswith("/lessons")
+                    or path.startswith("/subjects")
+                    or path.startswith("/topics")
+                ):
+                    # API reads: allow stale-while-revalidate for fast repeat loads.
+                    headers["Cache-Control"] = "private, max-age=5, stale-while-revalidate=30"
+                else:
+                    # HTML pages: short cache + revalidate.
+                    headers["Cache-Control"] = "private, max-age=60, must-revalidate"
+
             await send(message)
 
         await self.app(scope, receive, send_wrapper)

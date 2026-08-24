@@ -47,8 +47,14 @@ class RateLimitMiddleware:
         try:
             from backend.config.database import redis_client
 
-            redis_client.zremrangebyscore(redis_key, 0, window_start)
-            hits = redis_client.zcard(redis_key)
+            pipe = redis_client.pipeline()
+            pipe.zremrangebyscore(redis_key, 0, window_start)
+            pipe.zcard(redis_key)
+            pipe.zadd(redis_key, {str(now): now})
+            pipe.expire(redis_key, 60)
+            results = pipe.execute()
+
+            hits = results[1]
 
             if hits >= limit:
                 ttl = int(redis_client.ttl(redis_key))
@@ -65,9 +71,6 @@ class RateLimitMiddleware:
                 )
                 await send({"type": "http.response.body", "body": body})
                 return
-
-            redis_client.zadd(redis_key, {str(now): now})
-            redis_client.expire(redis_key, 60)
         except Exception:
             pass
 

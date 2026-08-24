@@ -3,6 +3,7 @@ from fastapi.responses import FileResponse, HTMLResponse
 from sqlalchemy.exc import IntegrityError
 
 from backend.middleware.auth import get_current_user
+from backend.middleware.cache import cache_get, cache_invalidate, cache_set, etag_for
 from backend.middleware.permissions import require_role
 from backend.schemas.lessons import LessonCreate, LessonResponse, LessonUpdate
 from backend.services.lesson_service import (
@@ -28,15 +29,26 @@ def list_lessons_route(
     limit: int = 100,
     current_user=Depends(get_current_user),
 ):
-    return list_lessons(subtopic_id=subtopic_id, status=status, skip=skip, limit=limit)
+    cache_key = f"lessons:list:{subtopic_id or ''}:{status or ''}:{skip}:{limit}"
+    cached = cache_get(cache_key, ttl_seconds=120)
+    if cached is not None:
+        return cached
+    result = list_lessons(subtopic_id=subtopic_id, status=status, skip=skip, limit=limit)
+    cache_set(cache_key, result, ttl=120)
+    return result
 
 
 @router.get("/{lesson_id}")
 @router.get("/{lesson_id}/")
 def get_lesson_route(lesson_id: str, current_user=Depends(get_current_user)):
+    cache_key = f"lessons:detail:{lesson_id}"
+    cached = cache_get(cache_key, ttl_seconds=120)
+    if cached is not None:
+        return cached
     lesson = get_lesson(lesson_id)
     if not lesson:
         raise HTTPException(status_code=404, detail="Lesson not found")
+    cache_set(cache_key, lesson, ttl=120)
     return lesson
 
 
@@ -58,11 +70,13 @@ def get_lesson_content_route(lesson_id: str, request: Request, current_user=Depe
 @router.post("/", response_model=dict, dependencies=[Depends(require_role("admin"))])
 def create_lesson_route(body: LessonCreate):
     try:
-        return create_lesson_from_html(
+        result = create_lesson_from_html(
             subtopic_id=body.subtopic_id,
             title=body.title,
             html=body.html_content,
         )
+        cache_invalidate("lessons:")
+        return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -80,7 +94,9 @@ def publish_lesson_route(lesson_id: str):
 @router.delete("/{lesson_id}/", dependencies=[Depends(require_role("admin"))])
 def delete_lesson_route(lesson_id: str):
     try:
-        return delete_lesson(lesson_id)
+        result = delete_lesson(lesson_id)
+        cache_invalidate("lessons:")
+        return result
     except IntegrityError:
         raise HTTPException(status_code=409, detail="Lesson cannot be deleted due to database constraints")
     except ValueError as e:
@@ -91,10 +107,12 @@ def delete_lesson_route(lesson_id: str):
 @router.put("/{lesson_id}/", response_model=dict, dependencies=[Depends(require_role("admin"))])
 def update_lesson_route(lesson_id: str, body: LessonUpdate):
     try:
-        return update_lesson(
+        result = update_lesson(
             lesson_id=lesson_id,
             title=body.title,
             html=body.html_content,
         )
+        cache_invalidate("lessons:")
+        return result
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
