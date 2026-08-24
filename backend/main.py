@@ -75,6 +75,12 @@ async def lifespan(app: FastAPI):
             admin_name = os.environ.get("CASUYA_ADMIN_NAME", "Platform Admin")
             await asyncio.to_thread(create_admin, admin_email, admin_password, admin_name)
 
+        # Restore generated HTML/uploads from the database so content survived
+        # any ephemeral filesystem wipe (Render Free, etc.).
+        from backend.services.storage_rehydrate import rehydrate_storage
+
+        await asyncio.to_thread(rehydrate_storage)
+
     except Exception as exc:  # noqa: BLE001
         # Tolerate an unreachable/unconfigured database in local dev so the
         # API still serves health/readiness and static routes.

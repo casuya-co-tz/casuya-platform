@@ -116,6 +116,7 @@ async def upload_file(file: UploadFile, current_user=Depends(require_role("admin
             display_name=file.filename,
             kind=kind,
             size=len(content),
+            data=content,
             is_visible=True,
         )
         db.add(record)
@@ -171,6 +172,18 @@ async def serve_file(filename: str):
         target = kind_dir / filename
         if target.exists() and target.is_file():
             return FileResponse(target, filename=filename)
+
+    # Fallback: serve from the database if the file was wiped from disk.
+    gen = get_db()
+    db = next(gen)
+    try:
+        record = db.query(FileRecord).filter(FileRecord.filename == filename).first()
+        if record is not None and record.data is not None:
+            from fastapi.responses import Response
+
+            return Response(content=record.data, media_type="application/octet-stream")
+    finally:
+        gen.close()
     raise HTTPException(status_code=404, detail="File not found")
 
 

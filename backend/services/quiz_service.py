@@ -37,7 +37,7 @@ def create_quiz(db: Session, lesson_id: str, title: str, questions: list[dict]) 
 def create_quiz_from_html(db: Session, lesson_id: str | None, title: str, html: str) -> dict:
     slug = title.lower().replace(" ", "-") + "-" + uuid.uuid4().hex[:8]
     content_hash = hashlib.sha256(html.encode()).hexdigest()
-    quiz = Quiz(lesson_id=lesson_id, title=title, slug=slug, content_hash=content_hash)
+    quiz = Quiz(lesson_id=lesson_id, title=title, slug=slug, package_html=html, content_hash=content_hash)
     db.add(quiz)
     db.flush()
     pkg_path = _get_quiz_pkg_path(slug)
@@ -161,11 +161,14 @@ def get_quiz_for_lesson(db: Session, lesson_id: str) -> dict | None:
     }
 
 
-def read_quiz_content(slug: str) -> str | None:
+def read_quiz_content(db: Session, slug: str) -> str | None:
+    quiz = db.query(Quiz).filter(Quiz.slug == slug).first()
+    if quiz and quiz.package_html:
+        return quiz.package_html
     pkg_path = _get_quiz_pkg_path(slug)
-    if not pkg_path.exists():
-        return None
-    return pkg_path.read_text(encoding="utf-8")
+    if pkg_path.exists():
+        return pkg_path.read_text(encoding="utf-8")
+    return None
 
 
 def publish_quiz(db: Session, quiz_id: str) -> dict:
@@ -200,6 +203,7 @@ def update_quiz(db: Session, quiz_id: str, title: str | None = None, html: str |
     if html is not None:
         content_hash = hashlib.sha256(html.encode()).hexdigest()
         quiz.content_hash = content_hash
+        quiz.package_html = html
         pkg_path = _get_quiz_pkg_path(quiz.slug)
         pkg_path.parent.mkdir(parents=True, exist_ok=True)
         pkg_path.write_text(html, encoding="utf-8")

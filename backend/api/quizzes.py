@@ -51,7 +51,7 @@ def get_quiz_content_route(quiz_id: str, db: Session = Depends(get_db), current_
     slug = quiz.get("slug")
     if not slug:
         raise HTTPException(status_code=404, detail="Quiz has no HTML content")
-    html = read_quiz_content(slug)
+    html = read_quiz_content(db, slug)
     if html is None:
         raise HTTPException(status_code=404, detail="Quiz content not found")
     return HTMLResponse(content=html)

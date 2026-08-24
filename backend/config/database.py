@@ -112,6 +112,11 @@ def init_db() -> None:
                 "CREATE INDEX IF NOT EXISTS ix_game_lesson_id ON games(lesson_id)",
                 "CREATE INDEX IF NOT EXISTS ix_payment_user_id ON payments(user_id)",
                 "CREATE INDEX IF NOT EXISTS ix_assignment_lesson_id ON assignments(lesson_id)",
+                "ALTER TABLE games ADD COLUMN IF NOT EXISTS package_html TEXT",
+                "ALTER TABLE quizzes ADD COLUMN IF NOT EXISTS package_html TEXT",
+                "ALTER TABLE lessons ADD COLUMN IF NOT EXISTS package_html TEXT",
+                "ALTER TABLE lessons ADD COLUMN IF NOT EXISTS package_filename VARCHAR",
+                "ALTER TABLE file_records ADD COLUMN IF NOT EXISTS data BYTEA",
             ]:
                 try:
                     conn.execute(text(stmt))

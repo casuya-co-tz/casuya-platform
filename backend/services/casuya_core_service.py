@@ -21,10 +21,19 @@ def _storage_dir() -> Path:
     return d
 
 
-def compile_lesson(html: str, *, lesson_id: str | None = None, validate: bool = True, security: bool = True) -> dict:
+def compile_lesson(
+    html: str,
+    *,
+    lesson_id: str | None = None,
+    validate: bool = True,
+    security: bool = True,
+    db: Session | None = None,
+) -> dict:
     """Compile raw HTML into a signed Casuya lesson package.
 
     Returns a dict describing the produced package: id, path, size, integrity_ok.
+    When `db` is provided the compiled package is persisted to the database so it
+    survives ephemeral filesystem wipes (see backend/services/storage_rehydrate.py).
     """
     from casuya_core import (
         CompilerConfig,
@@ -59,6 +68,18 @@ def compile_lesson(html: str, *, lesson_id: str | None = None, validate: bool = 
 
         dest = _storage_dir() / pkg_path.name
         shutil.copyfile(pkg_path, dest)
+
+        if db is not None and lesson_id:
+            from backend.models.lesson import Lesson
+
+            lesson = db.query(Lesson).filter(Lesson.id == lesson_id).first()
+            if lesson is not None:
+                try:
+                    lesson.package_html = dest.read_text(encoding="utf-8")
+                    lesson.package_filename = pkg_path.name
+                    db.commit()
+                except Exception:
+                    db.rollback()
 
     return {
         "id": pkg_path.stem,

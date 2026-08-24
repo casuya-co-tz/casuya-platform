@@ -44,7 +44,7 @@ def get_game_content_route(game_id: str, db: Session = Depends(get_db), current_
     slug = game.get("slug")
     if not slug:
         raise HTTPException(status_code=404, detail="Game has no HTML content")
-    html = read_game_content(slug)
+    html = read_game_content(db, slug)
     if html is None:
         raise HTTPException(status_code=404, detail="Game content not found")
     return HTMLResponse(content=html)

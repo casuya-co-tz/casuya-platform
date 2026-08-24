@@ -63,11 +63,14 @@ def get_game(db: Session, game_id: str) -> dict | None:
     }
 
 
-def read_game_content(slug: str) -> str | None:
+def read_game_content(db: Session, slug: str) -> str | None:
+    game = db.query(Game).filter(Game.slug == slug).first()
+    if game and game.package_html:
+        return game.package_html
     pkg_path = _get_game_pkg_path(slug)
-    if not pkg_path.exists():
-        return None
-    return pkg_path.read_text(encoding="utf-8")
+    if pkg_path.exists():
+        return pkg_path.read_text(encoding="utf-8")
+    return None
 
 
 def create_game_from_html(
@@ -85,6 +88,7 @@ def create_game_from_html(
         title=title,
         slug=slug,
         package_path=str(pkg_path),
+        package_html=html,
         content_hash=content_hash,
     )
     db.add(game)
@@ -132,6 +136,7 @@ def update_game(
     if html is not None:
         content_hash = hashlib.sha256(html.encode()).hexdigest()
         game.content_hash = content_hash
+        game.package_html = html
         pkg_path = _get_game_pkg_path(game.slug)
         game.package_path = str(pkg_path)
         pkg_path.parent.mkdir(parents=True, exist_ok=True)

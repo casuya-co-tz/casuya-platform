@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from sqlalchemy import ForeignKey, Index, String, Text
+from sqlalchemy import ForeignKey, Index, LargeBinary, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.config.database import Base
@@ -49,5 +49,7 @@ class Lesson(Base):
     title: Mapped[str] = mapped_column(String, nullable=False)
     content_hash: Mapped[str | None] = mapped_column(String, nullable=True)
     content: Mapped[str | None] = mapped_column(Text, nullable=True)
+    package_html: Mapped[str | None] = mapped_column(Text, nullable=True)
+    package_filename: Mapped[str | None] = mapped_column(String, nullable=True)
     package_version: Mapped[str | None] = mapped_column(String, nullable=True)
     status: Mapped[str] = mapped_column(String, default="draft")
