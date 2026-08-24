@@ -10,8 +10,9 @@ Flow:
 
 from __future__ import annotations
 
+import hmac
 import secrets
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
 
 import httpx
 from fastapi import APIRouter, HTTPException, Request
@@ -71,14 +72,40 @@ def _get_client_secret(provider: str) -> str:
     return val
 
 
+def _trusted_hosts() -> set[str]:
+    """Hosts we are willing to derive an OAuth callback URL from.
+
+    Prevents Host-header injection: an attacker could spoof the Host header
+    to point the provider's redirect at an arbitrary domain. We only trust
+    hosts we actually deploy on.
+    """
+    hosts: set[str] = {"localhost", "127.0.0.1", "testserver"}
+    for raw in (settings.oauth_redirect_base, settings.frontend_base, *settings.allowed_origins):
+        if raw:
+            host = urlparse(raw).hostname
+            if host:
+                hosts.add(host)
+    return hosts
+
+
 def _callback_url(provider: str, request: Request | None = None) -> str:
     # Prefer the host the request actually arrived on so the redirect URI
     # always matches what's registered with the OAuth provider, regardless
-    # of deployment (localhost, Render, custom domain).
+    # of deployment (localhost, Render, custom domain). Only trust hosts we
+    # deploy on to avoid Host-header injection.
     if request is not None:
-        base = str(request.base_url).rstrip("/")
-        return f"{base}/auth/callback/{provider}"
+        host = request.url.hostname
+        if host and host in _trusted_hosts():
+            base = str(request.base_url).rstrip("/")
+            return f"{base}/auth/callback/{provider}"
     return f"{settings.oauth_redirect_base}/auth/callback/{provider}"
+
+
+def _auth_redirect(target: str) -> RedirectResponse:
+    """Redirect back to the frontend login page, clearing the OAuth state cookie."""
+    response = RedirectResponse(target)
+    response.delete_cookie("oauth_state", path="/")
+    return response
 
 
 # ── Step 1: Redirect to the authorization URL ────────────────────────────
@@ -109,7 +136,19 @@ def oauth_initiate(provider: str, request: Request):
         params.pop("prompt", None)
 
     url = f"{cfg['authorize_url']}?{urlencode(params)}"
-    return RedirectResponse(url)
+    response = RedirectResponse(url)
+    # Store state in an HttpOnly cookie so we can verify it on the callback
+    # (CSRF protection for the OAuth flow).
+    response.set_cookie(
+        key="oauth_state",
+        value=state,
+        httponly=True,
+        secure=settings.environment != "development",
+        samesite="lax",
+        max_age=600,
+        path="/",
+    )
+    return response
 
 
 # ── Step 2: Handle the callback, exchange code, create/find user ─────────
@@ -121,9 +160,25 @@ def oauth_callback(provider: str, request: Request):
     if provider not in PROVIDERS:
         raise HTTPException(status_code=400, detail=f"Unsupported provider: {provider}")
 
+    # Verify the state parameter against the cookie set during initiation
+    # to prevent CSRF. Clear the cookie either way.
+    state = request.query_params.get("state")
+    cookie_state = request.cookies.get("oauth_state")
+    state_ok = (
+        state
+        and cookie_state
+        and hmac.compare_digest(state, cookie_state)
+    )
+    error_response = RedirectResponse(
+        f"{settings.frontend_base}/login.html?error=state_mismatch"
+    )
+    error_response.delete_cookie("oauth_state", path="/")
+    if not state_ok:
+        return error_response
+
     code = request.query_params.get("code")
     if not code:
-        return RedirectResponse(f"{settings.frontend_base}/login.html?error=no_code")
+        return _auth_redirect(f"{settings.frontend_base}/login.html?error=no_code")
 
     cfg = PROVIDERS[provider]
     client_id = _get_client_id(provider)
@@ -145,11 +200,11 @@ def oauth_callback(provider: str, request: Request):
         token_resp.raise_for_status()
         token_data = token_resp.json()
     except Exception:
-        return RedirectResponse(f"{settings.frontend_base}/login.html?error=token_exchange_failed")
+        return _auth_redirect(f"{settings.frontend_base}/login.html?error=token_exchange_failed")
 
     access_token = token_data.get("access_token")
     if not access_token:
-        return RedirectResponse(f"{settings.frontend_base}/login.html?error=no_access_token")
+        return _auth_redirect(f"{settings.frontend_base}/login.html?error=no_access_token")
 
     # Fetch user info
     try:
@@ -161,11 +216,11 @@ def oauth_callback(provider: str, request: Request):
         userinfo_resp.raise_for_status()
         userinfo = userinfo_resp.json()
     except Exception:
-        return RedirectResponse(f"{settings.frontend_base}/login.html?error=userinfo_failed")
+        return _auth_redirect(f"{settings.frontend_base}/login.html?error=userinfo_failed")
 
     user_info = cfg["get_user_info"](userinfo)
     if not user_info.get("email"):
-        return RedirectResponse(f"{settings.frontend_base}/login.html?error=no_email")
+        return _auth_redirect(f"{settings.frontend_base}/login.html?error=no_email")
 
     # Create or find user, get JWT tokens
     try:
@@ -177,7 +232,7 @@ def oauth_callback(provider: str, request: Request):
             avatar=user_info.get("avatar", ""),
         )
     except Exception:
-        return RedirectResponse(f"{settings.frontend_base}/login.html?error=account_creation_failed")
+        return _auth_redirect(f"{settings.frontend_base}/login.html?error=account_creation_failed")
 
     # Redirect to frontend with tokens in the URL fragment
     fragment = urlencode(
@@ -188,4 +243,4 @@ def oauth_callback(provider: str, request: Request):
             "user_id": result["user_id"],
         }
     )
-    return RedirectResponse(f"{settings.frontend_base}/login.html?oauth=success#{fragment}")
+    return _auth_redirect(f"{settings.frontend_base}/login.html?oauth=success#{fragment}")

@@ -326,6 +326,7 @@
         userinfo_failed: 'Failed to retrieve user info from provider.',
         no_email: 'Provider did not return an email address.',
         account_creation_failed: 'Failed to create account.',
+        state_mismatch: 'Security check failed. Please try signing in again.',
       };
       const msg = errorMessages[oauthError] || 'OAuth sign-in failed.';
       showFormError(msg);

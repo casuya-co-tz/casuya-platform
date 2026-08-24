@@ -5,7 +5,7 @@
   // global CASUYA_API_URL (e.g. https://casuya-backend.onrender.com) in a small
   // inline <script> that runs BEFORE this file, or via Vercel env substitution.
   //
-  // In development it targets the local API on port 8765 (same-origin when the
+  // In development it targets the local API on port 8000 (same-origin when the
   // frontend is served from the API host).
 
   function resolveBase() {
