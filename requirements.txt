@@ -14,7 +14,7 @@ pytest-cov==7.1.0
 redis==8.1.0
 rq>=2.11.0
 sentry-sdk>=2.68.0
-psycopg2-binary>=2.9.12
+psycopg2-binary>=2.9.13
 alembic==1.19.1
 
 # Local workspace dependency — install with: pip install -e ../casuya-core
