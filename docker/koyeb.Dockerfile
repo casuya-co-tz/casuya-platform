@@ -2,7 +2,7 @@
 # nginx listens on $PORT (Koyeb injects it) and proxies / to uvicorn (:8765),
 # serving the static frontend from /usr/share/casuya/frontend. Same origin,
 # so the frontend's API_BASE logic works with no CORS.
-FROM python:3.14-slim
+FROM python:3.15-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
       nginx \
